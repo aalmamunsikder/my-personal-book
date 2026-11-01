@@ -109,8 +109,11 @@ HTTP requests, the deployed chunks, the browser console — details in `IMPLEMEN
   replacement chunk serves 0 of 13 bodies, 0 of 13 ids and 0 of 6 descriptions.
 - Invariant 15 did not hold either, in three ways at once — the address was rendered on signed-out
   screens, quoted back to wrong-account callers, and sent to Google as a `login_hint`. It was caught by
-  re-reading the live bundle to confirm the fix above had landed. Fixed locally (1 of 19 chunks still
-  holds it, as gating data only); **it needs a deploy to stop being true in production.**
+  re-reading the live bundle to confirm the fix above had landed. Fixed and **re-measured on the live
+  build**: one chunk still holds the address, as a minified gating value (`let ev="…"`) with no
+  rendered-copy marker beside it; `login_hint` is absent from every chunk; `document.body.innerText` on
+  the live page contains no address. The gating value remains in the client because the client decides
+  ownership — see invariant 15's accepted residual.
 - The Report-Only CSP reports exactly 6 violations on the signed-out page, all of them `script-src
   'self'` refusals of Next.js inline bootstrap scripts, and nothing else — so enforcement is a nonce
   question, not a directive-design question.

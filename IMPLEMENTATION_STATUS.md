@@ -167,10 +167,15 @@ Three defects surfaced only because the deployed artifact was read instead of th
    and `prompt: 'select_account'` stays, so the chooser is not pre-filled for strangers.
    `owner-privacy.test.ts` (4 assertions) fails `npm test` if the address appears in any other client
    module, if the constant is exported again, if a rejection message interpolates it, or if the login hint
-   returns. Measured in the rebuilt bundle: the address survives in exactly **1 of 19** chunks, and there
-   it is the gating comparison (`…@gmail.com` assigned to one constant) with no rendered copy beside it —
-   an honest residual, because comparing on the client requires the value to be *in* the client. The
-   server-side default in `app/api/ai-assist/route.ts:22` is not shipped to the browser.
+   returns. **Measured on the live deployment after the push** (chunk `app/page-e9e2c881d5434282.js`, 10
+   chunks fetched): the address survives in exactly **1 of 10** chunks, where it is minified to one
+   assignment (`let ev="…@gmail.com"`) with no rendered-copy marker beside it, `login_hint` is gone from
+   every chunk, and the stale passkey sentence is gone. The live DOM was read too: the login modal says
+   «…মালিকের Google অ্যাকাউন্ট দিয়ে সাইন-ইন করুন», both nav buttons say «মালিক লগইন», and
+   `document.body.innerText` contains no address. An honest residual, not a hidden one: client-side gating
+   requires the comparison value to exist in the client, so the address remains in one chunk as data. The
+   server-side default in `app/api/ai-assist/route.ts:22` is not shipped to the browser. The Report-Only
+   CSP re-check on the new build reported the same 6 inline-script violations and nothing else.
 
 ---
 
@@ -292,9 +297,10 @@ Three defects surfaced only because the deployed artifact was read instead of th
    inline bootstrap scripts, and nothing else. Enforcing therefore needs a **nonce**
    (`script-src 'self' 'nonce-…'` per request); pinning the six reported `sha256-…` values would break on
    the next build, because they are computed per deploy. Until then the header stays Report-Only.
-7. **Redeploy after the owner-privacy change.** The live build already carries fixes 1 and 2 of §1.3
-   (re-measured after the push: no fixture prose, no stale passkey copy). It still predates fix 3, so your
-   address stays visible to anonymous visitors and in their Google account chooser until this is pushed.
+7. **Deploy verification is done for all three §1.3 fixes.** The live build now serves no fixture prose,
+   no stale passkey instruction and no rendered owner address (measured above). The remaining deploy work
+   is the Firestore/Storage ruleset and the server environment (§4.1, §4.3) — the app artifact itself is
+   current with this repository.
 8. Housekeeping done at this commit: `package-lock.json` is tracked (an emulator run is not reproducible
    without pinned `firebase-tools`), and `tsconfig.tsbuildinfo` is gitignored.
 
@@ -337,8 +343,9 @@ Blocking items: rules are written and now engine-verified, but **undeployed**, s
 archive is still governed by a ruleset this repository has no evidence for beyond "it denies anonymous
 reads today" (§2, §4.1); no migration/backfill has been run for existing archive documents (§4.2); there
 is no signed-in or responsive verification with real evidence (§2, F-16); the AI provider has never been
-called, so the model id is unverified (§2); and the live build still prints the owner's personal address
-on signed-out screens and pre-fills it in the Google chooser, because §1.3.3 has not been deployed yet.
+called, so the model id is unverified (§2); and the browser artifact still carries your address as one
+gating comparison value (§1.3.3) — displayed nowhere since the push, but it only leaves the bundle if
+ownership stops being decided in the client, which is an open design decision rather than a blocker.
 The P0 privacy defects this work started from — world-readable entries, plaintext passphrases, and a
 hard-coded admin passkey that bypassed both the lock and the AI budget — are closed, and the first two
 are now closed by engine results rather than by reading the rule text.
