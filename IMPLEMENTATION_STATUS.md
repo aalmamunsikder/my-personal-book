@@ -245,9 +245,31 @@ three keys survive hydration and the page reports no error. Corrupting the versi
 and reloading left the archive intact, which is the fail-soft direction the invariant requires. The
 helpers themselves are not unit-tested; only the pure rule is.
 
+**Follow-up, after the owner reported the same symptom again from the live site.** The rule is only as good
+as its inputs, and `versevault_server_versions_v5` is written exclusively by a confirmed server write
+*in that browser*. An archive stored before that key existed therefore has no confirmation record at all,
+so every local document is classified as never-uploaded and the merge keeps it forever — which is precisely
+"things come back after I delete them". `seedConfirmedVersions()` in
+[context/JournalContext.tsx](file:///data/my-personal-book/context/JournalContext.tsx) now rebuilds the
+record during hydration from any local entry or collection at `version >= 2`. That is inference from a
+counter the client cannot raise (only a confirmed write bumps `version`), so it proves the server held the
+document at some point — and nothing more. If the server has since dropped it, the next snapshot removes it
+locally, which is the behaviour being asked for. This is not yet on the live site: the deployed bundle
+already carries `mergeArchive` and both storage keys (confirmed in the served chunks), but the seeding
+lands only when this change ships.
+
 **What this does not prove:** no signed-in session has run any of it. The replay path and the dirty
 tracking need a real owner token against the real archive, which is destructive to exercise — see §2. The
 rule itself is proven; the wiring around it is read, not run.
+
+**One consequence of the safe direction that the owner has to be told about.** Documents the *old* merge
+resurrected are already sitting in `versevault_entries_v5` with no queued delete and no confirmation record.
+The new rule classifies them as unsent writing and protects them, so they do not disappear by themselves —
+the fix stops the bleeding, it does not reverse it. Deleting them again under the current build is what
+clears them: `permanentlyDeleteEntry` queues the id *before* touching state, so even if the cloud `deleteDoc`
+is refused the document stays hidden here and is retried on the next sync. The `version >= 2` floor in the
+seeding is deliberate: a local document at version 1 is ambiguous (never uploaded, or deleted on the server),
+and the specs make preserving the author's writing the tie-breaker.
 
 ---
 
@@ -273,18 +295,92 @@ The mechanism was structural, and no amount of adding `dark:` classes would have
 - Two utilities then sat on top of that: the selected index row
   ([components/book/OpenLeatherJournalSpread.tsx:2399](file:///data/my-personal-book/components/book/OpenLeatherJournalSpread.tsx#L2399))
   paired `dark:from-`/`dark:to-` but left `via-[#EFE0C8]` light, so the middle of the row stayed a bright
-  band; and the stacked page frames, the empty-state slab, the search chip and four hover states had light
-  parchment with no dark pair at all. A scan for the same class of bug (`via-[#…]` present, `dark:via-`
-  absent, on any line that already carries `dark:`) returns **0 remaining** sites.
+  band; and the two stacked page frames had light parchment with no dark pair. **Those three lines are all
+  that `3be8505` actually changed** — the sentence this section used to carry ("the empty-state slab, the
+  search chip and four hover states" were fixed) claimed work that had not been done, and is corrected here.
 
-**Re-measured after the fix: 0 text nodes below 3:1 in dark mode**, and the same measurement in light mode
-is unchanged (its two flags are artifacts of the sampler: a box so densely filled by glyphs that the most
-common pixel *is* the text colour). Both modes were then read as rendered PNGs — dark shows dark leather
-with dark pages and pale ink, light is unchanged from before. Screenshots: `/tmp/mode-dark-open.png`,
-`/tmp/mode-light-open.png`.
+**A second pass then measured the whole codebase for the defect class instead of the three sites that
+happened to be visible.** The scan that returned "0 remaining" was too narrow: it only looked for
+`via-[#…]` without `dark:via-`. Widening it to every arbitrary-value surface utility
+(`bg-`, `border-`, `from-`, `via-`, `to-`, `ring-`, `divide-`, and their `hover:`/`group-hover:` forms)
+with a light hex and no dark twin returned **46 sites**. Twenty were real and are now paired: ten light
+hairline borders and one page-turn leaf gradient in
+[components/book/OpenLeatherJournalSpread.tsx](file:///data/my-personal-book/components/book/OpenLeatherJournalSpread.tsx)
+(the chips, plates and input underlines that already had `dark:bg-` but kept a `#C5AB89`-class border —
+a bright line on a dark plate), three `hover:bg-` on dark-paired rows in
+[ContinueWritingCard.tsx:48](file:///data/my-personal-book/components/journal/ContinueWritingCard.tsx#L48),
+[MemoryReturnCard.tsx:56](file:///data/my-personal-book/components/journal/MemoryReturnCard.tsx#L56) and
+[TemplatePickerModal.tsx:247](file:///data/my-personal-book/components/journal/TemplatePickerModal.tsx#L247),
+four in `SignaturePanelsShowcase.tsx`, and the `ParchmentPlateButton` inactive hover in
+[components/ui/VerseVaultUI.tsx:298](file:///data/my-personal-book/components/ui/VerseVaultUI.tsx#L298).
+The scan now returns 26, and every one of them is deliberate: brass and gold accents (the cover clasp, the
+title gradient, the ribbon edge, 1px rules, the selection tint) that read as metal in both modes, plus the
+`aria-hidden` paper illustrations — the template thumbnails and the artwork mats — which depict a page and
+are left parchment. Those are palette calls, so they go to the owner in §5.
+
+**Re-measured with a better instrument, and in a state the first measurement never reached.** The old
+sampler compared a node's computed colour against the most common pixel in its box, which fails twice: it
+misattributes anything standing on gradient-painted leather to `body`, and it reports 1.01:1 for a box so
+dense with glyphs that the mode *is* the text colour. The new check measures the luminance spread actually
+rendered inside each box (5th–95th percentile) — if the glyphs are invisible, the box collapses, whatever
+the background was painted with. Result, in **both** the seeded state and the empty-archive state (the
+empty-index slab only renders when the index is empty, which is why the first measurement missed it):
+**0 nodes below 2.0 spread in either mode**. The walker's residual flags (7 in dark, 9 in light) all pair a
+fg-vs-mode of 1.0 with a real spread of 9.4–13, i.e. all of them are the dense-glyph artifact. The new
+static dark borders were confirmed at runtime: the slab resolves to `rgb(74, 62, 50)` = `#4A3E32`.
+Screenshots: `/tmp/e-dark.png`, `/tmp/e-light.png`, `/tmp/mode-dark-open.png`, `/tmp/mode-light-open.png`.
+
+**What hover cannot prove here.** Tailwind v4 gates every `hover:` rule behind `@media (hover: hover)`, and
+headless Chrome reports `hover: none` — `matchMedia('(hover: hover)').matches` is `false`, and
+`Emulation.setEmulatedMedia` does not change it. So no hover state can be exercised by pixels in this
+harness; forcing `:hover` through CDP changes nothing, and the *light* twins fail identically, which is what
+shows the gate is the harness rather than the pairing. What is proven for hover is the source invariant
+(0 unpaired interactive surfaces) and that the compiled sheet really contains the rules (18
+`dark:hover`/`dark:group-hover` selectors, including the newly added hexes). A human has to move a mouse
+once, in a real browser, to confirm the hover look.
 
 This is a palette decision, so it is listed for the owner in §5: in dark mode the eight light factory
 themes now render one dark palette instead of their own.
+
+---
+
+### 1.6 Every dialog now opens inside the book
+
+Reported as *"all the dialog should feel inside the book"* — the dialogs were `position: fixed` overlays
+pinned to the viewport, so their scrim, corners and typography belonged to the page around the object, not
+to the object.
+
+One frame now carries that chrome: [components/common/BookDialogFrame.tsx](file:///data/my-personal-book/components/common/BookDialogFrame.tsx)
+renders a parchment panel (2px leather border, four brass corner ornaments, an eyebrow slot, a Bangla
+`<h2>` title, a close button, a scrollable body and an optional dashed-top footer) through a
+`createPortal` into `#versevault-book-dialog-root` — an anchor div placed inside the leather frame in
+[components/book/OpenLeatherJournalSpread.tsx](file:///data/my-personal-book/components/book/OpenLeatherJournalSpread.tsx),
+right after the spine cord hubs. The lookup happens at render time, not in an effect, so the first paint is
+already in the right place; if the anchor is missing the frame falls back to `document.body` and switches
+its scrim from `absolute` to `fixed`, which keeps the mobile drawer and any future host usable. Escape
+closes, `role="dialog"` with `aria-modal` and `aria-labelledby` carry the semantics, and footer buttons use
+the `form=` attribute so a submit still lives in the footer while the fields live in the body. The frame
+focuses its panel only when nothing inside it already took focus, so an `autoFocus` field keeps the caret.
+
+12 call sites in 9 components were converted, replacing hand-rolled scrims: the template picker, Ask My
+Archive, the AI consent dialog, `ConfirmDialog`, and three built inline in the spread (create collection,
+owner sign-in, page password lock) — plus five more inside components that nothing renders today.
+
+**Verified by measurement, not by looking.** For each of the six dialogs a user can actually reach
+(template picker, owner sign-in, Ask My Archive, create collection, confirm-permanent-delete, AI consent),
+in both modes: the panel's parent really is the book root, its computed `position` is `absolute`, its
+bounding rect is contained inside the book frame's rect, and Escape removes it. The rendered clips were
+then read as PNGs (`/tmp/dlg-light-*.png`, `/tmp/dlg-dark-*.png`). The seventh live dialog — the page
+password lock — is converted and type-checked but was not exercised, because reaching it needs a locked
+entry.
+
+**Found while checking reachability, and not fixed because it is a product decision.** Five components are
+dead: `components/shell/JournalShell.tsx`, `EditorView`, `CollectionsView`, `EntryArchiveView` and
+`SignaturePanelsShowcase` have no JSX call site anywhere in the repo (`grep -rn "<JournalShell\|<EditorView\|…"`
+returns nothing). They still compile and still pass lint because they are exported. The consequence for the
+owner is concrete: **the Appearance Studio cannot currently be opened** — its only mount point is inside the
+dead `JournalShell`, so the factory theme switcher the specs describe is unreachable in the running app even
+though its dialog is now correctly framed.
 
 ---
 
@@ -330,6 +426,15 @@ themes now render one dark palette instead of their own.
   re-read from the live DOM as **text, not pixels** — the in-app browser reported a hidden viewport, so no
   screenshot could be taken, and nothing was visually confirmed about layout. Every screen behind
   authentication is unverified, and the responsive matrix (F-16) has no evidence at all.
+- **Hover states have never been seen by an instrument.** Tailwind v4 puts every `hover:` rule behind
+  `@media (hover: hover)` and headless Chrome reports `hover: none` (`matchMedia` is `false`, and CDP media
+  emulation does not change it), so forcing `:hover` changes nothing in this harness — the light twins fail
+  identically, which proves the gate rather than the pairing. The dark hover pairs added in §1.5 are
+  verified only as *source invariant* (0 unpaired interactive surfaces) plus *compiled rule present* (18
+  `dark:hover`/`dark:group-hover` selectors in the served sheet). Someone has to hover once in a real
+  browser. The same applies to the six reframed dialogs: their geometry, containment and Escape behaviour
+  were measured with no session, so the dialog surface *behind* authentication — and the page password
+  lock dialog, which needs a locked entry to reach — remain unexercised.
 
 ---
 
@@ -471,6 +576,15 @@ themes now render one dark palette instead of their own.
   render one dark token set and only `midnight-library` keeps its own. The visible consequence: choosing
   "Botanical Journal" while in dark mode no longer shows a green-tinted paper. If per-theme dark variants
   are wanted, that is nine dark palettes to design — a product decision, not a defect.
+- **Two families of light surfaces were deliberately left light in dark mode.** The metal accents (the cover
+  clasp and its gradient, the gold title, the bookmark ribbon edge, the 1px brass rules, the selection tint)
+  read as brass in either palette, and the `aria-hidden` paper illustrations — the template picker's page
+  thumbnails and the artwork mats — depict a sheet of paper, so they stay parchment on a dark page. Both are
+  now listed rather than silently kept: 26 sites in total, all of them decorative, no text on them.
+- **The Appearance Studio is currently unreachable.** Its only mount point is inside `components/shell/JournalShell.tsx`,
+  one of five components with no call site anywhere (§1.6), so the factory theme picker the specs describe
+  cannot be opened in the running app. Nothing was deleted — wiring it back, or dropping the dead views, is
+  your call.
 - **A metering event no longer carries its own timestamp field.** The rules refuse `createdAt` on
   `/aiUsageEvents/{requestId}` because the REST writer cannot ask the server for one (§1.1.2), so a
   stored value would have been the client's clock. The history is still ordered and still server-owned:
