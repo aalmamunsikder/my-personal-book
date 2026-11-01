@@ -1,4 +1,4 @@
-import { AppearanceConfig, AppearancePreset } from '../types/appearance';
+import type { AppearanceConfig, AppearancePreset } from '../types/appearance';
 import {
   DEFAULT_APPEARANCE_CONFIG,
   FACTORY_PRESETS,

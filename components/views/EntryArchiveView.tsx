@@ -20,7 +20,7 @@ import {
   getLocalTodayDateString,
   groupEntriesByMonth,
 } from '../../lib/entry-utils';
-import { EntryMood, EntryType, JournalEntry } from '../../types/entry';
+import type { EntryMood, EntryType, JournalEntry } from '../../types/entry';
 import { EntryRowItem } from '../common/EntryRowItem';
 
 export function EntryArchiveView() {

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { AppearanceConfig } from '../../types/appearance';
-import { JournalCollection, JournalEntry } from '../../types/entry';
+import type { AppearanceConfig } from '../../types/appearance';
+import type { JournalCollection, JournalEntry } from '../../types/entry';
 import { PAPER_SURFACES } from '../../lib/themes';
 import { ClassicJournalTemplate } from './ClassicJournalTemplate';
 import { CleanLetterTemplate } from './CleanLetterTemplate';

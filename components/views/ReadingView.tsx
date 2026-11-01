@@ -20,6 +20,7 @@ import {
   resolveContentFontScript,
 } from '../../lib/entry-utils';
 import { resolveEffectiveAppearance } from '../../lib/themes';
+import type { PageTemplateId } from '../../types/appearance';
 import { TemplateDispatcher } from '../templates/TemplateDispatcher';
 
 export function ReadingView() {
@@ -60,6 +61,19 @@ export function ReadingView() {
     [readableEntries, currentIndex]
   );
 
+  // Hooks run on every render, including the "could not be found" render below, so the effective
+  // appearance has to be resolved before the early return rather than after it.
+  const collectionObj = collections.find((c) => c.id === currentEntry?.collectionId);
+  const effectiveConfig = useMemo(
+    () =>
+      resolveEffectiveAppearance(
+        appearanceConfig,
+        collectionObj?.appearanceConfig,
+        (currentEntry?.pageTemplateId as PageTemplateId | undefined) ?? null
+      ),
+    [appearanceConfig, collectionObj?.appearanceConfig, currentEntry?.pageTemplateId]
+  );
+
   if (!currentEntry) {
     return (
       <div className="p-8 text-center bg-[var(--page)] border border-[var(--line)] rounded-lg space-y-4">
@@ -81,21 +95,12 @@ export function ReadingView() {
       ? readableEntries[currentIndex + 1]
       : null;
 
-  const collectionObj = collections.find((c) => c.id === currentEntry.collectionId);
   const typeInfo = ENTRY_TYPES.find((t) => t.value === currentEntry.type);
   const fontScript = resolveContentFontScript(
     currentEntry.fontPreference,
     currentEntry.language,
     settings.defaultFont
   );
-
-  const effectiveConfig = useMemo(() => {
-    return resolveEffectiveAppearance(
-      appearanceConfig,
-      collectionObj?.appearanceConfig,
-      currentEntry.pageTemplateId as any
-    );
-  }, [appearanceConfig, collectionObj?.appearanceConfig, currentEntry.pageTemplateId]);
 
   const handleCopy = async () => {
     try {

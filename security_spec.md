@@ -7,8 +7,16 @@
 3. **Path ID Hardening**: All document IDs (`{userId}`, `{entryId}`, `{collectionId}`, `{tagId}`) must satisfy `isValidId(id)` (`id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$')`).
 4. **Strict Key Allowlisting & Anti-Update-Gap**: Every `create` and `update` operation validates the complete document against `isValid[Entity](incoming())` enforcing exact `hasAll` and `hasOnly` key sets, strict field types, and bounded string/array lengths.
 5. **Temporal & Identity Immutability**: `createdAt` and `updatedAt` must equal `request.time` on creation; on update, `userId` and `createdAt` are strictly immutable (`incoming().userId == existing().userId && incoming().createdAt == existing().createdAt`), and `updatedAt` must equal `request.time`.
+6. **Optimistic Concurrency**: every `entries` and `collections` document carries an integer `version >= 1`. Create must set `version == 1`; update must set it to exactly `existing.version + 1` (`nextVersionIsValid`). A lost update is refused, never silently merged.
+7. **No Plaintext Passphrase Anywhere**: `lockPassword` is not an allowed key in any document. A locked page stores only `lockPasswordHash` (salted PBKDF2-SHA256 digest, `size() >= 32`) and `lockSalt` (`size() >= 8`), computed in the browser. The digest is never readable back, so no screen can display the passphrase — and there is no administrative bypass.
+8. **Legacy Migration Is Single-Use**: an update may touch `lockPassword` only when the stored document still contains it *and* the incoming document removes it (`isEntryUpdateDiffAllowed`). Ordinary updates cannot write the field at all.
+9. **AI Consent Is Server-Owned**: `/aiSettings/{userId}` is owner-only, `list` is denied outright, `createdAt` is immutable, and `enabled == true` requires `hasConsented == true` with a non-empty `consentVersion`. The client's localStorage copy is never consulted for authorization.
+10. **AI Metering Moves Forward Only**: `/aiUsage/{userId}` may only be updated to a larger `count` for the same `day` (or a new day). `/aiUsageEvents/{requestId}` is append-only (`update` and `delete` are `if false`), its document id must equal the `requestId` it claims, its key set contains no field that could hold diary text, and it stores **no timestamp field at all** — `createdAt` is refused on write because the REST writer cannot request a server-side transform, so a stored value would be the client's clock. Firestore's server-assigned document `createTime` is the time the event happened, and it is what makes the history orderable without trusting a caller.
+11. **Server-Side Session Check**: `/api/ai-assist` verifies the caller's Firebase ID token against Google's JWKS (issuer pinned to the project, `aud == projectId`, `email_verified == true`, email equal to the configured owner) before reading budget or calling the provider. There is no shared passkey. A request whose metering write fails is refused rather than spent.
+12. **Secrets Stay Out of Artifacts and Logs**: JSON/ZIP exports strip `lockPasswordHash`, `lockSalt` and any legacy `lockPassword`; server logs record request shape (`requestId`, `task`, `model`, `durationMs`) only — never prompts, completions, entry content, or validation values that could contain a diary line.
+13. **Storage Is Owner-Only and Shaped**: every object must live under `/{uid}/…`, and `read` (which in Storage rules carries `get`, `download` *and* `list`) requires `request.auth.uid == uid` with `email_verified == true`. There is no public prefix, because a Storage rule cannot read the Firestore document that would hold a "published" flag and the specifications allow no public surface. A `create`/`update` is additionally capped at 5 MiB; `delete` is not size-gated, since `request.resource` is absent on a delete. Any path outside the uid shape is unmatched, and `rules_version = '2'` denies it.
 
-## 2. The "Dirty Dozen" Payloads
+## 2. The Payload Catalogue (grown from the original "Dirty Dozen")
 
 1. **Payload 1 (Unauthenticated Read)**: `auth = null` attempting `get` on `/entries/entry-1` -> `PERMISSION_DENIED`.
 2. **Payload 2 (Unverified Email Write)**: `auth = { uid: 'user-1', email_verified: false }` attempting `create` on `/entries/entry-1` -> `PERMISSION_DENIED`.
@@ -22,3 +30,66 @@
 10. **Payload 10 (Immutable Owner Mutation on Update)**: `update` on `/entries/entry-1` changing `userId` from `'user-1'` to `'user-2'` -> `PERMISSION_DENIED`.
 11. **Payload 11 (Forged Client Timestamp on Create)**: `create` on `/entries/entry-1` where `createdAt != request.time` -> `PERMISSION_DENIED`.
 12. **Payload 12 (Cross-Owner List Scraping)**: `list` on `/entries` where `resource.data.userId == 'user-2'` and `request.auth.uid == 'user-1'` -> `PERMISSION_DENIED`.
+13. **Payload 13 (Plaintext Passphrase Smuggling)**: `update` on `/entries/entry-1` adding `lockPassword: 'hunter2'` -> `PERMISSION_DENIED` (not an allowed key; `hasOnly` rejects it).
+14. **Payload 14 (Version Regression)**: `update` on `/entries/entry-1` setting `version` to `existing.version` or lower -> `PERMISSION_DENIED`.
+15. **Payload 15 (Consent Bypass)**: `create`/`update` on `/aiSettings/{uid}` with `enabled: true` and `hasConsented: false` -> `PERMISSION_DENIED`.
+16. **Payload 16 (Budget Reset)**: `update` on `/aiUsage/{uid}` lowering `count` for the current `day` -> `PERMISSION_DENIED`.
+17. **Payload 17 (Prompt Exfiltration)**: `create` on `/aiUsageEvents/{requestId}` containing `prompt`, `completion` or `content` -> `PERMISSION_DENIED` (`hasOnly` on a metadata-only key set).
+18. **Payload 18 (Passkey Replay)**: a request to `/api/ai-assist` with no `Authorization` header, or a token signed for another project/audience -> `401`/`403` before any provider call.
+19. **Payload 19 (Client-Clock Metering Event)**: `create` on `/aiUsageEvents/req-1` that includes `createdAt` -> `PERMISSION_DENIED`. The event's time belongs to the server, and a REST writer cannot request a `SERVER_TIME` transform, so the field is refused outright (invariant 10).
+20. **Payload 20 (Replay Priced Twice)**: `create` on `/aiUsageEvents/some-other-id` whose `requestId` field is `'req-1'` -> `PERMISSION_DENIED`. The id must equal the `requestId`, which is what makes a repeated request a no-op rather than a second charge.
+21. **Payload 21 (Tag List Smuggling)**: `create` on `/entries/entry-1` with 11 tags, or with tags whose total length is 601 characters however they are packed (including one 601-character element) -> `PERMISSION_DENIED`.
+22. **Payload 22 (Unscoped Archive Read)**: `list` on `/entries` issued by the owner with no `where('userId','==',uid)` filter -> `PERMISSION_DENIED`. The list rule is evaluated against the query, so an unscoped read is refused rather than silently narrowed (see §3.3).
+23. **Payload 23 (World-Readable Object)**: an anonymous `getDownloadURL`, `getMetadata` or `list` on `/{uid}/covers/a.png`, and on any `public/…` path -> `PERMISSION_DENIED`; an unverified-email session is refused the same way (invariant 13).
+
+## 3. Rules-Language Limits (found by executing the rules, not by reading them)
+
+The engine that evaluates these rules is weaker than the specification's prose assumes, and the
+difference is enforced elsewhere rather than wished away:
+
+1. **There is no list quantifier.** `all()`, `any()`, `exists()`, `map()`, `filter()`, `transformList()`
+   and `get()` on a list are not functions the engine knows; calling one raises *"Function not found
+   error"* at evaluation time, which reaches the client as `PERMISSION_DENIED`. `firestore.rules` used
+   `data.tags.all(...)` and therefore refused **every** valid entry write until the emulator ran the
+   file. Rules may bound a list's size and its `join('')` length; `keys()`, `hasAll`, `hasOnly`, `size()`,
+   `matches()`, `diff().affectedKeys()`, `toSet()`, `in`, `request.time` and `resource.data` all work.
+   `String.size()` counts characters, not UTF-8 bytes, so Bangla titles measure correctly.
+2. **Consequence: element types are unenforceable.** The rules cannot assert that each tag is a string of
+   ≤ 60 characters, nor reject a blank element (`['']` passes). `sanitizeEntryPayload()`
+   (`lib/validations.ts:58`) is the only writer of that field and enforces both. A future second writer
+   inherits this responsibility.
+3. **`list` conditions are evaluated against the query, not the results.** `resource.data.userId` in a
+   `list` rule means "the query must already carry `userId == uid`". Every client reader must therefore
+   send the ownership filter — the three listeners in `context/JournalContext.tsx` do, and
+   `firestore.rules.emulator.test.ts` pins both the allowed shape and the unscoped refusal.
+4. **No cross-document fetch.** `get()` / `exists()` on a document path do not exist, so no rule can
+   verify that an entry's `collectionId` belongs to the same owner (QA **SEC-010**, **SEC-011**) or that a
+   join's two sides agree. This is a referential-integrity gap, not a confidentiality one: a forged id
+   names a document the caller cannot read, so the UI shows nothing for it.
+5. **The REST surface cannot ask for server time.** `documents:commit` is unimplemented and both POST and
+   PATCH reject `fieldTransforms`, which is why the metering event design in invariant 10 stores no
+   timestamp instead of a client-supplied one.
+
+## 4. Verification Status
+
+`firestore.rules` and `storage.rules` are now **executed**, not just read:
+
+| Evidence | Runs | What it proves |
+|---|---|---|
+| `firestore.rules.test.ts` | `npm test` | rule text ↔ blueprint key sets, id patterns, and a guard that the rules use no construct the engine refuses to resolve |
+| `ai-features.test.ts` | `npm test` | the shipped consent/budget/shape guards and the prompt contract |
+| `firestore.rules.emulator.test.ts` | `npm run test:rules` | 38 payloads, evaluated by the emulator's rules engine through the browser SDK |
+| `firestore.rules.rest.test.ts` | `npm run test:rules` | 15 payloads through `lib/firestore-rest.ts` — the writer `/api/ai-assist` actually uses, plus a drift check that every `AI_TASKS` value is accepted by the rules and that `firebase.json` names the database the app writes to |
+| `storage.rules.emulator.test.ts` | `npm run test:rules` | 6 payloads: no anonymous `get`/`download`/`list`, owner-prefix isolation, size ceiling, and no public prefix |
+| `tools/verify-ai-route-guard.sh` | `npm run test:route-guard` | Payload 18 against the **built** route over HTTP: anonymous, non-JWT bearer, and unsigned `alg:none` JWT each return `401 UNAUTHENTICATED` before the provider is reached, with no configuration or stack in the body |
+
+Payloads 1–17 and 19–23 are covered by the engine tests (QA items SEC-001…SEC-009 and SEC-012…SEC-014
+among them); Payload 18 by the route guard; SEC-010 and SEC-011 are not rule-testable, for the reason
+given in §3.4. `npm run test:rules` needs Java 21+ for the emulator.
+Java 21+ for the emulator.
+
+What this still does not establish: the ruleset is not **deployed**, so the owner's live project is still
+governed by whatever was published last; the route guard proves only **rejection** — the emulator cannot
+mint a real Google ID token, so no signed-in owner token has ever been *accepted* by `/api/ai-assist`;
+and no signed-in browser flow has been exercised. See `IMPLEMENTATION_STATUS.md` §2 and §4.
+

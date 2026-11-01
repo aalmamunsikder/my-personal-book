@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import { Metadata } from 'next';
 import { Hind_Siliguri, Literata, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 

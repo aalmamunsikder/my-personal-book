@@ -23,7 +23,7 @@ import {
   Type,
   X,
 } from 'lucide-react';
-import {
+import type {
   AppearanceConfig,
   AppearancePreset,
   AppThemeId,
@@ -52,7 +52,7 @@ import {
 import { suggestAccessibleInk, validateContrast } from '../../lib/contrast-utils';
 import { TemplateDispatcher } from '../templates/TemplateDispatcher';
 import { CollectionCoverCard } from './CollectionCoverCard';
-import { JournalCollection, JournalEntry } from '../../types/entry';
+import type { JournalCollection, JournalEntry } from '../../types/entry';
 
 type StudioCategory =
   | 'presets'
@@ -96,6 +96,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['অনুভব', 'দিনলিপি', 'বৃষ্টি'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -118,6 +119,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['Autumn', 'Reflection', 'Evening'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -142,6 +144,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['কবিতা', 'নৈঃশব্দ্য'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -164,6 +167,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['Poetry', 'Lyric'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -188,6 +192,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['উদ্ধৃতি', 'দর্শন'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -210,6 +215,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['Quotes', 'Philosophy'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -234,6 +240,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['চিরকুট'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -256,6 +263,7 @@ const PREVIEW_ENTRIES: Record<'diary' | 'poem' | 'quote' | 'fragment', { bn: Jou
       tags: ['Fragment'],
       isTrashed: false,
       deletedAtIso: '',
+      version: 1,
       createdAt: '2026-10-31T20:00:00.000Z',
       updatedAt: '2026-10-31T20:00:00.000Z',
     },
@@ -642,6 +650,7 @@ export function AppearanceStudioModal({
                         description: previewLanguage === 'bn' ? 'নীরব রাত্রির ব্যক্তিগত সংকলন' : 'A private archive of verses',
                         accent: activeConfig.colors?.accent || currentTheme.tokens.accent,
                         sortOrder: 1,
+                        version: 1,
                         createdAt: '2026-01-01T00:00:00.000Z',
                         updatedAt: '2026-01-01T00:00:00.000Z',
                       }}

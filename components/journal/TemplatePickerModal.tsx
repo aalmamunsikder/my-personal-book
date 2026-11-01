@@ -8,7 +8,7 @@ import {
   PAGE_VARIATIONS,
   PageVariationMeta,
 } from '../../lib/journal-templates';
-import { EntryType, JournalEntry, PageVariation } from '../../types/entry';
+import type { EntryType, JournalEntry, PageVariation } from '../../types/entry';
 import {
   BrassCornerOrnament,
   LeatherClaspButton,

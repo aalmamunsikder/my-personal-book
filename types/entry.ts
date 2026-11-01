@@ -28,7 +28,7 @@ export type EntryLanguage = 'bn' | 'en' | 'mixed' | 'other';
 
 export type FontPreference = 'auto' | 'bangla' | 'serif' | 'sans';
 
-export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'local' | 'failed';
+export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'local' | 'failed' | 'conflict';
 
 export interface JournalEntry {
   id: string;
@@ -49,10 +49,12 @@ export interface JournalEntry {
   collectionId: string;
   tags: string[];
   isLocked?: boolean;
-  lockPassword?: string;
+  lockPasswordHash?: string;
+  lockSalt?: string;
   lockHint?: string;
   isTrashed: boolean;
   deletedAtIso: string;
+  version: number;
   pageTemplateId?: string;
   appearanceOverride?: Record<string, any>;
   createdAt: string; // ISO string in local memory
@@ -67,6 +69,7 @@ export interface JournalCollection {
   accent: string;
   sortOrder: number;
   appearanceConfig?: Record<string, any>;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { EntryType, JournalCollection, JournalEntry } from '../../types/entry';
+import type { EntryType, JournalCollection, JournalEntry } from '../../types/entry';
 import {
   ENTRY_TYPES,
   formatShortDate,

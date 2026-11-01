@@ -21,7 +21,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { ActiveNavSection } from '../../types/entry';
+import type { ActiveNavSection } from '../../types/entry';
 import { useJournal } from '../../context/JournalContext';
 import { formatEditorialDate, getLocalTodayDateString } from '../../lib/entry-utils';
 import { MiniCalendarWidget } from '../calendar/MiniCalendarWidget';

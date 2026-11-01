@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { formatEditorialDate } from '../../lib/entry-utils';
-import { AppearanceConfig } from '../../types/appearance';
-import { JournalCollection, JournalEntry } from '../../types/entry';
+import type { AppearanceConfig } from '../../types/appearance';
+import type { JournalCollection, JournalEntry } from '../../types/entry';
 
 export interface TemplateProps {
   entry: JournalEntry;

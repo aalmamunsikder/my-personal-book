@@ -1,4 +1,4 @@
-import { EntryMood, EntryType } from './entry';
+import type { EntryMood, EntryType } from './entry';
 
 export type AiTask =
   | 'suggest_titles'
@@ -135,8 +135,6 @@ export interface AiRequestPayload {
   customQuery?: string;
   contextScope: AiContextScope;
   selectedText?: string;
-  adminEmail?: string;
-  adminPasskey?: string;
   contextEntries?: Array<{
     id: string;
     title: string;

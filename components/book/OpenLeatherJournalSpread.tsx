@@ -30,7 +30,6 @@ import {
   MoreHorizontal,
   Plus,
   Quote,
-  RefreshCw,
   RotateCcw,
   Search,
   Settings,
@@ -67,7 +66,7 @@ import {
   resolveEffectivePageVariation,
 } from '../../lib/journal-templates';
 import { useBookSound } from '../../lib/book-sound-engine';
-import {
+import type {
   EntryMood,
   EntryStatus,
   EntryType,
@@ -86,6 +85,7 @@ import {
   VintageTitleFlourish,
 } from '../common/JournalArtwork';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { SaveStateIndicator } from '../common/SaveStateIndicator';
 import { ContinueWritingCard } from '../journal/ContinueWritingCard';
 import { MemoryReturnCard } from '../journal/MemoryReturnCard';
 import { PageVariationSwitcher } from '../journal/PageVariationSwitcher';
@@ -119,13 +119,11 @@ export function OpenLeatherJournalSpread() {
   const {
     user,
     isAdmin,
-    adminEmail,
     authError,
     clearAuthError,
     adminLoginModalOpen,
     setAdminLoginModalOpen,
     signInOwner,
-    verifyAdminWithPasskey,
     signOutOwner,
     isEntryUnlockedForViewer,
     unlockEntryWithPassword,
@@ -205,8 +203,6 @@ export function OpenLeatherJournalSpread() {
   const [newColName, setNewColName] = useState<string>('');
   const [newColDesc, setNewColDesc] = useState<string>('');
   const [newColAccent, setNewColAccent] = useState<string>('walnut');
-  const [adminEmailInput, setAdminEmailInput] = useState<string>(ADMIN_EMAIL);
-  const [adminPasskeyInput, setAdminPasskeyInput] = useState<string>('');
   const [unlockAttemptInput, setUnlockAttemptInput] = useState<string>('');
   const [unlockErrorMsg, setUnlockErrorMsg] = useState<string>('');
   const [entryLockModalOpen, setEntryLockModalOpen] = useState<boolean>(false);
@@ -622,19 +618,20 @@ export function OpenLeatherJournalSpread() {
       setAdminLoginModalOpen(true);
       return;
     }
-    setEntryLockPasswordDraft(selectedEntry.lockPassword || '');
+    // The passphrase is never readable back, so the draft always starts empty.
+    setEntryLockPasswordDraft('');
     setEntryLockHintDraft(selectedEntry.lockHint || '');
     setEntryLockModalOpen(true);
   };
 
-  const handleSaveEntryPasswordLock = (e: React.FormEvent) => {
+  const handleSaveEntryPasswordLock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEntry || !isAdmin) return;
     const cleanPass = entryLockPasswordDraft.trim();
     if (!cleanPass) {
-      setEntryPasswordLock(selectedEntry.id, false, '', '');
+      await setEntryPasswordLock(selectedEntry.id, false, '', '');
     } else {
-      setEntryPasswordLock(
+      await setEntryPasswordLock(
         selectedEntry.id,
         true,
         cleanPass,
@@ -645,26 +642,16 @@ export function OpenLeatherJournalSpread() {
     setEntryLockModalOpen(false);
   };
 
-  const handleUnlockSubmit = (e: React.FormEvent) => {
+  const handleUnlockSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEntry) return;
-    const ok = unlockEntryWithPassword(selectedEntry.id, unlockAttemptInput);
+    const ok = await unlockEntryWithPassword(selectedEntry.id, unlockAttemptInput);
     if (ok) {
       playPageTurn('next');
       setUnlockAttemptInput('');
       setUnlockErrorMsg('');
     } else {
       setUnlockErrorMsg('পাসওয়ার্ড সঠিক নয়। অনুগ্রহ করে আবার চেষ্টা করুন। (Incorrect password)');
-    }
-  };
-
-  const handleAdminPasskeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = verifyAdminWithPasskey(adminEmailInput, adminPasskeyInput);
-    if (ok) {
-      playBrassClick();
-      setAdminLoginModalOpen(false);
-      setAdminPasskeyInput('');
     }
   };
 
@@ -2664,28 +2651,12 @@ export function OpenLeatherJournalSpread() {
                               </div>
 
                               <div className="flex items-center gap-2">
-                                <span
-                                  className="text-xs text-[var(--ink-soft)]"
-                                  aria-live="polite"
-                                >
-                                  {saveState === 'saving' && 'Saving…'}
-                                  {saveState === 'saved' && (
-                                    <span className="inline-flex items-center gap-1 text-[#556B45] dark:text-[#9CA17E]">
-                                      <Check className="w-3.5 h-3.5" />
-                                      Saved
-                                    </span>
-                                  )}
-                                  {saveState === 'failed' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => retryFailedSave(selectedEntry.id)}
-                                      className="inline-flex items-center gap-1 text-[var(--danger)] underline"
-                                    >
-                                      <RefreshCw className="w-3 h-3" />
-                                      Retry
-                                    </button>
-                                  )}
-                                </span>
+                                <SaveStateIndicator
+                                  saveState={saveState}
+                                  className="text-[var(--ink-soft)]"
+                                  onSaveNow={() => updateEntry(selectedEntry.id, {}, true)}
+                                  onRetry={() => retryFailedSave(selectedEntry.id)}
+                                />
 
                                 <ParchmentPlateButton
                                   size="xs"
@@ -3825,7 +3796,7 @@ export function OpenLeatherJournalSpread() {
             </div>
 
             <p className="text-xs text-[var(--ink-soft)] font-bangla leading-relaxed">
-              পাঠক হিসেবে আপনি সব উন্মুক্ত পাতা নির্দ্বিধায় পড়তে পারবেন। নতুন লেখা তৈরি, সম্পাদনা, বা পাতা পাসওয়ার্ড লক করার জন্য অ্যাডমিন ({ADMIN_EMAIL}) হিসেবে সাইন-ইন করুন।
+              এটি একটি ব্যক্তিগত ডায়েরি। লেখা যোগ, সম্পাদনা বা পাসওয়ার্ড লক সেট করতে অ্যাডমিন ({ADMIN_EMAIL}) হিসেবে Google দিয়ে সাইন-ইন করুন।
             </p>
 
             {authError && (
@@ -3845,36 +3816,6 @@ export function OpenLeatherJournalSpread() {
                 <span>Google দিয়ে সাইন-ইন ({ADMIN_EMAIL})</span>
               </LeatherClaspButton>
 
-              <form
-                onSubmit={handleAdminPasskeySubmit}
-                className="space-y-2.5 pt-2 border-t border-dashed border-[#CBB393] dark:border-[#3D342A]"
-              >
-                <span className="block text-[11px] font-bangla text-[var(--ink-soft)]">
-                  অথবা অ্যাডমিন পাসকি দিয়ে প্রবেশ করুন:
-                </span>
-                <input
-                  type="email"
-                  value={adminEmailInput}
-                  onChange={(e) => setAdminEmailInput(e.target.value)}
-                  placeholder={ADMIN_EMAIL}
-                  aria-label="Admin email"
-                  className="w-full px-3 py-2 text-xs bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] focus:outline-none"
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password"
-                    value={adminPasskeyInput}
-                    onChange={(e) => setAdminPasskeyInput(e.target.value)}
-                    placeholder="পাসকি লিখুন (যেমন: versevault)"
-                    aria-label="Admin passkey"
-                    className="flex-1 px-3 py-2 text-xs bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
-                  />
-                  <ParchmentPlateButton type="submit" size="md">
-                    <KeyRound className="w-3.5 h-3.5" />
-                    <span>প্রবেশ</span>
-                  </ParchmentPlateButton>
-                </div>
-              </form>
             </div>
 
             <div className="pt-2 flex justify-end">
@@ -3928,7 +3869,7 @@ export function OpenLeatherJournalSpread() {
             </div>
 
             <p className="text-xs text-[var(--ink-soft)] font-bangla leading-relaxed">
-              পাসওয়ার্ড দিলে সাধারণ পাঠকেরা এই পাতাটি পড়ার জন্য পাসওয়ার্ড দিতে বাধ্য হবেন। পাসওয়ার্ড খালি রাখলে পাতাটি উন্মুক্ত (Public) হয়ে যাবে।
+              পাসওয়ার্ড সেট করলে এই পাতা খুলতে আপনাকেও পাসওয়ার্ড দিতে হবে। ফিল্ড খালি রেখে সেভ করলে লক সরে যাবে। পাসওয়ার্ড সংরক্ষিত হয় না — শুধুমাত্র একটি derived hash ও salt Firestore-এ যায়।
             </p>
 
             <div className="space-y-3">
@@ -3937,7 +3878,7 @@ export function OpenLeatherJournalSpread() {
                   গোপন পাসওয়ার্ড (Password — খালি রাখলে আনলক হবে)
                 </span>
                 <input
-                  type="text"
+                  type="password"
                   value={entryLockPasswordDraft}
                   onChange={(e) => setEntryLockPasswordDraft(e.target.value)}
                   placeholder="যেমন: 1234 বা কোনো গোপন শব্দ…"
@@ -3955,7 +3896,7 @@ export function OpenLeatherJournalSpread() {
                   type="text"
                   value={entryLockHintDraft}
                   onChange={(e) => setEntryLockHintDraft(e.target.value)}
-                  placeholder="যেমন: ডেমো পাসওয়ার্ড: 1234"
+                  placeholder="যেমন: প্রথম পাতার তারিখ"
                   aria-label="Password hint"
                   className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
                 />
@@ -3982,8 +3923,6 @@ export function OpenLeatherJournalSpread() {
         onClose={() => setAskArchiveModalOpen(false)}
         entries={entries}
         collections={collections}
-        adminEmail={ADMIN_EMAIL}
-        adminPasskey="versevault"
         onSelectEntry={(entryId) => {
           openEntryForReading(entryId);
           setMobileView('right-page');

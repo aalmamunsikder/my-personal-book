@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { JournalCollection, JournalEntry, JournalTag } from '../types/entry';
+import type { JournalCollection, JournalEntry, JournalTag } from '../types/entry';
 import { formatEntryAsMarkdown, toSafeFilenameSlug } from './entry-utils';
 
 export interface ExportOptions {
@@ -28,8 +28,15 @@ export interface JsonBackupPayload {
 }
 
 /**
- * Builds a complete, sanitized JSON backup object excluding any auth tokens or secrets.
+ * Builds a backup object that carries the writing itself, never the material that protects it.
+ * A PBKDF2 hash plus its salt is offline-bruteforceable, so it stays out of downloadable files.
+ * Locked pages restore as unlocked, which is the intended trade-off.
  */
+function sanitizeEntryForExport(entry: JournalEntry): JournalEntry {
+  const { lockPasswordHash, lockSalt, ...rest } = entry;
+  return { ...rest, isLocked: false };
+}
+
 export function buildJsonBackup(
   entries: JournalEntry[],
   collections: JournalCollection[],
@@ -65,7 +72,7 @@ export function buildJsonBackup(
     },
     collections: collections.map((c) => ({ ...c })),
     tags: tags.map((t) => ({ ...t })),
-    entries: filteredEntries.map((e) => ({ ...e })),
+    entries: filteredEntries.map(sanitizeEntryForExport),
     relationships: {
       entryCollections,
       entryTags,

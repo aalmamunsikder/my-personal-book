@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { JournalEntry } from '../../types/entry';
+import type { JournalEntry } from '../../types/entry';
 import { getLocalTodayDateString } from '../../lib/entry-utils';
 
 interface MiniCalendarWidgetProps {

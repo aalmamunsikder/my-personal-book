@@ -3,8 +3,8 @@
 import React from 'react';
 import { Book, Feather, Moon, Sparkles, Wind } from 'lucide-react';
 import { COVER_STYLES } from '../../lib/themes';
-import { CoverStyleId } from '../../types/appearance';
-import { JournalCollection } from '../../types/entry';
+import type { CoverStyleId } from '../../types/appearance';
+import type { JournalCollection } from '../../types/entry';
 
 interface CollectionCoverCardProps {
   collection: JournalCollection;
@@ -106,7 +106,7 @@ export function CollectionCoverCard({
       {/* Top Header & Motif */}
       <div className="flex items-start justify-between gap-2 pl-3">
         <div className="text-[10px] tracking-widest uppercase opacity-75 font-mono">
-          Vol. {styleDef.nameEn || styleDef.name}
+          Vol. {styleDef.name}
         </div>
         <div>{renderCoverMotif()}</div>
       </div>

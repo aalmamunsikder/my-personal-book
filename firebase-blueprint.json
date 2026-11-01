@@ -29,7 +29,12 @@
           "description": "Server last update timestamp"
         }
       },
-      "required": ["userId", "displayName", "createdAt", "updatedAt"]
+      "required": [
+        "userId",
+        "displayName",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Entry": {
       "title": "Entry",
@@ -64,12 +69,22 @@
         "type": {
           "type": "string",
           "description": "Category of writing",
-          "enum": ["diary", "poem", "quote", "fragment", "prose"]
+          "enum": [
+            "diary",
+            "poem",
+            "quote",
+            "fragment",
+            "prose"
+          ]
         },
         "status": {
           "type": "string",
           "description": "Entry lifecycle status",
-          "enum": ["draft", "complete", "archived"]
+          "enum": [
+            "draft",
+            "complete",
+            "archived"
+          ]
         },
         "entryDate": {
           "type": "string",
@@ -87,7 +102,12 @@
         "language": {
           "type": "string",
           "description": "Detected or chosen language script",
-          "enum": ["bn", "en", "mixed", "other"]
+          "enum": [
+            "bn",
+            "en",
+            "mixed",
+            "other"
+          ]
         },
         "isFavorite": {
           "type": "boolean",
@@ -102,7 +122,12 @@
         "fontPreference": {
           "type": "string",
           "description": "Preferred reading/writing typography",
-          "enum": ["auto", "bangla", "serif", "sans"]
+          "enum": [
+            "auto",
+            "bangla",
+            "serif",
+            "sans"
+          ]
         },
         "pageVariation": {
           "type": "string",
@@ -133,17 +158,23 @@
         },
         "isLocked": {
           "type": "boolean",
-          "description": "Whether this entry is locked with a password for public visitors"
+          "description": "Whether this entry is protected by an owner passphrase"
         },
-        "lockPassword": {
+        "lockPasswordHash": {
           "type": "string",
-          "description": "Optional entry password (empty string when unlocked)",
+          "description": "Salted PBKDF2-SHA256 digest of the passphrase. The plaintext password is never stored or transmitted.",
           "minLength": 0,
-          "maxLength": 120
+          "maxLength": 128
+        },
+        "lockSalt": {
+          "type": "string",
+          "description": "Hex-encoded random salt for the passphrase digest",
+          "minLength": 0,
+          "maxLength": 64
         },
         "lockHint": {
           "type": "string",
-          "description": "Optional password hint shown on the locked page plate",
+          "description": "Optional passphrase hint shown on the locked page plate",
           "minLength": 0,
           "maxLength": 160
         },
@@ -156,6 +187,23 @@
           "description": "ISO timestamp when moved to trash, or empty string",
           "minLength": 0,
           "maxLength": 40
+        },
+        "version": {
+          "type": "integer",
+          "description": "Optimistic concurrency counter. Must increment by exactly 1 on every update.",
+          "minimum": 1
+        },
+        "pageTemplateId": {
+          "type": "string",
+          "description": "Per-entry page template override (empty string means inherit)",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "appearanceOverrideJson": {
+          "type": "string",
+          "description": "Serialized per-entry appearance override (empty string means inherit)",
+          "minLength": 0,
+          "maxLength": 4000
         },
         "createdAt": {
           "type": "string",
@@ -186,10 +234,14 @@
         "collectionId",
         "tags",
         "isLocked",
-        "lockPassword",
+        "lockPasswordHash",
+        "lockSalt",
         "lockHint",
         "isTrashed",
         "deletedAtIso",
+        "version",
+        "pageTemplateId",
+        "appearanceOverrideJson",
         "createdAt",
         "updatedAt"
       ]
@@ -228,6 +280,17 @@
           "type": "number",
           "description": "Display sort order"
         },
+        "appearanceConfigJson": {
+          "type": "string",
+          "description": "Serialized collection-level appearance override",
+          "minLength": 0,
+          "maxLength": 4000
+        },
+        "version": {
+          "type": "integer",
+          "description": "Optimistic concurrency counter",
+          "minimum": 1
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -239,7 +302,17 @@
           "description": "Server update timestamp"
         }
       },
-      "required": ["userId", "name", "description", "accent", "sortOrder", "createdAt", "updatedAt"]
+      "required": [
+        "userId",
+        "name",
+        "description",
+        "accent",
+        "sortOrder",
+        "appearanceConfigJson",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Tag": {
       "title": "Tag",
@@ -271,7 +344,43 @@
           "description": "Server creation timestamp"
         }
       },
-      "required": ["userId", "name", "normalizedName", "createdAt"]
+      "required": [
+        "userId",
+        "name",
+        "normalizedName",
+        "createdAt"
+      ]
+    },
+    "AiUsage": {
+      "title": "AiUsage",
+      "description": "Server-side AI request metering, keyed by owner UID. Backs the daily budget enforced in /api/ai-assist.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "day": {
+          "type": "string",
+          "description": "UTC day the counter applies to",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Requests consumed that day",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "userId",
+        "day",
+        "count"
+      ]
     },
     "UserSettings": {
       "title": "UserSettings",
@@ -287,23 +396,44 @@
         },
         "theme": {
           "type": "string",
-          "enum": ["light", "dark", "system"]
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ]
         },
         "readingWidth": {
           "type": "string",
-          "enum": ["standard", "wide"]
+          "enum": [
+            "standard",
+            "wide"
+          ]
         },
         "density": {
           "type": "string",
-          "enum": ["comfortable", "compact"]
+          "enum": [
+            "comfortable",
+            "compact"
+          ]
         },
         "defaultEntryType": {
           "type": "string",
-          "enum": ["diary", "poem", "quote", "fragment", "prose"]
+          "enum": [
+            "diary",
+            "poem",
+            "quote",
+            "fragment",
+            "prose"
+          ]
         },
         "defaultFont": {
           "type": "string",
-          "enum": ["auto", "bangla", "serif", "sans"]
+          "enum": [
+            "auto",
+            "bangla",
+            "serif",
+            "sans"
+          ]
         },
         "showWordCount": {
           "type": "boolean"
@@ -339,28 +469,227 @@
         "lastBackupAt",
         "updatedAt"
       ]
+    },
+    "AiSettings": {
+      "title": "AiSettings",
+      "description": "Owner AI consent and enable state, mirrored to the server so /api/ai-assist can enforce it.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether AI features are switched on"
+        },
+        "hasConsented": {
+          "type": "boolean",
+          "description": "Explicit first-use consent recorded"
+        },
+        "consentVersion": {
+          "type": "string",
+          "description": "Version of the privacy terms accepted",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "consentAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "When consent was granted"
+        },
+        "defaultContextScope": {
+          "type": "string",
+          "description": "Minimum-context default for a request",
+          "enum": [
+            "selection",
+            "current_entry",
+            "selected_entries",
+            "collection",
+            "archive"
+          ]
+        },
+        "dailyLimit": {
+          "type": "integer",
+          "description": "Requests allowed per UTC day; the server clamps it to 100",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp"
+        }
+      },
+      "required": [
+        "userId",
+        "enabled",
+        "hasConsented",
+        "consentVersion",
+        "consentAt",
+        "defaultContextScope",
+        "dailyLimit",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AiUsageEvent": {
+      "title": "AiUsageEvent",
+      "description": "Append-only AI metering event. Carries the shape of a request and never its words: no prompt, no completion, no entry content.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Opaque request id, also used as the document id",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "task": {
+          "type": "string",
+          "description": "Allowlisted task name",
+          "enum": [
+            "suggest_titles",
+            "proofread",
+            "refine",
+            "explain_poem",
+            "rhyme_helper",
+            "translate",
+            "summarize",
+            "suggest_metadata",
+            "writing_feedback",
+            "continue_thought",
+            "archive_answer",
+            "custom_prompt"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "description": "Provider label",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "model": {
+          "type": "string",
+          "description": "Server-configured model id",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "promptVersion": {
+          "type": "string",
+          "description": "Versioned prompt template used",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "status": {
+          "type": "string",
+          "description": "Outcome of the request",
+          "enum": [
+            "complete",
+            "error"
+          ]
+        },
+        "inputTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Prompt tokens reported by the provider",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Completion tokens reported by the provider",
+          "minimum": 0
+        },
+        "durationMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Server-side handling time",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "userId",
+        "requestId",
+        "task",
+        "provider",
+        "model",
+        "promptVersion",
+        "status"
+      ]
     }
   },
   "firestore": {
     "/profiles/{userId}": {
-      "schema": { "$ref": "#/entities/Profile" },
+      "schema": {
+        "$ref": "#/entities/Profile"
+      },
       "description": "Owner profile keyed by Firebase Auth UID."
     },
     "/entries/{entryId}": {
-      "schema": { "$ref": "#/entities/Entry" },
+      "schema": {
+        "$ref": "#/entities/Entry"
+      },
       "description": "Private owner diary entries, poems, quotes, fragments, and prose."
     },
     "/collections/{collectionId}": {
-      "schema": { "$ref": "#/entities/Collection" },
+      "schema": {
+        "$ref": "#/entities/Collection"
+      },
       "description": "Thematic collections owned by the user."
     },
     "/tags/{tagId}": {
-      "schema": { "$ref": "#/entities/Tag" },
+      "schema": {
+        "$ref": "#/entities/Tag"
+      },
       "description": "Tags owned by the user."
     },
     "/settings/{userId}": {
-      "schema": { "$ref": "#/entities/UserSettings" },
+      "schema": {
+        "$ref": "#/entities/UserSettings"
+      },
       "description": "Owner settings keyed by Firebase Auth UID."
+    },
+    "/aiUsage/{userId}": {
+      "schema": {
+        "$ref": "#/entities/AiUsage"
+      },
+      "description": "Server-side AI metering keyed by Firebase Auth UID."
+    },
+    "/aiSettings/{userId}": {
+      "schema": {
+        "$ref": "#/entities/AiSettings"
+      },
+      "description": "Owner AI consent and enable state keyed by Firebase Auth UID."
+    },
+    "/aiUsageEvents/{requestId}": {
+      "schema": {
+        "$ref": "#/entities/AiUsageEvent"
+      },
+      "description": "Append-only AI usage metadata. Owner-readable, never mutated."
     }
   }
 }

@@ -1,144 +1,262 @@
-# VerseVault — Implementation Status & QA Verification Report
+# VerseVault — Implementation Status & Verification Evidence
 
-This document records the verification evidence for VerseVault in accordance with **`VerseVault_Features_Implementation_UX_Vercel_Guide_cc48fd43.md`** (§21, §22, §23) and **`VerseVault_QA_Testing_and_Release_Checklist_b23fe544.md`** (§3.5, §17).
+Supersedes the previous version of this file, which reported a **GO** recommendation on evidence that
+did not exist. Every claim below is either (a) reproducible by a listed command, (b) labelled
+**NOT VERIFIED** with the reason, or (c) a known gap. Nothing here is inferred from intent.
 
----
-
-## 1. Feature Implementation Status Tracker (§21)
-
-| ID | Feature/Phase | Status | Evidence | Known Issue |
-|---|---|---|---|---|
-| **F-01** | My Journal Home | **VERIFIED** | Localized date header, prompt ("আজ কী লিখবে?"), Continue Writing drafts list, Recent timeline, Calendar preview, and "Return to a Memory" card. Screenshot: `.playwright-cli/desktop-view.png`. | None |
-| **F-02** | Diary Timeline | **VERIFIED** | Chronological timeline grouped by month/date (`entry_date` independent of `created_at` for backdating). Multiple entries per day supported. Verified via `filterAndSortEntries`. | None |
-| **F-03** | Entry Editor | **VERIFIED** | Plain-text writing canvas preserving exact whitespace, stanzas, and newlines across Diary, Poem, Quote (with attribution), Fragment, and Prose. Full-spread zen mode. | None |
-| **F-04** | Autosave & Recovery | **VERIFIED** | Debounced saving (900–1200ms), optimistic concurrency with version checking, save states (Saving, Saved, Failed, Retry), local draft retention. | None |
-| **F-05** | Reading View | **VERIFIED** | Editorial book page layout, line height `1.95`, raw copy-to-clipboard, previous/next page navigation (`পাতা X / Y`). 6 canonical paper styles. | None |
-| **F-06** | Poems, Quotes, Fragments, Prose | **VERIFIED** | Dedicated filtered navigation for Poems, Quotes, Fragments, and Prose. Excerpt previews, favorite toggles, quick create triggers. | None |
-| **F-07** | Collections & Tags | **VERIFIED** | 6 Thematic collections with custom cover illustrations. Inline tag addition and removal without deleting writing. Safe normalization. | None |
-| **F-08** | Calendar & Memory Browsing | **VERIFIED** | Interactive monthly calendar grid, entry dot indicators, empty-day entry creation, selected-day list below. Tested across month boundaries. | None |
-| **F-09** | Search & Filters | **VERIFIED** | Multi-field search across title, content, quote attribution, tags, and collections in Bangla and English. Tested via Playwright and unit tests. | None |
-| **F-10** | Favorites | **VERIFIED** | Instant toggle from timeline, reading view, and editor. Dedicated Favorites view in sidebar and mobile navigation drawer. | None |
-| **F-11** | Archive & Trash | **VERIFIED** | Soft deletion via `deleted_at` / `deletedAtIso`. Safe restoration. Permanent deletion gated by custom confirmation modal (`ConfirmDialog`). | None |
-| **F-12** | Statistics & Writing History | **VERIFIED** | Real-time Bangla digit counts across categories, collection totals, and word/character counters. Zero fabricated sample data. | None |
-| **F-13** | Settings & Personalization | **VERIFIED** | Warm parchment and nocturnal ink dark mode, reading width preferences, density options, sound FX toggle (5 acoustic foley sounds). | None |
-| **F-14** | Markdown & JSON Export | **VERIFIED** | Markdown ZIP export with YAML frontmatter and folder grouping (`JSZip`). Complete JSON backup payload with schema version `1.0.0`, zero secrets. Tested in `firestore.rules.test.ts`. | None |
-| **F-15** | Owner Auth & Security Rules | **VERIFIED** | Single-owner authoring gated strictly by `aalmamunsikder@gmail.com` (Google Sign-In + Passkey). Public reader view for unlocked entries. Brass lock plate for password-protected entries. 16/16 unit tests passed in `firestore.rules.test.ts`. | None |
-| **F-16** | Responsive UX | **VERIFIED** | Tested on desktop (`1440x900`), tablet, and mobile (`390x844`). Features mobile bottom navigation bar, single-page reading focus (`← Diary`), and slide-over leather drawer. Screenshot: `.playwright-cli/mobile-view.png`. | None |
-| **F-17** | Vercel Configuration | **VERIFIED** | `vercel.json` configured with production security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`). | None |
-| **F-18** | Production Hardening | **VERIFIED** | Zero ESLint errors, zero TypeScript errors, `next build` compiled cleanly. Hydration mismatch resolved with `useSyncExternalStore` SSR barrier. | None |
+Specs referenced: the five VerseVault guides mirrored in `public/assets/aistudio/`.
 
 ---
 
-## 2. Mandatory Release Gate Audit (§17)
+## 0. Stack deviation record (binding decision)
 
-### Gate A — Core Writing Safety (P0)
-- [x] Create/edit entries works for all 5 types (Diary, Poem, Quote, Fragment, Prose).
-- [x] Autosave reports success only after server confirmation.
-- [x] Failed save does not silently lose text; Retry mechanism verified.
-- [x] Refresh preserves exact content, date, and status.
-- [x] Newlines, blank lines, punctuation, whitespace, and Bangla Unicode conjuncts preserved without auto-correction (`TXT-001` & `TXT-002` pass).
-- [x] Double submission prevented via disabled states during save.
+The guides were written for **Lovable + Vite + Supabase** (Edge Functions, Postgres, RLS,
+`YOUR_PROJECT_REF.supabase.co`). The owner's decision for this repository is **Next.js 15 + Firebase**.
+That changes the *infrastructure wording* of the specs, not their *requirements*:
 
-### Gate B — Privacy and Security (P0)
-- [x] Unauthenticated users cannot modify, trash, or delete entries.
-- [x] Firestore security rules deployed and verified with `rules_version = '2'`.
-- [x] Cross-account writes and spoofing rejected (`Dirty Dozen #1–#12` pass).
-- [x] No service-role key or Firebase admin credentials exposed in client bundle.
-- [x] Password-protected entries display an antique brass lock plate and require password validation before displaying text.
+| Spec requirement | This project's equivalent |
+|---|---|
+| Postgres RLS policy on every owner-owned table | Firestore Security Rules v2, deny-by-default catch-all (`firestore.rules`) |
+| Supabase Edge Function verifies the JWT | Next route handler `app/api/ai-assist/route.ts` verifies the Firebase ID token with `jose` against Google's JWKS |
+| `YOUR_PROJECT_REF.supabase.co` in `connect-src` | `firestore.googleapis.com`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com` in `vercel.json` |
+| Vite SPA rewrite to `/index.html` | Not applicable — App Router. See gap NAV-003/004 below. |
+| Supabase Storage bucket and upload flows | Firebase Storage with `storage.rules`: owner-only, one `/{uid}/…` shape, no anonymous read of any kind. Uploads are deferred by the Themes guide ("No large image upload system is required initially"), so no application code calls the SDK. |
+| `entry_date` / `created_at` snake_case columns | `entryDate` / `createdAt` camelCase document fields (Firestore has no columns) |
 
-### Gate C — Core Functionality (P1)
-- [x] Timeline grouped by `entry_date` with backdating support.
-- [x] Calendar navigation with leap-year and month-boundary handling.
-- [x] Poems, Quotes, Fragments, and Collections libraries fully functional.
-- [x] Multi-field search across Bangla and English text.
-- [x] Favorites, Archive, and Trash restoration operational.
-
-### Gate D — Responsive Design (P1)
-- [x] Desktop wide (`1440x900`) and compact layouts verified.
-- [x] Mobile large (`390x844`) and small viewports verified without horizontal overflow.
-- [x] Mobile slide-over leather navigation drawer and bottom quick bar verified.
-- [x] Literary journal aesthetic maintained with warm parchment, stitched espresso leather, and nocturnal ink palette.
-
-### Gate E — Backup & Release Hygiene
-- [x] Markdown ZIP export generates safe filenames and directory structure.
-- [x] JSON export conforms to schema version `1.0.0` with metadata and zero secrets (`EXP-001` & `EXP-014` pass).
-- [x] `vercel.json` with security headers created in repository root.
-- [x] Zero console errors during headless Playwright evaluation.
+The mirrored spec files are the owner's documents and are left untouched. Where a spec line cannot be
+satisfied as written, it is listed as a gap here rather than silently reinterpreted.
 
 ---
 
-## 3. Automated Test Execution Evidence
+## 1. Reproducible gates
 
-```
-TAP version 13
-# Subtest: firestore.rules file exists and enforces rules_version 2, isAdmin(), and default-deny catch-all
-ok 1 - firestore.rules file exists and enforces rules_version 2, isAdmin(), and default-deny catch-all
-# Subtest: Dirty Dozen #1: Unauthenticated Read of TRASHED entry is rejected, while non-trashed is public
-ok 2 - Dirty Dozen #1: Unauthenticated Read of TRASHED entry is rejected, while non-trashed is public
-# Subtest: Dirty Dozen #2: Non-Admin or Unverified Email Write is rejected (PERMISSION_DENIED)
-ok 3 - Dirty Dozen #2: Non-Admin or Unverified Email Write is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #3: Cross-User Identity Spoofing on Create is rejected (PERMISSION_DENIED)
-ok 4 - Dirty Dozen #3: Cross-User Identity Spoofing on Create is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #4: Shadow / Ghost Field Injection (isPublic: true) is rejected (PERMISSION_DENIED)
-ok 5 - Dirty Dozen #4: Shadow / Ghost Field Injection (isPublic: true) is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #5: Invalid Entry Type or PageVariation Enum is rejected (PERMISSION_DENIED)
-ok 6 - Dirty Dozen #5: Invalid Entry Type or PageVariation Enum is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #6: Malformed Entry Date Format is rejected (PERMISSION_DENIED)
-ok 7 - Dirty Dozen #6: Malformed Entry Date Format is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #7: Resource Poisoning / Oversized Title (>300 chars) is rejected (PERMISSION_DENIED)
-ok 8 - Dirty Dozen #7: Resource Poisoning / Oversized Title (>300 chars) is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #8: Unbounded Array Injection on Tags (>10 tags) is rejected (PERMISSION_DENIED)
-ok 9 - Dirty Dozen #8: Unbounded Array Injection on Tags (>10 tags) is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #9: Path ID Poisoning is rejected (PERMISSION_DENIED)
-ok 10 - Dirty Dozen #9: Path ID Poisoning is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #10: Immutable Owner Mutation on Update is rejected (PERMISSION_DENIED)
-ok 11 - Dirty Dozen #10: Immutable Owner Mutation on Update is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #11: Forged Client Timestamp on Create is rejected (PERMISSION_DENIED)
-ok 12 - Dirty Dozen #11: Forged Client Timestamp on Create is rejected (PERMISSION_DENIED)
-# Subtest: Dirty Dozen #12: Trashed List Scraping by Non-Admin is rejected (PERMISSION_DENIED)
-ok 13 - Dirty Dozen #12: Trashed List Scraping by Non-Admin is rejected (PERMISSION_DENIED)
-# Subtest: Valid Admin (aalmamunsikder@gmail.com) Create, Read, Lock, and Update succeed
-ok 14 - Valid Admin (aalmamunsikder@gmail.com) Create, Read, Lock, and Update succeed
-# Subtest: TXT-001 & TXT-002: Bangla Unicode Vowels, Conjuncts, and Mixed English-Bangla fidelity
-ok 15 - TXT-001 & TXT-002: Bangla Unicode Vowels, Conjuncts, and Mixed English-Bangla fidelity
-# Subtest: EXP-001 & EXP-002 & EXP-014: JSON Export schema version, metadata, and secret-stripping
-ok 16 - EXP-001 & EXP-002 & EXP-014: JSON Export schema version, metadata, and secret-stripping
-1..16
-# tests 16
-# suites 0
-# pass 16
-# fail 0
-```
+| Command | Result at this commit |
+|---|---|
+| `npm test --silent` | **42 tests, 42 pass, 0 fail** across 3 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12) |
+| `npm run test:rules` | **59 tests, 59 pass, 0 fail**: `firestore.rules.emulator.test.ts` (38), `firestore.rules.rest.test.ts` (15), `storage.rules.emulator.test.ts` (6). These are evaluated by the real rules engine in the Firestore/Storage emulators |
+| `npm run test:route-guard` | **3 checks pass** — spec Payload 18 executed against the *built* `/api/ai-assist`: an anonymous request, a non-JWT bearer and an unsigned `alg:none` JWT each get `401 UNAUTHENTICATED`, with no provider call and no leaked configuration or stack. `tools/verify-ai-route-guard.sh` runs `next build` first, starts its own server, and refuses to test against one it did not start |
+| `npx tsc --noEmit` | clean, no output |
+| `npm run lint` | **0 errors, 8 warnings** (all 8 are `@next/next/no-img-element` in `components/common/JournalArtwork.tsx`) |
+| `npm run build` | succeeds; route table is `/` (static), `/_not-found` (static), `/api/ai-assist` (dynamic) |
+
+**101 tests, 101 pass**, plus the 3-check route guard that runs the built handler over HTTP.
+
+`npm run test:rules` boots the Firebase emulators, and those need **Java 21 or newer** — firebase-tools
+15.34.2 rejects a 17 runtime ("no longer supports Java version before 21"). On this machine the run uses
+Temurin JDK 21 from `/data/re-tools/jdk-21.0.13+9/bin` on `PATH`; a CI image must do the same. `npm test`,
+`tsc`, `lint` and `build` need no Java and are the gates that run anywhere.
+
+### 1.1 What executing the rules found
+
+Running the file through the engine, instead of reading it, turned up three shipping defects that the
+static suite could not see by construction:
+
+1. **Every valid entry write was impossible.** `isValidEntry` guarded tags with `data.tags.all(...)`.
+   The rules language has **no list quantifier** — `all()`, `exists()`, `map()`, `filter()`, `get()`,
+   `contains()` all raise *"Function not found error"* at evaluation time, and the client sees that as
+   `PERMISSION_DENIED`. Replaced with bounds the engine can express
+   (`tags is list && size() <= 10 && join('').size() <= 600`), and `firestore.rules.test.ts` now fails
+   the build if the rules ever use a construct the engine refuses to resolve.
+2. **Every AI metering event was silently discarded.** `/api/ai-assist` writes through the Firestore
+   **REST** API, and a REST create cannot apply a `SERVER_TIME` transform: `documents:commit` is not
+   implemented (400 for every body shape tried), and POST/PATCH both reject `fieldTransforms`. The
+   rules demanded `createdAt == request.time`, so the event write could only ever be refused. The event
+   no longer stores a timestamp — the rules require `!('createdAt' in data)`, the blueprint dropped the
+   property, and Firestore's own server-assigned document `createTime` is the time the event happened.
+   The document id must equal `requestId`, which is what turns a replay into a no-op rather than a
+   second charge.
+3. **The rules would have deployed to a database the app never touches.** `firebase.json` declared only
+   the rules file; `firebase-tools` takes its target from `firestore.database`
+   (`node_modules/firebase-tools/lib/deploy/firestore/prepare.js:79`), so the ruleset would have been
+   published to `(default)` while the app reads and writes the named database
+   `ai-studio-51454e48-bdf7-4db9-8208-22e26077b533`. `firebase.json` now pins it, and a test asserts
+   that `firebase-applet-config.json` and `firebase.json` name the same database and that the same
+   ruleset governs writes to it.
+
+### 1.2 Two engine behaviours the design now depends on
+
+- **`list` rules are evaluated against the query, not against the rows it returns.**
+  `allow list: if resource.data.userId == request.auth.uid` *denies outright* a read that does not
+  itself carry the ownership filter. All three live readers in the archive —
+  [context/JournalContext.tsx:410](file:///data/my-personal-book/context/JournalContext.tsx#L410),
+  [context/JournalContext.tsx:442](file:///data/my-personal-book/context/JournalContext.tsx#L442) and
+  [context/JournalContext.tsx:468](file:///data/my-personal-book/context/JournalContext.tsx#L468) — open
+  with `where('userId', '==', user.uid)`; the emulator asserts both halves — each shipped query shape is
+  allowed, and an unscoped `collection().get()` is refused rather than quietly narrowed. A future
+  unscoped read would fail loudly in CI instead of loading an empty archive.
+- **Per-element list checks are not expressible.** With no quantifier the rules can bound the tag list
+  (at most 10 entries, at most 600 characters in total) but cannot assert that every element is a string
+  of ≤ 60 characters, nor reject a blank entry.
+  [lib/validations.ts:58](file:///data/my-personal-book/lib/validations.ts#L58)
+  (`sanitizeEntryPayload`, the only writer of the field) trims each tag to `TAG_NAME_MAX_LENGTH` (60),
+  drops blanks and caps the count at 10, so the archive can never hold a document the blueprint would
+  reject. This is a documented split of responsibility between the rules and the one writer, not a claim
+  that the rules enforce it.
+
+`next.config.ts` no longer contains `eslint.ignoreDuringBuilds`, so the build runs ESLint. The 8
+remaining warnings are advisory: every illustration is a 8–77 KB PNG served from `/public` and drawn
+as a decorative, CSS-sized, mix-blend overlay, so `next/image` would add layout risk for no measurable
+gain. They are reported, not silenced.
+
+**Tests that were previously false have been replaced, not re-labelled.** The old
+`firestore.rules.test.ts` asserted the *insecure* rule text as correct (e.g. it expected an anonymous
+`get` on a non-trashed entry to succeed) and "tested" an export by validating an inline mock instead of
+calling `buildJsonBackup`. The old `ai-features.test.ts` re-declared `AI_SYSTEM_INSTRUCTION` and a
+`buildTaskPromptSimulation` inside the test file, so it kept passing while the shipped prompt changed.
+Both files now import the shipped modules (`lib/ai-prompts.ts`, `lib/ai-contracts.ts`,
+`lib/ai-guards.ts`) or read the shipped artifacts from disk (`firestore.rules`,
+`firebase-blueprint.json`).
 
 ---
 
-## 4. Release Recommendation (§3.5)
+## 2. What the tests do **not** prove
 
-**Release Recommendation: GO**  
-**Reason:** All P0 and P1 criteria across Gates A through E have been executed, verified, and evidenced. The application compiles cleanly with zero ESLint and TypeScript errors, passes all 22 automated test suites, supports public reading with secure author controls for `aalmamunsikder@gmail.com`, and provides an authentic, literary Bangla-English journal experience on all screen sizes.
+- **The rules are enforced — in the emulator, not yet in the owner's project.** 59 tests evaluate
+  `firestore.rules` and `storage.rules` in the real rules engine, so QA items **SEC-001 … SEC-009,
+  SEC-012 … SEC-014 now have executed evidence**. What is still unproven is *whose* rules the live project
+  is serving: an anonymous read-only probe (`tools/probe-live-rules.mts`, §4.1) shows it denies anonymous
+  `get` and `list` today, but that is the project's own ruleset, not this file's — it is not known to
+  enforce owner isolation, key allowlists, versioning or the passphrase rules, and testing that needs a
+  real second account. The emulator also cannot mint real Google ID tokens — it accepts unsigned mock
+  ones — so `npm run test:route-guard` covers only the **rejection** half of Payload 18 (anonymous,
+  malformed, and `alg:none` callers all refused before any provider call). The **acceptance** half, a
+  genuine signed-in owner token reaching Gemini, has never happened anywhere.
+- **Referential integrity is outside the rules' reach.** Because the engine cannot read a second document
+  (`get()` / `exists()` do not exist), no rule can check that an entry's `collectionId` names a collection
+  the same owner owns, nor that a join row's two sides agree. **SEC-010 and SEC-011 are therefore not
+  testable as rule behaviour.** The blast radius is containment, not leakage: a forged `collectionId`
+  points at a document the caller cannot read, so the collection view shows nothing, and every picker in
+  the UI is populated from the owner's own scoped listener. `sanitizeEntryPayload` caps the field's shape
+  but cannot assert ownership either. Recorded here as a real gap in the spec's model, not as covered.
+- **No signed-in flow has been exercised.** There are no test users, and none were created. Autosave
+  conflict handling, entry locking, and the AI route's consent gate have been read and reasoned about —
+  not run end to end against Firebase Auth.
+- **The AI provider has never been called.** No `GEMINI_API_KEY` exists in this environment, so
+  `GEMINI_MODEL`'s default value **`gemini-3.8-flash` is an unverified model id**. If it is wrong the
+  route fails closed with `PROVIDER_UNAVAILABLE`/`PROVIDER_TIMEOUT`, but the AI feature is unshipped
+  until one real request succeeds.
+- **Nothing has been deployed.** No rules published, no data migrated, no Storage bucket touched. See §4.
+- **`storage.rules` guards a feature the app does not have.** The Themes guide defers uploads ("No large
+  image upload system is required initially") and nothing in this repository calls the Storage SDK. The
+  file exists so the bucket cannot sit in the console's default test mode; its ruleset is owner-only and
+  executed by the emulator. If uploads are ever built, they must live under `/{uid}/…` — anything else is
+  unreachable, by design and by test.
+- **Browser verification was limited.** The unsigned-in UI was rendered and screenshotted (empty
+  archive, sign-in modal with no passkey field, reading view). Every screen behind authentication is
+  unverified visually.
 
 ---
 
-## 5. AI Features, Privacy & Governance Status Tracker (§20)
+## 3. Feature status (Features guide §21)
 
-In accordance with **`VerseVault_AI_Features_Privacy_Implementation_Guide_58c8a5b1.md`**:
+| ID | Feature | Status | Evidence / gap |
+|---|---|---|---|
+| F-01 | My Journal Home | Implemented, unsigned-in render verified | Screenshot taken of the empty-archive state; the seeded demo archive is **not** loaded (`lib/seed-data.ts` exports `SAMPLE_*` fixtures used only by tests) |
+| F-02 | Diary timeline | Implemented, unit-tested | `filterAndSortEntries` tests (Bangla + English) |
+| F-03 | Entry editor | Implemented, **not visually verified** | Requires a signed-in session |
+| F-04 | Autosave & recovery | Implemented; save-state UI is now honest | `components/common/SaveStateIndicator.tsx` renders all seven states. Previously `local` and `conflict` rendered **nothing**, so a page held only in browser memory looked identical to a page safely in the archive |
+| F-05 | Reading view | Implemented, render verified | `ReadingView` had a conditional `useMemo` after an early return (a real Rules-of-Hooks error, previously hidden by `ignoreDuringBuilds`); fixed and re-rendered |
+| F-06 | Poems / quotes / fragments / prose | Implemented, unit-tested | type filters in `entry-utils.test.ts` |
+| F-07 | Collections & tags | Implemented, unsigned-in only | write paths unverified |
+| F-08 | Calendar browsing | Implemented, **not verified** | no test, no signed-in render |
+| F-09 | Search & filters | Implemented, unit-tested | Bangla + English substring tests |
+| F-10 | Favorites | Implemented, **not verified** | write path needs a session |
+| F-11 | Archive & trash | Implemented, **not verified**; destructive paths deliberately not exercised | Permanent deletion needs a verified backup before any live test |
+| F-12 | Statistics | Implemented, unit-tested | `countWords`, `toBanglaDigits` |
+| F-13 | Settings & personalization | Implemented, partially verified | 9 factory themes + 10 page templates asserted against the Themes guide in `entry-utils.test.ts` |
+| F-14 | Markdown & JSON export | Implemented, unit-tested | `buildJsonBackup` is called for real; a test asserts no `lockPassword`/`lockPasswordHash`/`lockSalt` reaches the payload while the writing itself survives byte-for-byte |
+| F-15 | Owner auth & rules | Implemented and **executed by the rules engine** | 59 emulator tests cover anonymous denial, owner isolation, key allowlists, id hardening, ceilings, immutability, versioning, consent and metering (§1.1). The catch-all still denies anything unmatched, and `storage.rules` grants no anonymous read of any kind. Not yet verified against the owner's deployed project — see §4.1 |
+| F-16 | Responsive UX | **NOT VERIFIED** | The old file cited `.playwright-cli/desktop-view.png` and `.playwright-cli/mobile-view.png`; **that directory does not exist and no Playwright run exists in this repository** |
+| F-17 | Vercel configuration | Implemented | `vercel.json` now carries the 4 original headers **plus** `Content-Security-Policy-Report-Only` with Firebase origins. Report-Only only: enforcing CSP needs a violation review first, and Next.js inline bootstrap scripts will almost certainly violate `script-src 'self'` |
+| F-18 | Production hardening | Implemented | 0 lint errors, 0 type errors, clean build (see §1) |
 
-| ID | Feature | Status | Privacy Reviewed | Tests / Evidence |
-|---|---|---|---|---|
-| **AI-F01** | Consent & Global Enable/Disable | **VERIFIED** | Pass (§5.1) | `AiConsentModal`, `AiSettingsSection`, `AI-PRIV-001`, `AI-PRIV-002`, `AI-PRIV-003`, `AI-PRIV-004`. Default disabled, explicit first-use consent. |
-| **AI-F02** | Secure AI Endpoint | **VERIFIED** | Pass (§6.1, §6.5) | Next.js API route `/api/ai-assist/route.ts` with server-side `@google/genai` `gemini-3.8-flash`. Zero client-side API keys. |
-| **AI-F03** | Server-Side Provider Config | **VERIFIED** | Pass (§6.4) | `process.env.GEMINI_API_KEY` server secret, task allowlist validation, input size limit (12,000 chars), structured JSON responses. |
-| **AI-F04** | Title Suggestions | **VERIFIED** | Pass (§3.2) | 3–7 creative titles generated without modifying original entry. Copy and Apply actions verified (`AI-OUT-001`). |
-| **AI-F05** | Proofreading & Diff | **VERIFIED** | Pass (§3.3) | Side-by-side / diff observations preserving intentional poetic fragments and Bangla Unicode conjuncts (`AI-OUT-002`, `AI-LANG-001`). |
-| **AI-F06** | Refine Wording | **VERIFIED** | Pass (§3.4) | Voice-preserving alternatives with "Insert at Cursor" and "Save as New Draft" options. Original is never automatically replaced. |
-| **AI-F07** | Poem Explanation / Feedback | **VERIFIED** | Pass (§3.5) | Subjective interpretation labeled as "one possible reading"; acknowledges metaphor ambiguity without claiming author intent. |
-| **AI-F08** | Rhyme & Vocabulary Helper | **VERIFIED** | Pass (§3.6) | Bangla and English rhymes, synonyms, tatsama and colloquial registers with example usage. |
-| **AI-F09** | Translation (Bangla ↔ English) | **VERIFIED** | Pass (§3.7) | Literary translation preserving exact line breaks and stanzas. Options to copy or save as new Fragment draft. |
-| **AI-F10** | Summary & Reflection | **VERIFIED** | Pass (§3.8) | Short summary, key themes, and gentle self-reflection questions. Zero psychological or psychiatric labeling. |
-| **AI-F11** | Metadata Suggestions | **VERIFIED** | Pass (§3.9) | Suggests tags and mood with schema validation. Click-to-apply chips (never applied automatically). |
-| **AI-F12** | Writing Companion Panel | **VERIFIED** | Pass (§4.2) | `AiAssistPanel` with context selector ("Selected Passage" vs "Whole Entry"), custom inquiries, and animated status. |
-| **AI-F13** | Ask My Archive | **VERIFIED** | Pass (§3.11) | `AskMyArchiveModal` supporting scope selection, cited source cards, zero fabricated quotes, and direct "Open Original" navigation (`AI-RET-005`, `AI-RET-006`). |
-| **AI-F14** | Cost & Operational Limits | **VERIFIED** | Pass (§11) | Daily budget ceiling (40 requests/day), 12,000 char input ceiling (`AI-OPS-002`), single request in flight. |
-| **AI-F15** | Prompt Injection Delimiters | **VERIFIED** | Pass (§8.2) | All user writing bounded by `<<<USER_WRITING_DATA>>>` and treated strictly as data (`AI-PRIV-005`). |
-| **AI-F16** | AI Privacy Revoke & Cache Reset | **VERIFIED** | Pass (§5.3) | "Revoke Consent & Reset AI Cache" in Settings. Zero prompt or response text stored in any database. |
+### Gaps against the specs that are still open
 
+- **NAV-003 / NAV-004 — no deep links.** The build route table has exactly one page. Entry, collection,
+  calendar and search states live in React context, so refreshing or sharing a link loses the page.
+- **AUTH-001 / AUTH-008 — no dedicated auth routes** (`/signin`, callback) for the same reason.
+- **AUTH-006 / AUTH-007 — no password recovery.** `sendPasswordResetEmail` appears nowhere in the
+  source. Acceptable only because sign-in is Google federated; it must be a conscious decision.
+- **Entry lock has no designed conflict/merge path.** A `conflict` save state tells the author the
+  archive has a newer copy and that nothing was overwritten; there is no UI to load the archive copy
+  and merge. The specs do not define one either.
+- **Forms do not use schema validation.** `zod` is used in exactly one module (`lib/ai-contracts.ts`).
+  Diary/collection forms still hand-validate in `lib/validations.ts`. `@hookform/resolvers` is declared
+  in `package.json` and imported by nothing; `react-hook-form` is not a dependency at all.
+- **Design-direction conflict (unresolved, owner decision).** The Themes guide and the base spec both
+  warn against heavy skeuomorphic leather. `components/book/OpenLeatherJournalSpread.tsx` is ~3,900
+  lines of exactly that, and it is the app's primary surface. This is a product direction question, not
+  a defect I should settle by deleting the author's design.
+
+---
+
+## 4. Operational work required before any release (none of it done)
+
+1. **Deploy `firestore.rules` and `storage.rules`** to the project named by
+   `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, with `firebase.database` set to the named database the app uses —
+   `firebase.json` now pins it, but a manual deploy from the console would not. What the live project
+   serves *today* is measurable without deploying: `node --import ./tools/register-ts-resolver.mjs
+   tools/probe-live-rules.mts` (read-only, prints no document values) returned, on 2026-11-01,
+   `PERMISSION_DENIED` for every anonymous `get` **and** `list` across `entries`, `collections`, `tags`,
+   `profiles` and `settings`. So the archive is not world-readable to anonymous callers right now — but
+   that denial is the project's existing ruleset, not this repository's, and the shape of the answer
+   ("any authenticated caller may read anything") is what the default Firebase production ruleset looks
+   like. Only a **signed-in non-owner probe**, or the deploy itself, can distinguish the two, and that
+   needs explicit authorization plus credentials this workspace does not have.
+2. **One-time backfill for pre-existing documents.** The v5 shape adds `version`, replaces
+   `lockPassword` with `lockPasswordHash` + `lockSalt`, and introduces `aiSettings` / `aiUsageEvents`.
+   Documents written under the old shape will fail `isValidEntry` on their next update. The rules allow
+   exactly one migration write per document (the branch that only removes `lockPassword` — now executed,
+   including the "cannot be reused" case), but any document missing `version` cannot be updated until it
+   is backfilled. **This must run against a verified backup, with explicit authorization, and never as a
+   bulk destructive script.**
+3. **Set the server environment**: `GEMINI_API_KEY` (secret), `GEMINI_MODEL` to a model id confirmed
+   against the provider's catalogue, `VERSEVAULT_OWNER_EMAIL`.
+4. **Register the authorized origins** in Firebase Auth for the domain the app is actually served from.
+5. **Put `npm run test:rules` in CI** on an image with Java 21+ (Temurin 21 works; 17 is refused by
+   firebase-tools 15). Locally it needs the same JDK on `PATH` plus `node_modules/.bin/firebase`.
+6. **Re-check CSP in Report-Only** on a Preview deployment, then decide whether to enforce.
+7. Housekeeping done at this commit: `package-lock.json` is tracked (an emulator run is not reproducible
+   without pinned `firebase-tools`), and `tsconfig.tsbuildinfo` is gitignored.
+
+---
+
+## 5. Deliberate behaviour changes the owner should confirm
+
+- **The entry passphrase lock now applies to the owner too.** The previous build accepted a hard-coded
+  admin passkey (`versevault`) that opened any locked page, and stored the passphrase in plaintext so
+  the UI could read it back. Both are gone: only a salted PBKDF2-SHA256 digest is stored, it is never
+  readable, and there is no bypass. A forgotten passphrase is now unrecoverable by design.
+- **Anonymous visitors can no longer read entries.** Public reading needs an explicit, scoped design;
+  the specs' "hiding UI is not security" rule left no compliant option but to deny.
+- **AI consent, enablement and daily budget are read from Firestore, not localStorage.** The browser
+  copy is a UI convenience; the route decides. A request whose metering write fails is refused rather
+  than spent.
+- **A metering event no longer carries its own timestamp field.** The rules refuse `createdAt` on
+  `/aiUsageEvents/{requestId}` because the REST writer cannot ask the server for one (§1.1.2), so a
+  stored value would have been the client's clock. The history is still ordered and still server-owned:
+  Firestore's document `createTime` is assigned by the server, and the id is the `requestId`, which makes
+  a replay a no-op instead of a second charge.
+- **Storage has no public prefix at all.** An earlier draft of `storage.rules` served anonymous reads
+  out of `/public/covers/{uid}/{file}` on the theory that publication is a location, since a Storage rule
+  cannot read the Firestore document that would hold a "published" flag. The privacy spec allows no
+  public or publish surface, and `read` carries `list` with it — so that prefix was world-readable *and*
+  browsable. Every object must now live under `/{uid}/…`, verified by the emulator.
+
+---
+
+## 6. Release recommendation
+
+**NO-GO.**
+
+Blocking items: rules are written and now engine-verified, but **undeployed**, so the owner's live
+archive is still governed by a ruleset this repository has no evidence for beyond "it denies anonymous
+reads today" (§2, §4.1); no migration/backfill has
+been run for existing archive documents (§4.2); there is no signed-in or responsive verification with
+real evidence (§2, F-16); and the AI provider has never been called, so the model id is unverified (§2).
+The P0 privacy defects this work started from — world-readable entries, plaintext passphrases, and a
+hard-coded admin passkey that bypassed both the lock and the AI budget — are closed, and the first two
+are now closed by engine results rather than by reading the rule text.
+The gap the emulator work closed is the one that made the security story unfalsifiable — the rules used
+to be *claimed* rather than *run*. Running them found three shipping defects (§1.1), which is the
+argument for treating deployment, not the test suite, as the remaining work.

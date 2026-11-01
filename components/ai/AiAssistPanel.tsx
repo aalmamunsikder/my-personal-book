@@ -21,7 +21,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { requestAiAssist } from '../../lib/ai-client';
-import {
+import type {
   AiContextScope,
   AiRequestPayload,
   AiResponsePayload,
@@ -34,15 +34,13 @@ import {
   TitleSuggestion,
   TranslationVariant,
 } from '../../types/ai';
-import { EntryMood, EntryType, JournalEntry } from '../../types/entry';
+import type { EntryMood, EntryType, JournalEntry } from '../../types/entry';
 
 interface AiAssistPanelProps {
   isOpen: boolean;
   onClose: () => void;
   entry: JournalEntry;
   selectedText?: string;
-  adminEmail: string;
-  adminPasskey?: string;
   onApplyTitle: (title: string) => void;
   onInsertAtCursor: (text: string) => void;
   onReplaceContent: (newContent: string) => void;
@@ -55,8 +53,6 @@ export function AiAssistPanel({
   onClose,
   entry,
   selectedText = '',
-  adminEmail,
-  adminPasskey,
   onApplyTitle,
   onInsertAtCursor,
   onReplaceContent,
@@ -107,8 +103,6 @@ export function AiAssistPanel({
       contextScope,
       selectedText: contextScope === 'selection' ? selectedText : undefined,
       customQuery: overrideCustomQuery || customQuestion,
-      adminEmail,
-      adminPasskey: adminPasskey || 'versevault',
     };
 
     try {

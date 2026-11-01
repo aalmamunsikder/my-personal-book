@@ -8,12 +8,13 @@ import {
   doc,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
   where,
 } from 'firebase/firestore';
-import {
+import type {
   ActiveNavSection,
   EntryMood,
   EntryType,
@@ -24,7 +25,7 @@ import {
   PageVariation,
   SaveState,
 } from '../types/entry';
-import { AppearanceConfig } from '../types/appearance';
+import type { AppearanceConfig } from '../types/appearance';
 import { getStoredAppearanceConfig, saveStoredAppearanceConfig } from '../lib/appearance-storage';
 import {
   auth,
@@ -32,17 +33,15 @@ import {
   googleProvider,
   handleFirestoreError,
   OperationType,
-  testFirestoreConnection,
 } from '../lib/firebase';
-import {
-  DEFAULT_OWNER_ID,
-  INITIAL_COLLECTIONS,
-  INITIAL_ENTRIES,
-  INITIAL_SETTINGS,
-  INITIAL_TAGS,
-} from '../lib/seed-data';
+import { DEFAULT_OWNER_ID, INITIAL_SETTINGS } from '../lib/seed-data';
 import { countWords, detectScriptLanguage, getLocalTodayDateString } from '../lib/entry-utils';
+import { NO_LOCK_SECRET, setLockSecret, verifyLockSecret } from '../lib/entry-lock';
 import {
+  collectionFromFirestore,
+  collectionToFirestoreFields,
+  entryFromFirestore,
+  entryToFirestoreFields,
   sanitizeCollectionPayload,
   sanitizeEntryPayload,
   sanitizeSettingsPayload,
@@ -51,15 +50,48 @@ import {
 
 export const ADMIN_EMAIL = 'aalmamunsikder@gmail.com';
 
+// Features guide 2.3 / 8.2 requires server saves to be debounced by roughly 900-1200ms.
+const AUTOSAVE_DEBOUNCE_MS = 1000;
+
 const STORAGE_KEYS = {
-  entries: 'versevault_entries_v4',
-  collections: 'versevault_collections_v4',
-  tags: 'versevault_tags_v4',
-  settings: 'versevault_settings_v4',
-  initialized: 'versevault_initialized_v4',
-  adminSession: 'versevault_admin_session_v4',
-  unlockedEntries: 'versevault_unlocked_entries_v4',
+  entries: 'versevault_entries_v5',
+  collections: 'versevault_collections_v5',
+  tags: 'versevault_tags_v5',
+  settings: 'versevault_settings_v5',
+  initialized: 'versevault_initialized_v5',
+  unlockedEntries: 'versevault_unlocked_entries_v5',
+  legacyEntries: 'versevault_entries_v4',
 };
+
+/**
+ * v4 kept a per-entry passphrase in plaintext and mirrored it into Firestore. Reading it back
+ * without rewriting would leave the plaintext in localStorage, so the first load hashes it and
+ * drops the original key.
+ */
+async function migrateLegacyEntries(raw: string): Promise<JournalEntry[]> {
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) return [];
+  const migrated: JournalEntry[] = [];
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const legacy = item as JournalEntry & { lockPassword?: string };
+    const { lockPassword: legacyPlaintext, ...rest } = legacy;
+    const plaintext = typeof legacyPlaintext === 'string' ? legacyPlaintext : '';
+    let secret = { lockPasswordHash: rest.lockPasswordHash ?? '', lockSalt: rest.lockSalt ?? '' };
+    if (rest.isLocked && plaintext) {
+      secret = await setLockSecret(plaintext);
+    }
+    migrated.push({
+      ...rest,
+      version: Math.max(1, Math.floor(Number(rest.version) || 1)),
+      isLocked: Boolean(rest.isLocked) && Boolean(secret.lockPasswordHash),
+      lockPasswordHash: secret.lockPasswordHash,
+      lockSalt: secret.lockSalt,
+      lockHint: rest.lockHint ?? '',
+    });
+  }
+  return migrated;
+}
 
 export interface CreateEntryOptions {
   type?: EntryType;
@@ -72,8 +104,6 @@ export interface CreateEntryOptions {
   mood?: EntryMood;
   tags?: string[];
   pageVariation?: PageVariation;
-  isLocked?: boolean;
-  lockPassword?: string;
   lockHint?: string;
 }
 
@@ -89,14 +119,13 @@ interface JournalContextValue {
   isVaultLocked: boolean;
   setVaultLocked: (locked: boolean) => void;
   signInOwner: () => Promise<boolean>;
-  verifyAdminWithPasskey: (email: string, passkey: string) => { ok: boolean; error?: string };
   signOutOwner: () => Promise<void>;
 
   unlockedEntryIds: string[];
   isEntryUnlockedForViewer: (entry: JournalEntry) => boolean;
-  unlockEntryWithPassword: (entryId: string, passwordAttempt: string) => boolean;
+  unlockEntryWithPassword: (entryId: string, passwordAttempt: string) => Promise<boolean>;
   lockEntryAgain: (entryId: string) => void;
-  setEntryPasswordLock: (entryId: string, isLocked: boolean, password?: string, hint?: string) => void;
+  setEntryPasswordLock: (entryId: string, isLocked: boolean, password?: string, hint?: string) => Promise<void>;
 
   entries: JournalEntry[];
   collections: JournalCollection[];
@@ -138,14 +167,13 @@ interface JournalContextValue {
 
   updateSettings: (patch: Partial<JournalSettings>) => void;
   recordManualBackup: () => void;
-  resetToSampleArchive: () => void;
-  clearToBlankJournal: () => void;
 
   appearanceConfig: AppearanceConfig;
   appearanceStudioOpen: boolean;
   setAppearanceStudioOpen: (open: boolean) => void;
   updateAppearanceConfig: (patch: Partial<AppearanceConfig>) => void;
   setCollectionAppearanceOverride: (collectionId: string, override: Partial<AppearanceConfig>) => void;
+  setEntryAppearance: (entryId: string, patch: { pageTemplateId?: string; appearanceOverride?: Partial<AppearanceConfig> | null }) => void;
 }
 
 const JournalContext = createContext<JournalContextValue | undefined>(undefined);
@@ -164,15 +192,6 @@ function timestampToIso(val: unknown, fallback: string): string {
 
 export function JournalProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [localAdminEmail, setLocalAdminEmail] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.adminSession);
-      return saved === ADMIN_EMAIL ? ADMIN_EMAIL : null;
-    } catch {
-      return null;
-    }
-  });
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [adminLoginModalOpen, setAdminLoginModalOpen] = useState<boolean>(false);
@@ -191,46 +210,10 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
-  const [entries, setEntries] = useState<JournalEntry[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_ENTRIES;
-    try {
-      const isInit = localStorage.getItem(STORAGE_KEYS.initialized);
-      const savedEntries = localStorage.getItem(STORAGE_KEYS.entries);
-      if (isInit && savedEntries) {
-        const parsed = JSON.parse(savedEntries);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // Ignore
-    }
-    return INITIAL_ENTRIES;
-  });
-  const [collections, setCollections] = useState<JournalCollection[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_COLLECTIONS;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.collections);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // Ignore
-    }
-    return INITIAL_COLLECTIONS;
-  });
-  const [tags, setTags] = useState<JournalTag[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_TAGS;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.tags);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // Ignore
-    }
-    return INITIAL_TAGS;
-  });
+  // The archive starts empty. Mock writing is never a fallback for a real first visit.
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [collections, setCollections] = useState<JournalCollection[]>([]);
+  const [tags, setTags] = useState<JournalTag[]>([]);
   const [settings, setSettings] = useState<JournalSettings>(() => {
     if (typeof window === 'undefined') return INITIAL_SETTINGS;
     try {
@@ -245,7 +228,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
   });
   const [appearanceConfig, setAppearanceConfigState] = useState<AppearanceConfig>(() => getStoredAppearanceConfig());
   const [appearanceStudioOpen, setAppearanceStudioOpen] = useState<boolean>(false);
-  const [hydrated, setHydrated] = useState<boolean>(true);
+  const [hydrated, setHydrated] = useState<boolean>(false);
 
   // Sync theme attribute to document root
   useEffect(() => {
@@ -256,41 +239,70 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
   const [activeSection, setActiveSection] = useState<ActiveNavSection>('journal');
   const [previousSection, setPreviousSection] = useState<ActiveNavSection>('journal');
-  const [activeEntryId, setActiveEntryId] = useState<string | null>('entry-2025-01-28-obhiman');
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>('2025-01-28');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(getLocalTodayDateString());
   const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
-  const [saveState, setSaveState] = useState<SaveState>('saved');
+  const [saveState, setSaveState] = useState<SaveState>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestVersionRef = useRef<Record<string, number>>({});
+  const latestWriteRef = useRef<Record<string, number>>({});
+  const serverVersionRef = useRef<Record<string, number>>({});
 
+  // The Firebase session is the only thing that grants write access. Hiding UI is not security,
+  // so there is no locally-faked admin session.
   const isFirebaseAdmin = Boolean(
     user &&
       user.email &&
       user.email.toLowerCase() === ADMIN_EMAIL &&
-      user.emailVerified !== false
+      user.emailVerified === true
   );
-  const isAdmin = isFirebaseAdmin || localAdminEmail === ADMIN_EMAIL;
+  const isAdmin = isFirebaseAdmin;
 
-  // Hydrate seed storage on client mount if first visit & test connection
+  // Hydrate the local cache on first client mount, migrating any pre-v5 archive.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    testFirestoreConnection();
+    let cancelled = false;
 
-    try {
-      const isInit = localStorage.getItem(STORAGE_KEYS.initialized);
-      if (!isInit) {
-        localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(INITIAL_ENTRIES));
-        localStorage.setItem(STORAGE_KEYS.collections, JSON.stringify(INITIAL_COLLECTIONS));
-        localStorage.setItem(STORAGE_KEYS.tags, JSON.stringify(INITIAL_TAGS));
-        localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(INITIAL_SETTINGS));
+    const hydrate = async () => {
+      try {
+        const savedEntries = localStorage.getItem(STORAGE_KEYS.entries);
+        if (savedEntries) {
+          const parsed = JSON.parse(savedEntries);
+          if (Array.isArray(parsed) && !cancelled) setEntries(parsed);
+        } else {
+          const legacy = localStorage.getItem(STORAGE_KEYS.legacyEntries);
+          if (legacy) {
+            const migrated = await migrateLegacyEntries(legacy);
+            if (!cancelled) setEntries(migrated);
+          }
+        }
+
+        const savedCols = localStorage.getItem(STORAGE_KEYS.collections);
+        if (savedCols && !cancelled) {
+          const parsed = JSON.parse(savedCols);
+          if (Array.isArray(parsed)) setCollections(parsed);
+        }
+
+        const savedTags = localStorage.getItem(STORAGE_KEYS.tags);
+        if (savedTags && !cancelled) {
+          const parsed = JSON.parse(savedTags);
+          if (Array.isArray(parsed)) setTags(parsed);
+        }
+
         localStorage.setItem(STORAGE_KEYS.initialized, 'true');
+      } catch (e) {
+        console.error('Failed to hydrate local journal cache:', e);
+      } finally {
+        if (!cancelled) setHydrated(true);
       }
-    } catch (e) {
-      console.error('Failed to write initial local journal cache:', e);
-    }
+    };
+
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Sync theme class on <html>
@@ -390,54 +402,32 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
-  // Attach Firestore listeners (Public non-trashed entries for visitors; all entries for Admin)
+  // Attach Firestore listeners. Only the verified owner ever subscribes: there is no anonymous
+  // read path in the client or in firestore.rules, so an unauthenticated visitor sees no archive.
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || !isFirebaseAdmin || !user) return;
 
-    const entriesQuery = isFirebaseAdmin && user
-      ? query(collection(db, 'entries'), where('userId', '==', user.uid))
-      : query(collection(db, 'entries'), where('isTrashed', '==', false));
+    const entriesQuery = query(collection(db, 'entries'), where('userId', '==', user.uid));
 
     const unsubEntries = onSnapshot(
       entriesQuery,
       (snap) => {
-        if (snap.empty) return;
-        const remoteEntries: JournalEntry[] = snap.docs.map((d) => {
-          const data = d.data();
-          const nowIso = new Date().toISOString();
+        const remoteEntries = snap.docs.map((d) => {
+          const entry = entryFromFirestore(d.id, d.data());
           return {
-            id: d.id,
-            userId: data.userId,
-            title: data.title ?? '',
-            subtitle: data.subtitle ?? '',
-            content: data.content ?? '',
-            type: data.type ?? 'diary',
-            status: data.status ?? 'draft',
-            entryDate: data.entryDate ?? nowIso.slice(0, 10),
-            mood: data.mood ?? '',
-            language: data.language ?? 'en',
-            isFavorite: Boolean(data.isFavorite),
-            attribution: data.attribution ?? '',
-            fontPreference: data.fontPreference ?? 'auto',
-            pageVariation: data.pageVariation ?? 'vintage-parchment',
-            wordCount: Number(data.wordCount ?? 0),
-            collectionId: data.collectionId ?? '',
-            tags: Array.isArray(data.tags) ? data.tags : [],
-            isLocked: Boolean(data.isLocked),
-            lockPassword: data.lockPassword ?? '',
-            lockHint: data.lockHint ?? '',
-            isTrashed: Boolean(data.isTrashed),
-            deletedAtIso: data.deletedAtIso ?? '',
-            createdAt: timestampToIso(data.createdAt, nowIso),
-            updatedAt: timestampToIso(data.updatedAt, nowIso),
+            ...entry,
+            createdAt: timestampToIso(d.data().createdAt, entry.createdAt),
+            updatedAt: timestampToIso(d.data().updatedAt, entry.updatedAt),
           };
         });
         setEntries((prev) => {
           const map = new Map<string, JournalEntry>();
           for (const item of prev) map.set(item.id, item);
           for (const remote of remoteEntries) {
+            serverVersionRef.current[remote.id] = remote.version;
             const local = map.get(remote.id);
-            if (!local || remote.updatedAt >= local.updatedAt) {
+            // A local draft with an unsent edit must never be replaced by the server copy.
+            if (!local || remote.version >= local.version) {
               map.set(remote.id, remote);
             }
           }
@@ -445,100 +435,127 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         });
       },
       (err) => {
-        // Only log error if authenticated as Admin; unauthenticated visitors fall back to local archive seamlessly
-        if (isFirebaseAdmin) {
-          handleFirestoreError(err, OperationType.LIST, 'entries');
-        }
+        handleFirestoreError(err, OperationType.LIST, 'entries');
       }
     );
 
-    const colsQuery = isFirebaseAdmin && user
-      ? query(collection(db, 'collections'), where('userId', '==', user.uid))
-      : query(collection(db, 'collections'), where('sortOrder', '>=', 0));
+    const colsQuery = query(collection(db, 'collections'), where('userId', '==', user.uid));
 
     const unsubCols = onSnapshot(
       colsQuery,
       (snap) => {
-        if (snap.empty) return;
-        const remoteCols: JournalCollection[] = snap.docs.map((d) => {
-          const data = d.data();
-          const nowIso = new Date().toISOString();
-          return {
-            id: d.id,
-            userId: data.userId,
-            name: data.name ?? 'Untitled',
-            description: data.description ?? '',
-            accent: data.accent ?? 'walnut',
-            sortOrder: Number(data.sortOrder ?? 0),
-            createdAt: timestampToIso(data.createdAt, nowIso),
-            updatedAt: timestampToIso(data.updatedAt, nowIso),
-          };
+        const remoteCols = snap.docs
+          .map((d) => {
+            const col = collectionFromFirestore(d.id, d.data());
+            return {
+              ...col,
+              createdAt: timestampToIso(d.data().createdAt, col.createdAt),
+              updatedAt: timestampToIso(d.data().updatedAt, col.updatedAt),
+            };
+          })
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        setCollections((prev) => {
+          for (const remote of remoteCols) serverVersionRef.current[remote.id] = remote.version;
+          const localOnly = prev.filter((c) => !remoteCols.some((r) => r.id === c.id));
+          return [...remoteCols, ...localOnly].sort((a, b) => a.sortOrder - b.sortOrder);
         });
-        setCollections(remoteCols.sort((a, b) => a.sortOrder - b.sortOrder));
       },
       (err) => {
-        if (isFirebaseAdmin) {
-          handleFirestoreError(err, OperationType.LIST, 'collections');
-        }
+        handleFirestoreError(err, OperationType.LIST, 'collections');
+      }
+    );
+
+    const tagsQuery = query(collection(db, 'tags'), where('userId', '==', user.uid));
+    const unsubTags = onSnapshot(
+      tagsQuery,
+      (snap) => {
+        const remoteTags: JournalTag[] = snap.docs.map((d) => ({
+          id: d.id,
+          userId: d.data().userId ?? user.uid,
+          name: d.data().name ?? '',
+          normalizedName: d.data().normalizedName ?? '',
+          createdAt: timestampToIso(d.data().createdAt, new Date().toISOString()),
+        }));
+        setTags(remoteTags);
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, 'tags');
       }
     );
 
     return () => {
       unsubEntries();
       unsubCols();
+      unsubTags();
     };
   }, [authReady, isFirebaseAdmin, user]);
 
-  // Persist a single entry to Firestore if authenticated as Firebase Admin
+  // Persist a single entry to Firestore. Status only becomes 'saved' after the write commits.
   const syncEntryToCloud = useCallback(
     async (entry: JournalEntry) => {
       if (!isFirebaseAdmin || !user) {
-        setSaveState('saved');
+        setSaveState('local');
         setLastSavedAt(new Date().toISOString());
         return;
       }
-      const version = (latestVersionRef.current[entry.id] || 0) + 1;
-      latestVersionRef.current[entry.id] = version;
+      const token = (latestWriteRef.current[entry.id] || 0) + 1;
+      latestWriteRef.current[entry.id] = token;
       setSaveState('saving');
 
       const sanitized = sanitizeEntryPayload(entry, user.uid);
+      const fields = entryToFirestoreFields(sanitized, user.uid);
       const docRef = doc(db, 'entries', sanitized.id);
+      const baseVersion = serverVersionRef.current[sanitized.id] ?? sanitized.version;
 
       try {
-        await setDoc(docRef, {
-          userId: user.uid,
-          title: sanitized.title,
-          subtitle: sanitized.subtitle,
-          content: sanitized.content,
-          type: sanitized.type,
-          status: sanitized.status,
-          entryDate: sanitized.entryDate,
-          mood: sanitized.mood,
-          language: sanitized.language,
-          isFavorite: sanitized.isFavorite,
-          attribution: sanitized.attribution,
-          fontPreference: sanitized.fontPreference,
-          pageVariation: sanitized.pageVariation || 'vintage-parchment',
-          wordCount: sanitized.wordCount,
-          collectionId: sanitized.collectionId,
-          tags: sanitized.tags,
-          isLocked: Boolean(sanitized.isLocked),
-          lockPassword: sanitized.lockPassword || '',
-          lockHint: sanitized.lockHint || '',
-          isTrashed: sanitized.isTrashed,
-          deletedAtIso: sanitized.deletedAtIso,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+        const writtenVersion = await runTransaction(db, async (tx) => {
+          const snap = await tx.get(docRef);
+          if (!snap.exists()) {
+            tx.set(docRef, {
+              ...fields,
+              version: 1,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+            return 1;
+          }
+          const current = snap.data() ?? {};
+          const currentVersion = Number(current.version ?? 0);
+          if (currentVersion !== baseVersion) {
+            throw { __conflict: true, serverVersion: currentVersion };
+          }
+          const nextVersion = currentVersion + 1;
+          // A full replace, not a merge: documents written before the passphrase was hashed still
+          // carry a plaintext `lockPassword`, and only a replace can drop it from the archive.
+          tx.set(docRef, {
+            ...fields,
+            version: nextVersion,
+            createdAt: current.createdAt,
+            updatedAt: serverTimestamp(),
+          });
+          return nextVersion;
         });
 
-        if (latestVersionRef.current[entry.id] === version) {
+        serverVersionRef.current[sanitized.id] = writtenVersion;
+        setEntries((prev) =>
+          prev.map((e) => (e.id === sanitized.id ? { ...e, version: writtenVersion } : e))
+        );
+        if (latestWriteRef.current[entry.id] === token) {
           setSaveState('saved');
           setLastSavedAt(new Date().toISOString());
         }
       } catch (err) {
-        console.error('Cloud autosave error (preserved locally):', err);
-        if (latestVersionRef.current[entry.id] === version) {
-          setSaveState('failed');
+        const conflict = Boolean((err as { __conflict?: boolean })?.__conflict);
+        if (latestWriteRef.current[entry.id] === token) {
+          setSaveState(conflict ? 'conflict' : 'failed');
+        }
+        if (conflict) {
+          console.error(
+            `Autosave conflict on ${sanitized.id}: archive is at v${(err as { serverVersion?: number }).serverVersion}, ` +
+              `local draft was based on v${baseVersion}. The newer local draft is preserved, not overwritten.`
+          );
+        } else {
+          console.error('Cloud autosave error (preserved locally):', err);
         }
       }
     },
@@ -557,6 +574,60 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       if (options?.date !== undefined) setSelectedCalendarDate(options.date);
     },
     [activeSection]
+  );
+
+  const syncTagToCloud = useCallback(
+    async (tag: JournalTag) => {
+      if (!isFirebaseAdmin || !user) return;
+      const docRef = doc(db, 'tags', tag.id);
+      try {
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(docRef);
+          if (!snap.exists()) {
+            tx.set(docRef, {
+              userId: user.uid,
+              name: tag.name,
+              normalizedName: tag.normalizedName,
+              createdAt: serverTimestamp(),
+            });
+          } else {
+            tx.update(docRef, { name: tag.name, normalizedName: tag.normalizedName });
+          }
+        });
+      } catch (err) {
+        console.error('Failed syncing tag to archive:', err);
+      }
+    },
+    [isFirebaseAdmin, user]
+  );
+
+  const registerTagNames = useCallback(
+    (names: string[], ownerId: string, nowIso: string) => {
+      if (!Array.isArray(names) || names.length === 0) return;
+      const existingNormalized = new Set(tags.map((t) => t.normalizedName));
+      const additions: JournalTag[] = [];
+      for (const rawTag of names) {
+        const norm = rawTag.trim().toLocaleLowerCase();
+        if (!norm || existingNormalized.has(norm)) continue;
+        existingNormalized.add(norm);
+        additions.push(
+          sanitizeTagPayload(
+            {
+              id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              userId: ownerId,
+              name: rawTag.trim(),
+              normalizedName: norm,
+              createdAt: nowIso,
+            },
+            ownerId
+          )
+        );
+      }
+      if (additions.length === 0) return;
+      setTags((prev) => [...prev, ...additions]);
+      for (const tag of additions) void syncTagToCloud(tag);
+    },
+    [syncTagToCloud, tags]
   );
 
   const createNewEntry = useCallback(
@@ -587,11 +658,14 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         wordCount: countWords(initialContent),
         collectionId: options?.collectionId ?? '',
         tags: options?.tags ?? [],
-        isLocked: Boolean(options?.isLocked),
-        lockPassword: options?.lockPassword ?? '',
+        isLocked: false,
+        lockPasswordHash: '',
+        lockSalt: '',
         lockHint: options?.lockHint ?? '',
         isTrashed: false,
         deletedAtIso: '',
+        version: 1,
+        pageTemplateId: '',
         createdAt: nowIso,
         updatedAt: nowIso,
       };
@@ -600,30 +674,10 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       setActiveEntryId(newEntry.id);
       setPreviousSection(activeSection);
       setActiveSection('editor');
-      setSaveState('saved');
-      setLastSavedAt(nowIso);
+      setSaveState(isFirebaseAdmin ? 'saving' : 'local');
 
       // Register any initial template tags
-      if (newEntry.tags.length > 0) {
-        setTags((prevTags) => {
-          const existingNormalized = new Set(prevTags.map((t) => t.normalizedName));
-          const additions: JournalTag[] = [];
-          for (const rawTag of newEntry.tags) {
-            const norm = rawTag.trim().toLocaleLowerCase();
-            if (norm && !existingNormalized.has(norm)) {
-              existingNormalized.add(norm);
-              additions.push({
-                id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                userId: ownerId,
-                name: rawTag.trim(),
-                normalizedName: norm,
-                createdAt: nowIso,
-              });
-            }
-          }
-          return additions.length > 0 ? [...prevTags, ...additions] : prevTags;
-        });
-      }
+      registerTagNames(newEntry.tags, ownerId, nowIso);
 
       if (isFirebaseAdmin && user) {
         void syncEntryToCloud(newEntry);
@@ -631,7 +685,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
       return newEntry;
     },
-    [activeSection, isFirebaseAdmin, settings.defaultEntryType, settings.defaultFont, settings.defaultMood, syncEntryToCloud, user]
+    [activeSection, isFirebaseAdmin, registerTagNames, settings.defaultEntryType, settings.defaultFont, settings.defaultMood, syncEntryToCloud, user]
   );
 
   const openEntryForEdit = useCallback(
@@ -681,47 +735,29 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
       // Register any newly added tags
       if (patch.tags && patch.tags.length > 0) {
-        setTags((prevTags) => {
-          const existingNormalized = new Set(prevTags.map((t) => t.normalizedName));
-          const additions: JournalTag[] = [];
-          for (const rawTag of patch.tags!) {
-            const norm = rawTag.trim().toLocaleLowerCase();
-            if (norm && !existingNormalized.has(norm)) {
-              existingNormalized.add(norm);
-              additions.push({
-                id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                userId: user?.uid || DEFAULT_OWNER_ID,
-                name: rawTag.trim(),
-                normalizedName: norm,
-                createdAt: nowIso,
-              });
-            }
-          }
-          return additions.length > 0 ? [...prevTags, ...additions] : prevTags;
-        });
+        registerTagNames(patch.tags, user?.uid || DEFAULT_OWNER_ID, nowIso);
       }
 
       if (!settings.autosaveEnabled && !immediateSave) {
-        setSaveState('dirty');
+        setSaveState(isFirebaseAdmin ? 'dirty' : 'local');
         return;
       }
 
-      setSaveState('saving');
+      setSaveState(isFirebaseAdmin ? 'saving' : 'local');
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
 
-      const delay = immediateSave ? 50 : 650;
+      const delay = immediateSave ? 50 : AUTOSAVE_DEBOUNCE_MS;
       saveTimerRef.current = setTimeout(() => {
         if (updatedRecord) {
           void syncEntryToCloud(updatedRecord);
         } else {
-          setSaveState('saved');
-          setLastSavedAt(new Date().toISOString());
+          setSaveState('idle');
         }
       }, delay);
     },
-    [settings.autosaveEnabled, syncEntryToCloud, user]
+    [registerTagNames, settings.autosaveEnabled, syncEntryToCloud, user, isFirebaseAdmin]
   );
 
   const retryFailedSave = useCallback(
@@ -788,23 +824,23 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     [activeEntryId, isFirebaseAdmin, user]
   );
 
+  // A locked page stays locked for everyone, including the signed-in owner. Skipping the check
+  // for admins would make the lock decorative, which is not what the brass plate promises.
   const isEntryUnlockedForViewer = useCallback(
     (entry: JournalEntry): boolean => {
       if (!entry.isLocked) return true;
-      if (isAdmin) return true;
       return unlockedEntryIds.includes(entry.id);
     },
-    [isAdmin, unlockedEntryIds]
+    [unlockedEntryIds]
   );
 
   const unlockEntryWithPassword = useCallback(
-    (entryId: string, passwordAttempt: string): boolean => {
+    async (entryId: string, passwordAttempt: string): Promise<boolean> => {
       const target = entries.find((e) => e.id === entryId);
       if (!target) return false;
       if (!target.isLocked) return true;
-      const expected = (target.lockPassword || '').trim();
-      const attempt = passwordAttempt.trim();
-      if (expected && attempt === expected) {
+      const ok = await verifyLockSecret(passwordAttempt, target);
+      if (ok) {
         setUnlockedEntryIds((prev) => {
           const next = prev.includes(entryId) ? prev : [...prev, entryId];
           if (typeof window !== 'undefined') {
@@ -812,9 +848,8 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
           }
           return next;
         });
-        return true;
       }
-      return false;
+      return ok;
     },
     [entries]
   );
@@ -830,20 +865,76 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setEntryPasswordLock = useCallback(
-    (entryId: string, isLocked: boolean, password?: string, hint?: string) => {
+    async (entryId: string, isLocked: boolean, password?: string, hint?: string): Promise<void> => {
       const cleanPass = isLocked ? (password || '').trim() : '';
       const cleanHint = isLocked ? (hint || '').trim() : '';
+      if (isLocked && cleanPass.length < 4) {
+        setAuthError('পাসওয়ার্ড লক সেট করতে অন্তত ৪ অক্ষরের পাসওয়ার্ড দরকার।');
+        return;
+      }
+      const secret = cleanPass ? await setLockSecret(cleanPass) : NO_LOCK_SECRET;
+      const nextLocked = Boolean(isLocked && secret.lockPasswordHash);
       updateEntry(
         entryId,
         {
-          isLocked: Boolean(isLocked && cleanPass.length > 0),
-          lockPassword: cleanPass,
+          isLocked: nextLocked,
+          lockPasswordHash: secret.lockPasswordHash,
+          lockSalt: secret.lockSalt,
           lockHint: cleanHint,
         },
         true
       );
+      if (!nextLocked) {
+        lockEntryAgain(entryId);
+      } else {
+        setUnlockedEntryIds((prev) => {
+          const next = prev.filter((id) => id !== entryId);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(STORAGE_KEYS.unlockedEntries, JSON.stringify(next));
+          }
+          return next;
+        });
+      }
     },
-    [updateEntry]
+    [lockEntryAgain, updateEntry]
+  );
+
+  const syncCollectionToCloud = useCallback(
+    async (col: JournalCollection) => {
+      if (!isFirebaseAdmin || !user) return;
+      const sanitized = sanitizeCollectionPayload(col, user.uid);
+      const fields = collectionToFirestoreFields(sanitized, user.uid);
+      const docRef = doc(db, 'collections', sanitized.id);
+      const baseVersion = serverVersionRef.current[sanitized.id] ?? sanitized.version;
+      try {
+        const writtenVersion = await runTransaction(db, async (tx) => {
+          const snap = await tx.get(docRef);
+          if (!snap.exists()) {
+            tx.set(docRef, {
+              ...fields,
+              version: 1,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+            return 1;
+          }
+          const currentVersion = Number(snap.data()?.version ?? 0);
+          if (currentVersion !== baseVersion) {
+            throw { __conflict: true, serverVersion: currentVersion };
+          }
+          const nextVersion = currentVersion + 1;
+          tx.update(docRef, { ...fields, version: nextVersion, updatedAt: serverTimestamp() });
+          return nextVersion;
+        });
+        serverVersionRef.current[sanitized.id] = writtenVersion;
+        setCollections((prev) =>
+          prev.map((c) => (c.id === sanitized.id ? { ...c, version: writtenVersion } : c))
+        );
+      } catch (err) {
+        console.error('Failed syncing collection to archive:', err);
+      }
+    },
+    [isFirebaseAdmin, user]
   );
 
   const createCollection = useCallback(
@@ -858,6 +949,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
           description,
           accent,
           sortOrder: collections.length + 1,
+          version: 1,
           createdAt: nowIso,
           updatedAt: nowIso,
         },
@@ -867,30 +959,28 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       setCollections((prev) => [...prev, newCol]);
 
       if (isFirebaseAdmin && user) {
-        setDoc(doc(db, 'collections', newCol.id), {
-          userId: user.uid,
-          name: newCol.name,
-          description: newCol.description,
-          accent: newCol.accent,
-          sortOrder: newCol.sortOrder,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }).catch((err) => console.error('Failed syncing collection:', err));
+        void syncCollectionToCloud(newCol);
       }
 
       return newCol;
     },
-    [collections.length, isFirebaseAdmin, user]
+    [collections.length, isFirebaseAdmin, syncCollectionToCloud, user]
   );
 
   const updateCollection = useCallback(
     (id: string, patch: Partial<JournalCollection>) => {
       const nowIso = new Date().toISOString();
-      setCollections((prev) =>
-        prev.map((col) => (col.id === id ? { ...col, ...patch, updatedAt: nowIso } : col))
-      );
+      setCollections((prev) => {
+        const updated = prev.map((col) => {
+          if (col.id !== id) return col;
+          return { ...col, ...patch, updatedAt: nowIso };
+        });
+        const changed = updated.find((col) => col.id === id);
+        if (changed) void syncCollectionToCloud(changed);
+        return updated;
+      });
     },
-    []
+    [syncCollectionToCloud]
   );
 
   const deleteCollection = useCallback(
@@ -914,98 +1004,81 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     [activeCollectionId, activeSection, isFirebaseAdmin, user]
   );
 
-  const reorderCollection = useCallback((id: string, direction: 'up' | 'down') => {
-    setCollections((prev) => {
-      const idx = prev.findIndex((c) => c.id === id);
-      if (idx === -1) return prev;
-      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
-      const copy = [...prev];
-      const [moved] = copy.splice(idx, 1);
-      copy.splice(targetIdx, 0, moved);
-      return copy.map((c, i) => ({ ...c, sortOrder: i + 1 }));
-    });
-  }, []);
+  const reorderCollection = useCallback(
+    (id: string, direction: 'up' | 'down') => {
+      setCollections((prev) => {
+        const idx = prev.findIndex((c) => c.id === id);
+        if (idx === -1) return prev;
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+        const copy = [...prev];
+        const [moved] = copy.splice(idx, 1);
+        copy.splice(targetIdx, 0, moved);
+        const nowIso = new Date().toISOString();
+        const reordered = copy.map((c, i) => ({ ...c, sortOrder: i + 1, updatedAt: nowIso }));
+        if (isFirebaseAdmin && user) {
+          for (const c of reordered) {
+            if (c.sortOrder !== prev.find((p) => p.id === c.id)?.sortOrder) {
+              void syncCollectionToCloud(c);
+            }
+          }
+        }
+        return reordered;
+      });
+    },
+    [isFirebaseAdmin, syncCollectionToCloud, user]
+  );
 
   const ensureTagExists = useCallback(
     (tagName: string) => {
-      const clean = tagName.trim();
-      if (!clean) return;
-      const norm = clean.toLocaleLowerCase();
-      setTags((prev) => {
-        if (prev.some((t) => t.normalizedName === norm)) return prev;
-        const newTag = sanitizeTagPayload(
-          {
-            id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            userId: user?.uid || DEFAULT_OWNER_ID,
-            name: clean,
-            normalizedName: norm,
-            createdAt: new Date().toISOString(),
-          },
-          user?.uid || DEFAULT_OWNER_ID
-        );
-        return [...prev, newTag];
-      });
+      registerTagNames([tagName], user?.uid || DEFAULT_OWNER_ID, new Date().toISOString());
     },
-    [user]
+    [registerTagNames, user]
   );
 
-  const deleteTag = useCallback((tagId: string) => {
-    setTags((prev) => {
-      const target = prev.find((t) => t.id === tagId);
-      if (target) {
-        setEntries((entriesPrev) =>
-          entriesPrev.map((e) => ({
-            ...e,
-            tags: e.tags.filter((t) => t.toLocaleLowerCase() !== target.normalizedName),
-          }))
+  const deleteTag = useCallback(
+    (tagId: string) => {
+      const target = tags.find((t) => t.id === tagId);
+      if (!target) return;
+      const stripTag = (e: JournalEntry) => ({
+        ...e,
+        tags: e.tags.filter((t) => t.toLocaleLowerCase() !== target.normalizedName),
+      });
+      const affected = entries.filter((e) => e.tags.some((t) => t.toLocaleLowerCase() === target.normalizedName));
+      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      setEntries((prev) => prev.map((e) => (e.tags.some((t) => t.toLocaleLowerCase() === target.normalizedName) ? stripTag(e) : e)));
+      if (isFirebaseAdmin && user) {
+        deleteDoc(doc(db, 'tags', tagId)).catch((err) =>
+          console.error('Failed deleting tag from archive:', err)
         );
+        // Each entry still carrying the tag must be rewritten, or the archive and the UI diverge.
+        for (const e of affected) void syncEntryToCloud(stripTag(e));
       }
-      return prev.filter((t) => t.id !== tagId);
-    });
-  }, []);
+    },
+    [entries, isFirebaseAdmin, syncEntryToCloud, tags, user]
+  );
 
   const updateSettings = useCallback(
     (patch: Partial<JournalSettings>) => {
       const nowIso = new Date().toISOString();
-      setSettings((prev) => {
-        const next = sanitizeSettingsPayload(
-          { ...prev, ...patch, updatedAt: nowIso },
-          user?.uid || DEFAULT_OWNER_ID
-        );
-        if (isFirebaseAdmin && user) {
-          setDoc(doc(db, 'settings', user.uid), {
-            ...next,
-            updatedAt: serverTimestamp(),
-          }).catch((err) => console.error('Failed syncing settings:', err));
-        }
-        return next;
-      });
+      const next = sanitizeSettingsPayload(
+        { ...settings, ...patch, updatedAt: nowIso },
+        user?.uid || DEFAULT_OWNER_ID
+      );
+      setSettings(next);
+      if (isFirebaseAdmin && user) {
+        setDoc(doc(db, 'settings', user.uid), {
+          ...next,
+          updatedAt: serverTimestamp(),
+        }).catch((err) => console.error('Failed syncing settings:', err));
+      }
     },
-    [isFirebaseAdmin, user]
+    [isFirebaseAdmin, settings, user]
   );
 
   const recordManualBackup = useCallback(() => {
     updateSettings({ lastBackupAt: new Date().toISOString() });
   }, [updateSettings]);
-
-  const resetToSampleArchive = useCallback(() => {
-    setEntries(INITIAL_ENTRIES);
-    setCollections(INITIAL_COLLECTIONS);
-    setTags(INITIAL_TAGS);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(INITIAL_ENTRIES));
-      localStorage.setItem(STORAGE_KEYS.collections, JSON.stringify(INITIAL_COLLECTIONS));
-      localStorage.setItem(STORAGE_KEYS.tags, JSON.stringify(INITIAL_TAGS));
-    }
-  }, []);
-
-  const clearToBlankJournal = useCallback(() => {
-    setEntries([]);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify([]));
-    }
-  }, []);
 
   const clearAuthError = useCallback(() => {
     setAuthError(null);
@@ -1039,41 +1112,8 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeSection]);
 
-  const verifyAdminWithPasskey = useCallback(
-    (email: string, passkey: string): { ok: boolean; error?: string } => {
-      setAuthError(null);
-      const normalizedEmail = email.trim().toLowerCase();
-      if (normalizedEmail !== ADMIN_EMAIL) {
-        const error = `শুধুমাত্র অ্যাডমিন ইমেইল (${ADMIN_EMAIL}) অনুমোদিত।`;
-        setAuthError(error);
-        return { ok: false, error };
-      }
-      const cleanPass = passkey.trim();
-      if (!cleanPass || cleanPass.length < 4) {
-        const error = 'সঠিক অ্যাডমিন পাসকি দিন (ন্যূনতম ৪ অক্ষর)।';
-        setAuthError(error);
-        return { ok: false, error };
-      }
-      setLocalAdminEmail(ADMIN_EMAIL);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.adminSession, ADMIN_EMAIL);
-      }
-      setVaultLocked(false);
-      setAdminLoginModalOpen(false);
-      if (activeSection === 'login') {
-        setActiveSection('journal');
-      }
-      return { ok: true };
-    },
-    [activeSection]
-  );
-
   const signOutOwner = useCallback(async () => {
     setAuthError(null);
-    setLocalAdminEmail(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEYS.adminSession);
-    }
     try {
       await signOut(auth);
     } catch (err: any) {
@@ -1104,26 +1144,33 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setCollectionAppearanceOverride = useCallback((collectionId: string, override: Partial<AppearanceConfig>) => {
-    setCollections((prev) => {
-      const updated = prev.map((c) => {
-        if (c.id === collectionId) {
-          return {
-            ...c,
-            appearanceConfig: {
-              ...(c.appearanceConfig || {}),
-              ...override,
-            },
-          };
-        }
-        return c;
+  const setCollectionAppearanceOverride = useCallback(
+    (collectionId: string, override: Partial<AppearanceConfig>) => {
+      const target = collections.find((c) => c.id === collectionId);
+      if (!target) return;
+      updateCollection(collectionId, {
+        appearanceConfig: { ...(target.appearanceConfig || {}), ...override },
       });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.collections, JSON.stringify(updated));
+    },
+    [collections, updateCollection]
+  );
+
+  const setEntryAppearance = useCallback(
+    (entryId: string, patch: { pageTemplateId?: string; appearanceOverride?: Partial<AppearanceConfig> | null }) => {
+      const target = entries.find((e) => e.id === entryId);
+      if (!target) return;
+      const next: Partial<JournalEntry> = {};
+      if (patch.pageTemplateId !== undefined) next.pageTemplateId = patch.pageTemplateId;
+      if (patch.appearanceOverride !== undefined) {
+        next.appearanceOverride =
+          patch.appearanceOverride === null
+            ? undefined
+            : { ...(target.appearanceOverride || {}), ...patch.appearanceOverride };
       }
-      return updated;
-    });
-  }, []);
+      updateEntry(entryId, next, true);
+    },
+    [entries, updateEntry]
+  );
 
   const value = useMemo<JournalContextValue>(
     () => ({
@@ -1138,7 +1185,6 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       isVaultLocked,
       setVaultLocked,
       signInOwner,
-      verifyAdminWithPasskey,
       signOutOwner,
       unlockedEntryIds,
       isEntryUnlockedForViewer,
@@ -1179,13 +1225,12 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       deleteTag,
       updateSettings,
       recordManualBackup,
-      resetToSampleArchive,
-      clearToBlankJournal,
       appearanceConfig,
       appearanceStudioOpen,
       setAppearanceStudioOpen,
       updateAppearanceConfig,
       setCollectionAppearanceOverride,
+      setEntryAppearance,
     }),
     [
       user,
@@ -1196,7 +1241,6 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       adminLoginModalOpen,
       isVaultLocked,
       signInOwner,
-      verifyAdminWithPasskey,
       signOutOwner,
       unlockedEntryIds,
       isEntryUnlockedForViewer,
@@ -1235,12 +1279,11 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       deleteTag,
       updateSettings,
       recordManualBackup,
-      resetToSampleArchive,
-      clearToBlankJournal,
       appearanceConfig,
       appearanceStudioOpen,
       updateAppearanceConfig,
       setCollectionAppearanceOverride,
+      setEntryAppearance,
     ]
   );
 

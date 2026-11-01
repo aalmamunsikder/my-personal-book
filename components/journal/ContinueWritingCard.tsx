@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Edit3, Feather } from 'lucide-react';
-import { JournalEntry } from '../../types/entry';
+import type { JournalEntry } from '../../types/entry';
 import { formatDayMonthBadge, getSingleLinePreview, toBanglaDigits } from '../../lib/entry-utils';
 import { bookSound } from '../../lib/book-sound-engine';
 

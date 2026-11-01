@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import { getFirestore } from 'firebase/firestore';
+import firebaseConfig from '../firebase-applet-config.json' with { type: 'json' };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
@@ -13,64 +13,41 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
+// A const object rather than `enum`: the type-stripping test runner cannot evaluate enums, and
+// these members are only ever used as string labels.
+export const OperationType = {
+  CREATE: 'create',
+  UPDATE: 'update',
+  DELETE: 'delete',
+  LIST: 'list',
+  GET: 'get',
+  WRITE: 'write',
+} as const;
+
+export type OperationType = (typeof OperationType)[keyof typeof OperationType];
 
 export interface FirestoreErrorInfo {
-  error: string;
   operationType: OperationType;
   path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  };
+  code: string;
+  signedIn: boolean;
 }
 
+/**
+ * Reports which operation failed and nothing more. UIDs, emails and provider data are personal
+ * information, and raw SDK messages can echo document content — neither belongs in a console that
+ * an error collector may read.
+ */
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo:
-        auth.currentUser?.providerData?.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
-    },
+  const info: FirestoreErrorInfo = {
     operationType,
     path,
+    code:
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code: unknown }).code)
+        : 'unknown',
+    signedIn: auth.currentUser !== null,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
-let connectionTested = false;
-
-export async function testFirestoreConnection(): Promise<void> {
-  if (connectionTested || typeof window === 'undefined') return;
-  connectionTested = true;
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
-    }
-  }
+  console.error('Firestore operation failed:', JSON.stringify(info));
+  throw new Error(`Firestore ${operationType} failed (${info.code}).`);
 }

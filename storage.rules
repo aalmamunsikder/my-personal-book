@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// VerseVault has no upload feature: the Themes guide says "No large image upload system is required
+// initially", and nothing in this repository calls the Storage SDK. This file exists so the bucket can
+// never sit in the console's default test mode while the app is not watching it. Everything an owner
+// might ever store lives under a path that starts with their own uid, and there is no anonymous read
+// anywhere — not `get`, not `download`, not `list`. Any object outside that shape is denied, because
+// an unmatched path has no rule and rules_version '2' denies it.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isVerifiedOwner(userId) {
+      return request.auth != null && request.auth.uid == userId &&
+        request.auth.token.email_verified == true;
+    }
+
+    function withinCeiling(maxBytes) {
+      // `request.resource` is the incoming file on create/update and null on a delete, so the ceiling
+      // belongs to the write rules only — a delete of an already-oversized object must still work.
+      return request.resource != null && request.resource.size > 0 && request.resource.size <= maxBytes;
+    }
+
+    match /{userId}/{allPaths=**} {
+      allow read: if isVerifiedOwner(userId);
+      allow create, update: if isVerifiedOwner(userId) && withinCeiling(5 * 1024 * 1024);
+      allow delete: if isVerifiedOwner(userId);
+    }
+  }
+}

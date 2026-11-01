@@ -49,15 +49,17 @@ service cloud.firestore {
           'userId', 'title', 'subtitle', 'content', 'type', 'status',
           'entryDate', 'mood', 'language', 'isFavorite', 'attribution',
           'fontPreference', 'pageVariation', 'wordCount', 'collectionId', 'tags',
-          'isLocked', 'lockPassword', 'lockHint',
-          'isTrashed', 'deletedAtIso', 'createdAt', 'updatedAt'
+          'isLocked', 'lockPasswordHash', 'lockSalt', 'lockHint',
+          'isTrashed', 'deletedAtIso', 'version', 'pageTemplateId', 'appearanceOverrideJson',
+          'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
           'userId', 'title', 'subtitle', 'content', 'type', 'status',
           'entryDate', 'mood', 'language', 'isFavorite', 'attribution',
           'fontPreference', 'pageVariation', 'wordCount', 'collectionId', 'tags',
-          'isLocked', 'lockPassword', 'lockHint',
-          'isTrashed', 'deletedAtIso', 'createdAt', 'updatedAt'
+          'isLocked', 'lockPasswordHash', 'lockSalt', 'lockHint',
+          'isTrashed', 'deletedAtIso', 'version', 'pageTemplateId', 'appearanceOverrideJson',
+          'createdAt', 'updatedAt'
         ]) &&
         data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
         data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
@@ -89,20 +91,37 @@ service cloud.firestore {
         ] &&
         data.wordCount is int && data.wordCount >= 0 && data.wordCount <= 100000 &&
         data.collectionId is string && data.collectionId.size() <= 128 &&
-        data.tags is list && data.tags.size() <= 10 &&
-        (data.tags.size() == 0 || (data.tags[0] is string && data.tags[0].size() <= 60)) &&
+        // This rules engine has no list quantifier: all(), exists(), map(), filter(), get() and
+        // contains() all fail as "Function not found", which silently denied every valid entry write
+        // until the emulator ran the file. Element-level checks are therefore expressed as bounds the
+        // engine can evaluate: a ceiling on the count (Payload #8) and on the total characters, which
+        // also caps any single tag. The 60-character-per-tag and string-type rules live in
+        // sanitizeEntryPayload(), the only writer of this field.
+        data.tags is list && data.tags.size() <= 10 && data.tags.join('').size() <= 600 &&
         data.isLocked is bool &&
-        data.lockPassword is string && data.lockPassword.size() <= 120 &&
+        // The plaintext password never leaves the device; only a salted PBKDF2 digest is stored.
+        data.lockPasswordHash is string && data.lockPasswordHash.size() <= 128 &&
+        data.lockSalt is string && data.lockSalt.size() <= 64 &&
         data.lockHint is string && data.lockHint.size() <= 160 &&
+        (data.isLocked == false || (data.lockPasswordHash.size() >= 32 && data.lockSalt.size() >= 8)) &&
         data.isTrashed is bool &&
         data.deletedAtIso is string && data.deletedAtIso.size() <= 40 &&
+        data.version is int && data.version >= 1 &&
+        data.pageTemplateId is string && data.pageTemplateId.size() <= 64 &&
+        data.appearanceOverrideJson is string && data.appearanceOverrideJson.size() <= 4000 &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
 
     function isValidCollection(data) {
-      return data.keys().hasAll(['userId', 'name', 'description', 'accent', 'sortOrder', 'createdAt', 'updatedAt']) &&
-        data.keys().hasOnly(['userId', 'name', 'description', 'accent', 'sortOrder', 'createdAt', 'updatedAt']) &&
+      return data.keys().hasAll([
+          'userId', 'name', 'description', 'accent', 'sortOrder',
+          'appearanceConfigJson', 'version', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'name', 'description', 'accent', 'sortOrder',
+          'appearanceConfigJson', 'version', 'createdAt', 'updatedAt'
+        ]) &&
         data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
         data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
         data.userId == request.auth.uid &&
@@ -110,6 +129,8 @@ service cloud.firestore {
         data.description is string && data.description.size() <= 500 &&
         data.accent is string && data.accent.size() <= 40 &&
         data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+        data.appearanceConfigJson is string && data.appearanceConfigJson.size() <= 4000 &&
+        data.version is int && data.version >= 1 &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -156,9 +177,107 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    // Server-issued AI metering. Written only by the owner's authenticated request token through
+    // /api/ai-assist; the client-side localStorage counter is never trusted as a budget.
+    function isValidAiUsage(data) {
+      return data.keys().hasAll(['userId', 'day', 'count']) &&
+        data.keys().hasOnly(['userId', 'day', 'count']) &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.day is string && data.day.size() == 10 && data.day.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        data.count is int && data.count >= 0 && data.count <= 10000;
+    }
+
+    // Metering events carry the shape of a request, never its words. The field list below is the
+    // contract: anything that could hold diary content (prompt, completion, entry body) is absent
+    // by design, and the write fails if a caller tries to smuggle one in anyway. `createdAt` is
+    // refused outright: the REST create endpoint cannot apply a SERVER_TIME transform, so a stored
+    // timestamp would be a client-supplied one. Firestore's own document createTime is server-assigned
+    // and is the time this event actually happened.
+    function isValidAiUsageEvent(data) {
+      return data.keys().hasAll([
+          'userId', 'requestId', 'task', 'provider', 'model', 'promptVersion', 'status'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'requestId', 'task', 'provider', 'model', 'promptVersion', 'status',
+          'inputTokens', 'outputTokens', 'durationMs'
+        ]) &&
+        !('createdAt' in data) &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.requestId is string && data.requestId.size() >= 1 && data.requestId.size() <= 64 &&
+        data.task in ['suggest_titles', 'proofread', 'refine', 'explain_poem', 'rhyme_helper',
+          'translate', 'summarize', 'suggest_metadata', 'writing_feedback', 'continue_thought',
+          'archive_answer', 'custom_prompt'] &&
+        data.provider is string && data.provider.size() >= 1 && data.provider.size() <= 60 &&
+        data.model is string && data.model.size() >= 1 && data.model.size() <= 80 &&
+        data.promptVersion is string && data.promptVersion.size() >= 1 && data.promptVersion.size() <= 20 &&
+        data.status in ['complete', 'error'] &&
+        (!('inputTokens' in data) || data.inputTokens == null || (data.inputTokens is int && data.inputTokens >= 0 && data.inputTokens <= 2000000)) &&
+        (!('outputTokens' in data) || data.outputTokens == null || (data.outputTokens is int && data.outputTokens >= 0 && data.outputTokens <= 2000000)) &&
+        (!('durationMs' in data) || data.durationMs == null || (data.durationMs is int && data.durationMs >= 0 && data.durationMs <= 300000));
+    }
+
+    // The AI route reads this document to decide whether a request is allowed at all, so the
+    // "enabled implies consented" invariant has to hold at write time, not just in the browser.
+    function isValidAiSettings(data) {
+      return data.keys().hasAll([
+          'userId', 'enabled', 'hasConsented', 'consentVersion', 'consentAt',
+          'defaultContextScope', 'dailyLimit', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'enabled', 'hasConsented', 'consentVersion', 'consentAt',
+          'defaultContextScope', 'dailyLimit', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == request.auth.uid &&
+        data.enabled is bool &&
+        data.hasConsented is bool &&
+        data.consentVersion is string && data.consentVersion.size() <= 40 &&
+        (data.consentAt == null || data.consentAt is timestamp) &&
+        data.defaultContextScope in ['selection', 'current_entry', 'selected_entries', 'collection', 'archive'] &&
+        data.dailyLimit is int && data.dailyLimit >= 1 && data.dailyLimit <= 100 &&
+        (data.enabled == false || (data.hasConsented == true && data.consentVersion.size() >= 1)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Documents written before the passphrase was hashed still contain a plaintext `lockPassword`.
+    // Those may be rewritten exactly once, and only if the result clears the field.
+    function isEntryUpdateDiffAllowed(incomingData, existingData) {
+      return incomingData.diff(existingData).affectedKeys().hasOnly([
+          'title', 'subtitle', 'content', 'type', 'status',
+          'entryDate', 'mood', 'language', 'isFavorite', 'attribution',
+          'fontPreference', 'pageVariation', 'wordCount', 'collectionId', 'tags',
+          'isLocked', 'lockPasswordHash', 'lockSalt', 'lockHint',
+          'isTrashed', 'deletedAtIso', 'version', 'pageTemplateId', 'appearanceOverrideJson',
+          'updatedAt'
+        ]) ||
+        (
+          'lockPassword' in existingData &&
+          !('lockPassword' in incomingData) &&
+          incomingData.diff(existingData).affectedKeys().hasOnly([
+            'title', 'subtitle', 'content', 'type', 'status',
+            'entryDate', 'mood', 'language', 'isFavorite', 'attribution',
+            'fontPreference', 'pageVariation', 'wordCount', 'collectionId', 'tags',
+            'isLocked', 'lockPasswordHash', 'lockSalt', 'lockHint', 'lockPassword',
+            'isTrashed', 'deletedAtIso', 'version', 'pageTemplateId', 'appearanceOverrideJson',
+            'updatedAt'
+          ])
+        );
+    }
+
+    function nextVersionIsValid(incomingData, existingData) {
+      return incomingData.version ==
+        (('version' in existingData ? existingData.version : 0) + 1);
+    }
+
     // 4. Collection Match Blocks
+    //
+    // SECURITY BOUNDARY: every read below requires the verified owner. There is deliberately no
+    // anonymous get/list anywhere — hiding the UI is not access control. The previous
+    // `existing().isTrashed == false`, `sortOrder >= 0` and `name.size() >= 1` read gates were
+    // tautologies that made the whole archive world-readable (and exposed each entry's userId).
     match /profiles/{userId} {
-      allow get: if isValidId(userId) && isOwner(userId) && existing().userId == request.auth.uid;
+      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow list: if isAdmin() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(userId) && isOwner(userId) && isValidProfile(incoming()) &&
         incoming().createdAt == request.time && incoming().updatedAt == request.time;
       allow update: if isValidId(userId) && isOwner(userId) && isValidProfile(incoming()) &&
@@ -171,46 +290,51 @@ service cloud.firestore {
     }
 
     match /entries/{entryId} {
-      // Public visitors can read non-trashed entries; Admin can read all entries
-      allow get: if isValidId(entryId) && (existing().isTrashed == false || isAdmin());
-      allow list: if resource.data.isTrashed == false || isAdmin();
-      // Only Admin (aalmamunsikder@gmail.com) can create, update, or delete entries
+      allow get: if isAdmin() &&
+        isValidId(entryId) &&
+        existing().userId == request.auth.uid;
+      allow list: if isAdmin() &&
+        resource.data.userId == request.auth.uid;
       allow create: if isValidId(entryId) && isAdmin() && isValidEntry(incoming()) &&
+        incoming().version == 1 &&
         incoming().createdAt == request.time && incoming().updatedAt == request.time;
       allow update: if isValidId(entryId) && isAdmin() && isValidEntry(incoming()) &&
         existing().userId == request.auth.uid &&
         incoming().userId == existing().userId &&
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
-        incoming().diff(existing()).affectedKeys().hasOnly([
-          'title', 'subtitle', 'content', 'type', 'status',
-          'entryDate', 'mood', 'language', 'isFavorite', 'attribution',
-          'fontPreference', 'pageVariation', 'wordCount', 'collectionId', 'tags',
-          'isLocked', 'lockPassword', 'lockHint',
-          'isTrashed', 'deletedAtIso', 'updatedAt'
-        ]);
+        nextVersionIsValid(incoming(), existing()) &&
+        isEntryUpdateDiffAllowed(incoming(), existing());
       allow delete: if isValidId(entryId) && isAdmin() && existing().userId == request.auth.uid;
     }
 
     match /collections/{collectionId} {
-      allow get: if isValidId(collectionId) && (existing().sortOrder >= 0 || isAdmin());
-      allow list: if resource.data.sortOrder >= 0 || isAdmin();
+      allow get: if isAdmin() &&
+        isValidId(collectionId) &&
+        existing().userId == request.auth.uid;
+      allow list: if isAdmin() &&
+        resource.data.userId == request.auth.uid;
       allow create: if isValidId(collectionId) && isAdmin() && isValidCollection(incoming()) &&
+        incoming().version == 1 &&
         incoming().createdAt == request.time && incoming().updatedAt == request.time;
       allow update: if isValidId(collectionId) && isAdmin() && isValidCollection(incoming()) &&
         existing().userId == request.auth.uid &&
         incoming().userId == existing().userId &&
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
+        nextVersionIsValid(incoming(), existing()) &&
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'name', 'description', 'accent', 'sortOrder', 'updatedAt'
+          'name', 'description', 'accent', 'sortOrder', 'appearanceConfigJson', 'version', 'updatedAt'
         ]);
       allow delete: if isValidId(collectionId) && isAdmin() && existing().userId == request.auth.uid;
     }
 
     match /tags/{tagId} {
-      allow get: if isValidId(tagId) && (existing().name.size() >= 1 || isAdmin());
-      allow list: if resource.data.name.size() >= 1 || isAdmin();
+      allow get: if isAdmin() &&
+        isValidId(tagId) &&
+        existing().userId == request.auth.uid;
+      allow list: if isAdmin() &&
+        resource.data.userId == request.auth.uid;
       allow create: if isValidId(tagId) && isAdmin() && isValidTag(incoming()) &&
         incoming().createdAt == request.time;
       allow update: if isValidId(tagId) && isAdmin() && isValidTag(incoming()) &&
@@ -222,7 +346,8 @@ service cloud.firestore {
     }
 
     match /settings/{userId} {
-      allow get: if isValidId(userId) && isOwner(userId) && existing().userId == request.auth.uid;
+      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow list: if isAdmin() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(userId) && isOwner(userId) && isValidSettings(incoming()) &&
         incoming().updatedAt == request.time;
       allow update: if isValidId(userId) && isOwner(userId) && isValidSettings(incoming()) &&
@@ -235,6 +360,38 @@ service cloud.firestore {
           'lastBackupAt', 'updatedAt'
         ]);
       allow delete: if isValidId(userId) && isOwner(userId) && existing().userId == request.auth.uid;
+    }
+
+    match /aiUsage/{userId} {
+      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow create: if isOwner(userId) && isValidAiUsage(incoming());
+      allow update: if isOwner(userId) && isValidAiUsage(incoming()) &&
+        existing().userId == request.auth.uid &&
+        incoming().userId == existing().userId &&
+        // Metering may only ever move forward within a day; a caller can never reset its own count.
+        (incoming().day != existing().day || incoming().count > existing().count);
+      allow delete: if false;
+    }
+
+    match /aiUsageEvents/{eventId} {
+      allow get: if isAdmin() && isValidId(eventId) && existing().userId == request.auth.uid;
+      allow list: if isAdmin() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin() && eventId == incoming().requestId && isValidAiUsageEvent(incoming());
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /aiSettings/{userId} {
+      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidAiSettings(incoming()) &&
+        incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isOwner(userId) && isValidAiSettings(incoming()) &&
+        existing().userId == request.auth.uid &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
     }
   }
 }

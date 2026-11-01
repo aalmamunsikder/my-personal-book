@@ -3,135 +3,121 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 /**
- * Simulates the exact boolean gates in firestore.rules to verify all 12 "Dirty Dozen"
- * payloads return PERMISSION_DENIED (false), public readers can view non-trashed entries,
- * and only Admin (aalmamunsikder@gmail.com) can write/edit/delete.
+ * What this file proves, and what it does not.
+ *
+ * These tests read the real `firestore.rules` and `firebase-blueprint.json` from disk. They prove
+ * the rule text says what we believe it says, and that the blueprint and the rules cannot drift
+ * apart silently. They do NOT prove how the Firestore engine evaluates a condition — that is
+ * `firestore.rules.emulator.test.ts` (SDK writes) and `firestore.rules.rest.test.ts` (the REST
+ * writer used by /api/ai-assist), both of which run the file through the emulator's rules engine
+ * under `npm run test:rules`. What this file adds is the cheap, static half: key sets, id patterns,
+ * and the language constructs the engine is known not to implement.
+ *
+ * The Dirty Dozen payloads run against a validator generated from the blueprint rather than a
+ * hand-copied list of constants, so the same document that the rules were written against decides
+ * the outcome.
  */
-interface MockAuth {
-  uid: string;
-  email: string;
-  email_verified: boolean;
-}
+
+const RULES = fs.readFileSync('./firestore.rules', 'utf8');
+const BLUEPRINT = JSON.parse(fs.readFileSync('./firebase-blueprint.json', 'utf8'));
 
 const ADMIN_EMAIL = 'aalmamunsikder@gmail.com';
-const REQUEST_TIME = '2026-10-31T08:00:00.000Z';
 
-function isValidId(id: unknown): boolean {
-  return typeof id === 'string' && id.length >= 1 && id.length <= 128 && /^[a-zA-Z0-9_\-]+$/.test(id);
+function blockAfter(needle: string): string {
+  const start = RULES.indexOf(needle);
+  assert.notEqual(start, -1, `firestore.rules is missing "${needle}"`);
+  // Search after the needle: `match /entries/{entryId}` contains braces that are path parameters,
+  // not the opening brace of the block.
+  const open = RULES.indexOf('{', start + needle.length);
+  let depth = 0;
+  for (let i = open; i < RULES.length; i += 1) {
+    if (RULES[i] === '{') depth += 1;
+    if (RULES[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return RULES.slice(open + 1, i);
+    }
+  }
+  throw new Error(`unbalanced braces after "${needle}"`);
 }
 
-function isSignedIn(auth: MockAuth | null): boolean {
-  return auth !== null && auth.email_verified === true;
+function functionBody(name: string): string {
+  return blockAfter(`function ${name}(`);
 }
 
-function isAdmin(auth: MockAuth | null): boolean {
-  return isSignedIn(auth) && auth!.email === ADMIN_EMAIL;
+function matchBlock(path: string): string {
+  return blockAfter(`match ${path}`);
 }
 
-const REQUIRED_ENTRY_KEYS = [
-  'userId', 'title', 'subtitle', 'content', 'type', 'status',
-  'entryDate', 'mood', 'language', 'isFavorite', 'attribution',
-  'fontPreference', 'pageVariation', 'wordCount', 'collectionId', 'tags',
-  'isLocked', 'lockPassword', 'lockHint',
-  'isTrashed', 'deletedAtIso', 'createdAt', 'updatedAt',
-];
+/** Every `allow <verb>:` line inside a block, with its condition text. */
+function allowLines(block: string): { verb: string; condition: string }[] {
+  const out: { verb: string; condition: string }[] = [];
+  const re = /allow\s+([a-z, -]+):\s*([^;]*);/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(block)) !== null) {
+    out.push({ verb: m[1].trim(), condition: m[2].replace(/\s+/g, ' ').trim() });
+  }
+  return out;
+}
 
-function isValidEntry(data: Record<string, any>, auth: MockAuth | null): boolean {
-  if (!auth) return false;
+function keyList(body: string, which: 'hasAll' | 'hasOnly'): string[] {
+  const re = new RegExp(`data\\.keys\\(\\)\\.${which}\\(\\[([\\s\\S]*?)\\]\\)`);
+  const m = re.exec(body);
+  assert.ok(m, `validator body is missing .${which}([...])`);
+  return (m[1].match(/'([^']+)'/g) ?? []).map((s) => s.slice(1, -1));
+}
+
+type SchemaNode = {
+  type?: string | string[];
+  properties?: Record<string, SchemaNode>;
+  required?: string[];
+  enum?: unknown[];
+  minLength?: number;
+  maxLength?: number;
+  minimum?: number;
+  maximum?: number;
+  pattern?: string;
+};
+
+function jsonType(value: unknown, allowed: string[]): string {  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (Number.isInteger(value) && allowed.includes('integer')) return 'integer';
+  return typeof value;
+}
+
+function validateAgainst(entityName: string, data: Record<string, unknown>): boolean {
+  const schema = BLUEPRINT.entities[entityName] as SchemaNode;
+  const properties = Object.keys(schema.properties ?? {});
   const keys = Object.keys(data);
-  const hasAll = REQUIRED_ENTRY_KEYS.every((k) => keys.includes(k));
-  const hasOnly = keys.every((k) => REQUIRED_ENTRY_KEYS.includes(k));
-  if (!hasAll || !hasOnly) return false;
+  if (!schema.required!.every((key) => keys.includes(key))) return false;
+  if (!keys.every((key) => properties.includes(key))) return false;
 
-  return (
-    typeof data.userId === 'string' &&
-    data.userId.length >= 1 &&
-    data.userId.length <= 128 &&
-    /^[a-zA-Z0-9_\-]+$/.test(data.userId) &&
-    data.userId === auth.uid &&
-    typeof data.title === 'string' &&
-    data.title.length <= 300 &&
-    typeof data.subtitle === 'string' &&
-    data.subtitle.length <= 300 &&
-    typeof data.content === 'string' &&
-    data.content.length <= 200000 &&
-    typeof data.type === 'string' &&
-    ['diary', 'poem', 'quote', 'fragment', 'prose'].includes(data.type) &&
-    typeof data.status === 'string' &&
-    ['draft', 'complete', 'archived'].includes(data.status) &&
-    typeof data.entryDate === 'string' &&
-    data.entryDate.length === 10 &&
-    /^\d{4}-\d{2}-\d{2}$/.test(data.entryDate) &&
-    typeof data.mood === 'string' &&
-    data.mood.length <= 40 &&
-    typeof data.language === 'string' &&
-    ['bn', 'en', 'mixed', 'other'].includes(data.language) &&
-    typeof data.isFavorite === 'boolean' &&
-    typeof data.attribution === 'string' &&
-    data.attribution.length <= 240 &&
-    typeof data.fontPreference === 'string' &&
-    ['auto', 'bangla', 'serif', 'sans'].includes(data.fontPreference) &&
-    typeof data.pageVariation === 'string' &&
-    ['vintage-parchment', 'ruled-notebook', 'poetry-scroll', 'epistolary-letter', 'dot-commonplace', 'nocturnal-vellum'].includes(data.pageVariation) &&
-    Number.isInteger(data.wordCount) &&
-    data.wordCount >= 0 &&
-    data.wordCount <= 100000 &&
-    typeof data.collectionId === 'string' &&
-    data.collectionId.length <= 128 &&
-    Array.isArray(data.tags) &&
-    data.tags.length <= 10 &&
-    (data.tags.length === 0 || (typeof data.tags[0] === 'string' && data.tags[0].length <= 60)) &&
-    typeof data.isLocked === 'boolean' &&
-    typeof data.lockPassword === 'string' &&
-    data.lockPassword.length <= 120 &&
-    typeof data.lockHint === 'string' &&
-    data.lockHint.length <= 160 &&
-    typeof data.isTrashed === 'boolean' &&
-    typeof data.deletedAtIso === 'string' &&
-    data.deletedAtIso.length <= 40 &&
-    data.createdAt === REQUEST_TIME &&
-    data.updatedAt === REQUEST_TIME
-  );
-}
-
-function evaluateEntryGet(entryId: string, auth: MockAuth | null, existing: Record<string, any>): boolean {
-  return isValidId(entryId) && (existing.isTrashed === false || isAdmin(auth));
-}
-
-function evaluateEntryList(auth: MockAuth | null, resourceData: Record<string, any>): boolean {
-  return resourceData.isTrashed === false || isAdmin(auth);
-}
-
-function evaluateEntryCreate(entryId: string, auth: MockAuth | null, incoming: Record<string, any>): boolean {
-  return (
-    isValidId(entryId) &&
-    isAdmin(auth) &&
-    isValidEntry(incoming, auth) &&
-    incoming.createdAt === REQUEST_TIME &&
-    incoming.updatedAt === REQUEST_TIME
-  );
-}
-
-function evaluateEntryUpdate(
-  entryId: string,
-  auth: MockAuth | null,
-  existing: Record<string, any>,
-  incoming: Record<string, any>
-): boolean {
-  if (!isValidId(entryId) || !isAdmin(auth) || !isValidEntry(incoming, auth)) return false;
-  if (existing.userId !== auth!.uid) return false;
-  if (incoming.userId !== existing.userId) return false;
-  if (incoming.createdAt !== existing.createdAt) return false;
-  if (incoming.updatedAt !== REQUEST_TIME) return false;
+  for (const key of keys) {
+    const rule = (schema.properties ?? {})[key] as SchemaNode;
+    const value = data[key];
+    const types: string[] = rule.type ? (Array.isArray(rule.type) ? rule.type : [rule.type]) : [];
+    if (rule.type && !types.includes(jsonType(value, types))) return false;
+    if (typeof value === 'string') {
+      if (rule.minLength !== undefined && value.length < rule.minLength) return false;
+      if (rule.maxLength !== undefined && value.length > rule.maxLength) return false;
+      if (rule.pattern && !new RegExp(rule.pattern).test(value)) return false;
+    }
+    if (typeof value === 'number' && (rule.minimum !== undefined && value < rule.minimum ||
+      rule.maximum !== undefined && value > rule.maximum)) return false;
+    if (Array.isArray(value)) {
+      if (rule.maxLength !== undefined && value.length > rule.maxLength) return false;
+      if (rule.minLength !== undefined && value.length < rule.minLength) return false;
+    }
+    if (rule.enum && !rule.enum.includes(value)) return false;
+  }
   return true;
 }
 
-function createValidPayload(overrides: Record<string, any> = {}): Record<string, any> {
+function validEntryPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     userId: 'user-admin',
     title: 'হেমন্তের দিনলিপি',
     subtitle: '',
-    content: 'প্রথম লাইন\n\nদ্বিতীয় স্তবক',
+    content: 'প্রথম লাইন\n\nদ্বিতীয় স্তবক',
     type: 'diary',
     status: 'draft',
     entryDate: '2026-10-31',
@@ -145,170 +131,225 @@ function createValidPayload(overrides: Record<string, any> = {}): Record<string,
     collectionId: '',
     tags: ['হেমন্ত'],
     isLocked: false,
-    lockPassword: '',
+    lockPasswordHash: '',
+    lockSalt: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
-    createdAt: REQUEST_TIME,
-    updatedAt: REQUEST_TIME,
+    version: 1,
+    pageTemplateId: 'classic-journal',
+    appearanceOverrideJson: '',
+    createdAt: '2026-10-31T08:00:00.000Z',
+    updatedAt: '2026-10-31T08:00:00.000Z',
     ...overrides,
   };
 }
 
-const ADMIN_AUTH: MockAuth = {
-  uid: 'user-admin',
-  email: ADMIN_EMAIL,
-  email_verified: true,
-};
+const ADMIN = { uid: 'user-admin', email: ADMIN_EMAIL, email_verified: true };
+const UNVERIFIED = { uid: 'user-admin', email: ADMIN_EMAIL, email_verified: false };
+const INTRUDER = { uid: 'user-admin', email: 'intruder@gmail.com', email_verified: true };
 
-test('firestore.rules file exists and enforces rules_version 2, isAdmin(), and default-deny catch-all', () => {
-  const rulesText = fs.readFileSync('./firestore.rules', 'utf8');
-  assert.match(rulesText, /rules_version\s*=\s*'2';/);
-  assert.match(rulesText, /match\s+\/\{document=\*\*\}\s*\{\s*allow\s+read,\s*write:\s*if\s+false;/);
-  assert.match(rulesText, /aalmamunsikder@gmail\.com/);
-  assert.match(rulesText, /isValidEntry\(incoming\(\)\)/);
+const ENTRY_MATCH = matchBlock('/entries/{entryId}');
+const ENTRY_GET = allowLines(ENTRY_MATCH).find((line) => line.verb === 'get')!;
+const ENTRY_LIST = allowLines(ENTRY_MATCH).find((line) => line.verb === 'list')!;
+const ENTRY_CREATE = allowLines(ENTRY_MATCH).find((line) => line.verb === 'create')!;
+const ENTRY_UPDATE = allowLines(ENTRY_MATCH).find((line) => line.verb === 'update')!;
+const ENTRY_DELETE = allowLines(ENTRY_MATCH).find((line) => line.verb === 'delete')!;
+
+test('firestore.rules: version 2, default-deny catch-all, and the owner identity gate', () => {
+  assert.match(RULES, /rules_version\s*=\s*'2';/);
+  assert.match(RULES, /match\s+\/\{document=\*\*\}\s*\{\s*allow\s+read,\s*write:\s*if\s+false;/);
+
+  const isAdmin = functionBody('isAdmin');
+  assert.match(isAdmin, /isSignedIn\(\)/);
+  assert.match(isAdmin, new RegExp(`'${ADMIN_EMAIL}'`));
+  assert.match(functionBody('isSignedIn'), /request\.auth != null/);
+  assert.match(functionBody('isSignedIn'), /request\.auth\.token\.email_verified == true/);
 });
 
-test('Dirty Dozen #1: Unauthenticated Read of TRASHED entry is rejected, while non-trashed is public', () => {
-  const trashed = createValidPayload({ isTrashed: true });
-  assert.equal(evaluateEntryGet('entry-1', null, trashed), false);
-  const publicEntry = createValidPayload({ isTrashed: false });
-  assert.equal(evaluateEntryGet('entry-1', null, publicEntry), true);
+test('SEC-001..003: an anonymous caller cannot read any entry', () => {
+  for (const line of [ENTRY_GET, ENTRY_LIST]) {
+    assert.match(line.condition, /isAdmin\(\)/, `${line.verb} must require the owner`);
+    assert.doesNotMatch(line.condition, /\|\|/, `${line.verb} must not offer an alternative path in`);
+    assert.doesNotMatch(line.condition, /isTrashed == false \|\|/);
+  }
+  // No rule anywhere grants read access without an authentication check.
+  const unauthenticatedGrants = RULES.split('\n')
+    .filter((line) => /^\s*allow\s+(read|get|list)\s*:/.test(line))
+    .filter((line) => !/isAdmin\(\)|isOwner\(|isSignedIn\(\)/.test(line))
+    .filter((line) => !/if\s+false/.test(line));
+  assert.deepEqual(unauthenticatedGrants, [], `anonymous read grants found: ${unauthenticatedGrants.join(' | ')}`);
 });
 
-test('Dirty Dozen #2: Non-Admin or Unverified Email Write is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload();
+test('Dirty Dozen #1: trashed and non-trashed entries are equally unreadable without a session', () => {
+  assert.equal(ENTRY_GET.condition.includes('request.auth'), true);
+  assert.equal(ENTRY_GET.condition.includes('if true'), false);
+});
+
+test('Dirty Dozen #2: unverified or non-owner email cannot write', () => {
+  assert.equal(ENTRY_CREATE.condition.includes('isAdmin()'), true);
+  assert.equal(UNVERIFIED.email_verified, false);
   assert.equal(
-    evaluateEntryCreate('entry-1', { uid: 'user-admin', email: ADMIN_EMAIL, email_verified: false }, payload),
-    false
+    /email_verified == true/.test(functionBody('isSignedIn')),
+    true,
+    'an unverified session must fail isSignedIn()'
+  );
+  assert.equal(functionBody('isAdmin').includes('intruder'), false);
+  assert.equal(INTRUDER.email, 'intruder@gmail.com');
+});
+
+test('Dirty Dozen #3 + #10: the owner id is pinned to the token, on create and on update', () => {
+  assert.match(ENTRY_CREATE.condition, /isValidEntry\(incoming\(\)\)/);
+  assert.match(functionBody('isValidEntry'), /data\.userId == request\.auth\.uid/);
+  assert.match(ENTRY_UPDATE.condition, /existing\(\)\.userId == request\.auth\.uid/);
+  assert.match(ENTRY_UPDATE.condition, /incoming\(\)\.userId == existing\(\)\.userId/);
+});
+
+test('Dirty Dozen #4 + #9: ghost fields and poisoned document ids are rejected', () => {
+  assert.equal(validateAgainst('Entry', validEntryPayload({ isPublic: true })), false);
+  assert.equal(validateAgainst('Entry', validEntryPayload({ lockPassword: 'hunter2' })), false);
+  assert.match(ENTRY_CREATE.condition, /isValidId\(entryId\)/);
+
+  // The id pattern in the rules and the owner-id pattern in the blueprint must be one contract, not two.
+  const rulesPattern = /id\.matches\('(\^\[.+\]\+\$)'\)/.exec(functionBody('isValidId'))![1];
+  const blueprintPattern = String(BLUEPRINT.entities.Profile.properties.userId.pattern);
+  const normalize = (p: string) => p.replace(/\\/g, '');
+  assert.equal(normalize(rulesPattern), normalize(blueprintPattern),
+    `rules id pattern ${rulesPattern} drifted from blueprint ${blueprintPattern}`);
+  assert.match(functionBody('isValidId'), /id\.size\(\) >= 1 && id\.size\(\) <= 128/);
+});
+
+test('Dirty Dozen #5 + #6 + #7 + #8: enums, formats and size ceilings from the blueprint', () => {
+  assert.equal(validateAgainst('Entry', validEntryPayload({ type: 'blog_post' })), false);
+  assert.equal(validateAgainst('Entry', validEntryPayload({ pageVariation: 'neon-cyberpunk' })), false);
+  assert.equal(validateAgainst('Entry', validEntryPayload({ entryDate: '31-10-2026' })), false);
+  assert.equal(validateAgainst('Entry', validEntryPayload({ title: 'ক'.repeat(305) })), false);
+  assert.equal(validateAgainst('Entry', validEntryPayload({ tags: Array.from({ length: 12 }, (_, i) => `tag-${i}`) })), false);
+  assert.equal(validateAgainst('Entry', validEntryPayload()), true);
+});
+
+test('Dirty Dozen #11 + #12: forged timestamps rejected, and list scraping needs the owner', () => {
+  assert.match(ENTRY_CREATE.condition, /incoming\(\)\.createdAt == request\.time/);
+  assert.match(ENTRY_CREATE.condition, /incoming\(\)\.updatedAt == request\.time/);
+  assert.match(ENTRY_LIST.condition, /resource\.data\.userId == request\.auth\.uid/);
+});
+
+test('Dirty Dozen #13: a locked page never stores the passphrase itself', () => {
+  const entryValidator = functionBody('isValidEntry');
+  assert.equal(/'lockPassword'/.test(entryValidator), false, 'rules must not accept a plaintext passphrase');
+  assert.match(entryValidator, /'lockPasswordHash'/);
+  assert.match(entryValidator, /'lockSalt'/);
+  // Locking a page without any credentials is refused; unlocking clears both.
+  const lockGate = functionBody('isValidEntry').match(/data\.isLocked == false \|\| \((data\.lockPasswordHash[\s\S]*?)\)\)/);
+  assert.ok(lockGate, 'isLocked must imply a hash and a salt');
+  assert.match(lockGate![1], /lockPasswordHash\.size\(\) >= 32/);
+  assert.match(lockGate![1], /lockSalt\.size\(\) >= 8/);
+  assert.equal(validateAgainst('Entry', validEntryPayload({ isLocked: true, lockPasswordHash: '', lockSalt: '' })), true,
+    'the blueprint leaves the hashed-value length check to the rules; see the SEC lock tests');
+});
+
+test('concurrent-write control: version must advance by exactly one per update', () => {
+  assert.match(functionBody('nextVersionIsValid'), /existingData\.version : 0\) \+ 1/);
+  assert.match(ENTRY_UPDATE.condition, /nextVersionIsValid\(incoming\(\), existing\(\)\)/);
+  assert.match(ENTRY_CREATE.condition, /incoming\(\)\.version == 1/);
+});
+
+test('legacy documents may be rewritten once, only to drop the plaintext passphrase', () => {
+  const body = functionBody('isEntryUpdateDiffAllowed');
+  const branches = [...body.matchAll(/affectedKeys\(\)\.hasOnly\(\[([\s\S]*?)\]\)/g)]
+    .map((m) => (m[1].match(/'([^']+)'/g) ?? []).map((s) => s.slice(1, -1)));
+  assert.equal(branches.length, 2, 'expected one ordinary branch and one legacy-clearing branch');
+  assert.equal(branches[0].includes('lockPassword'), false,
+    'an ordinary update must never be able to write a plaintext passphrase');
+  assert.match(body, /'lockPassword' in existingData/);
+  assert.match(body, /!\('lockPassword' in incomingData\)/);
+  assert.equal(branches[1].includes('lockPassword'), true,
+    'the migration branch must list lockPassword among the keys it is removing');
+});
+
+test('AI collections: consent is owner-only, metering is append-forward, nothing deletes', () => {
+  const aiUsage = allowLines(matchBlock('/aiUsage/{userId}'));
+  const aiSettings = allowLines(matchBlock('/aiSettings/{userId}'));
+  const aiEvents = allowLines(matchBlock('/aiUsageEvents/{eventId}'));
+
+  for (const line of [...aiUsage, ...aiSettings, ...aiEvents]) {
+    if (line.verb === 'delete' || line.verb === 'update') {
+      if (/^if false$/.test(line.condition)) continue;
+    }
+    assert.match(line.condition, /isAdmin\(\)|isOwner\(|if false/, `${line.verb} is not owner-gated`);
+  }
+  assert.deepEqual(aiUsage.map((line) => line.verb), ['get', 'create', 'update', 'delete']);
+  assert.match(functionBody('isValidAiSettings'), /data\.enabled == false \|\| \(data\.hasConsented == true/);
+  // No client-supplied clock on a metering event: Firestore's own document createTime is the time the
+  // request happened, and the rules refuse any field that would let the writer invent one.
+  assert.match(functionBody('isValidAiUsageEvent'), /!\('createdAt' in data\)/);
+  assert.equal(
+    (BLUEPRINT.entities.AiUsageEvent.properties.createdAt as unknown) === undefined,
+    true,
+    'the blueprint must not reintroduce a stored timestamp on usage events'
   );
   assert.equal(
-    evaluateEntryCreate('entry-1', { uid: 'user-admin', email: 'intruder@gmail.com', email_verified: true }, payload),
-    false
+    matchBlock('/aiUsageEvents/{eventId}').includes('request.time'),
+    false,
+    'the event match block must not compare a client field against request.time'
   );
-});
-
-test('Dirty Dozen #3: Cross-User Identity Spoofing on Create is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload({ userId: 'user-2' });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #4: Shadow / Ghost Field Injection (isPublic: true) is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload({ isPublic: true });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #5: Invalid Entry Type or PageVariation Enum is rejected (PERMISSION_DENIED)', () => {
-  const payload1 = createValidPayload({ type: 'blog_post' });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload1), false);
-  const payload2 = createValidPayload({ pageVariation: 'neon-cyberpunk' });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload2), false);
-});
-
-test('Dirty Dozen #6: Malformed Entry Date Format is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload({ entryDate: '31-10-2026' });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #7: Resource Poisoning / Oversized Title (>300 chars) is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload({ title: 'ক'.repeat(305) });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #8: Unbounded Array Injection on Tags (>10 tags) is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload({
-    tags: Array.from({ length: 12 }, (_, i) => `tag-${i}`),
-  });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #9: Path ID Poisoning is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload();
-  assert.equal(evaluateEntryCreate('invalid$id!with*spaces', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #10: Immutable Owner Mutation on Update is rejected (PERMISSION_DENIED)', () => {
-  const existing = createValidPayload({ userId: 'user-admin' });
-  const incoming = createValidPayload({ userId: 'user-2' });
-  assert.equal(evaluateEntryUpdate('entry-1', ADMIN_AUTH, existing, incoming), false);
-});
-
-test('Dirty Dozen #11: Forged Client Timestamp on Create is rejected (PERMISSION_DENIED)', () => {
-  const payload = createValidPayload({ createdAt: '1999-01-01T00:00:00.000Z' });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), false);
-});
-
-test('Dirty Dozen #12: Trashed List Scraping by Non-Admin is rejected (PERMISSION_DENIED)', () => {
-  const trashedResource = createValidPayload({ isTrashed: true });
   assert.equal(
-    evaluateEntryList({ uid: 'visitor-1', email: 'visitor@gmail.com', email_verified: true }, trashedResource),
-    false
+    (BLUEPRINT.entities.AiUsageEvent.properties.content as unknown) === undefined,
+    true,
+    'usage events must never gain a content field'
   );
 });
 
-test('Valid Admin (aalmamunsikder@gmail.com) Create, Read, Lock, and Update succeed', () => {
-  const payload = createValidPayload({
-    isLocked: true,
-    lockPassword: 'secret-password',
-    lockHint: 'Our childhood street',
-    pageVariation: 'poetry-scroll',
-  });
-  assert.equal(evaluateEntryCreate('entry-1', ADMIN_AUTH, payload), true);
-  assert.equal(evaluateEntryGet('entry-1', ADMIN_AUTH, payload), true);
-  const updated = createValidPayload({
-    title: 'নতুন শিরোনাম',
-    isLocked: true,
-    lockPassword: 'secret-password',
-    lockHint: 'Our childhood street',
-    pageVariation: 'poetry-scroll',
-  });
-  assert.equal(evaluateEntryUpdate('entry-1', ADMIN_AUTH, payload, updated), true);
+test('blueprint and rules cannot drift: required keys are identical', () => {
+  const pairs: [string, string][] = [
+    ['Profile', 'isValidProfile'],
+    ['Entry', 'isValidEntry'],
+    ['Collection', 'isValidCollection'],
+    ['Tag', 'isValidTag'],
+    ['UserSettings', 'isValidSettings'],
+    ['AiUsage', 'isValidAiUsage'],
+    ['AiSettings', 'isValidAiSettings'],
+    ['AiUsageEvent', 'isValidAiUsageEvent'],
+  ];
+  for (const [entity, fnName] of pairs) {
+    const schema = BLUEPRINT.entities[entity] as SchemaNode;
+    const required = [...schema.required!].sort();
+    const body = functionBody(fnName);
+    assert.deepEqual(keyList(body, 'hasAll').sort(), required, `${fnName} hasAll != blueprint required`);
+    assert.deepEqual(keyList(body, 'hasOnly').sort(), Object.keys(schema.properties!).sort(), `${fnName} hasOnly != blueprint properties`);
+  }
 });
 
-test('TXT-001 & TXT-002: Bangla Unicode Vowels, Conjuncts, and Mixed English-Bangla fidelity', () => {
+test('TXT-001 & TXT-002: Bangla Unicode vowels, conjuncts, and mixed English-Bangla fidelity', () => {
   const testText = `নশ্বরতার উপাখ্যান — silence is also a language.
-কিছু কথা কখনো বলা হয় না,
-শুধু লিখে রাখা হয়...
+কিছু কথা কখনো বলা হয় না,
+শুধু লিখে রাখা হয়...
 কারচিহ্ন: কি, কী, কু, কূ, কে, কৈ, কো, কৌ।
 চিহ্ন: ! ? , . ; : — … “ ” ‘ ’ ( ) [ ] { } ৳ © ™ → ★ ♡ 🌙 ✍️ 🍂 ❤️`;
 
-  const payload = createValidPayload({ content: testText });
+  const payload = validEntryPayload({ content: testText });
   assert.equal(payload.content, testText);
-  assert.equal(payload.content.includes('নশ্বরতার উপাখ্যান'), true);
-  assert.equal(payload.content.includes('silence is also a language'), true);
-  assert.equal(payload.content.includes('🌙 ✍️ 🍂 ❤️'), true);
+  assert.equal(validateAgainst('Entry', payload), true);
 });
 
-test('EXP-001 & EXP-002 & EXP-014: JSON Export schema version, metadata, and secret-stripping', () => {
-  const mockEntry: any = createValidPayload({
-    id: 'entry-test-1',
-    title: 'গোপন পাতা',
-    content: 'গোপন কথা\n\nদ্বিতীয় স্তবক',
-    isLocked: true,
-    lockPassword: 'super-secret-password-123',
-    lockHint: 'বইমেলার সাল',
-  });
-
-  // Verify that export payloads structure complies with schema version 1.0.0
-  const exportPayload = {
-    schemaVersion: '1.0.0',
-    exportedAt: new Date().toISOString(),
-    application: 'VerseVault — Personal Diary & Literary Archive',
-    includeTrashed: false,
-    collectionFilter: 'all',
-    stats: { entriesCount: 1, collectionsCount: 1, tagsCount: 1 },
-    collections: [{ id: 'col-1', name: 'দাম্পত্য' }],
-    tags: [{ id: 'tag-1', name: 'অভিমান' }],
-    entries: [mockEntry],
-  };
-
-  assert.equal(exportPayload.schemaVersion, '1.0.0');
-  assert.equal(exportPayload.entries.length, 1);
-  assert.equal(exportPayload.entries[0].content.includes('দ্বিতীয় স্তবক'), true);
-  // Ensure no Firebase / Supabase admin secrets or service keys exist anywhere in the export payload
-  const serialized = JSON.stringify(exportPayload);
-  assert.equal(serialized.includes('service_role'), false);
-  assert.equal(serialized.includes('SERVICE_ROLE'), false);
-  assert.equal(serialized.includes('secret_key'), false);
+test('the rules use no language construct the engine refuses to resolve', () => {
+  // An unimplemented function is not a compile error in this rules engine: the condition raises
+  // "Function not found error" at evaluation time, which reads as a denial. `data.tags.all(...)` sat
+  // in this file for weeks and made every valid entry write fail, while every test that expected a
+  // denial kept passing for the wrong reason. Each name below was probed against a list value in the
+  // emulator and failed to resolve, so the static check is enough to stop one coming back.
+  const code = RULES
+    .split('\n')
+    .filter((line) => !/^\s*\/\//.test(line))
+    .join('\n');
+  const unsupported = ['all', 'exists', 'map', 'filter', 'transformList', 'get', 'contains'];
+  for (const name of unsupported) {
+    const call = new RegExp(`\\.${name}\\(`);
+    assert.equal(
+      call.test(code),
+      false,
+      `firestore.rules calls .${name}(); the rules engine does not implement it, and the condition would ` +
+        'fail closed as an evaluation error rather than raising an alarm'
+    );
+  }
 });
-

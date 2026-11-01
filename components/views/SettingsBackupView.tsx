@@ -21,7 +21,7 @@ import {
   generateMarkdownZipBlob,
   triggerBlobDownload,
 } from '../../lib/export-utils';
-import { EntryMood, EntryType, FontPreference } from '../../types/entry';
+import type { EntryMood, EntryType, FontPreference } from '../../types/entry';
 import {
   ArchivalSelect,
   BrassCornerOrnament,
@@ -47,8 +47,6 @@ export function SettingsBackupView() {
     settings,
     updateSettings,
     recordManualBackup,
-    resetToSampleArchive,
-    clearToBlankJournal,
   } = useJournal();
 
   const { soundEnabled, toggleSound } = useBookSound();
@@ -386,17 +384,17 @@ export function SettingsBackupView() {
         )}
       </section>
 
-      {/* 4. Public Reader & Admin Authoring Security (aalmamunsikder@gmail.com) */}
+      {/* 4. Owner-only access: Firestore rules are the boundary, not the UI */}
       <section className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE2CC] dark:from-[#2A231C] dark:to-[#211B16] border-2 border-[#C4AC89] dark:border-[#463B30] rounded-[9px] p-6 space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_4px_14px_rgba(40,24,10,0.08)]">
         <BrassCornerOrnament position="tl" />
         <BrassCornerOrnament position="tr" />
         <div className="space-y-1">
           <h2 className="text-lg font-literary font-medium text-[var(--ink)] flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[var(--accent)]" />
-            Public Reading &amp; Admin Authoring ({adminEmail})
+            Private Archive &amp; Owner Authoring ({adminEmail})
           </h2>
           <p className="text-xs text-[var(--ink-soft)] leading-relaxed max-w-2xl font-bangla">
-            সব উন্মুক্ত পাতা ভিজিটরদের জন্য পাঠযোগ্য, তবে পাসওয়ার্ড লক করা পাতা খুলতে নির্দিষ্ট পাসওয়ার্ড প্রয়োজন। নতুন লেখা যোগ, সম্পাদনা বা মুছে ফেলার ক্ষমতা শুধুমাত্র অ্যাডমিন ({adminEmail})-এর জন্য সংরক্ষিত।
+            কোনো লেখা লগইন ছাড়া পড়া যায় না — Firestore rules অনুযায়ী সব read/write শুধুমাত্র যাচাইকৃত অ্যাডমিনের জন্য। পাসওয়ার্ড লক করা পাতা আলাদা করে খুলতে হয়।
           </p>
         </div>
 
@@ -408,7 +406,7 @@ export function SettingsBackupView() {
               </span>
             ) : (
               <span>
-                বর্তমানে <strong>পাবলিক পাঠক মোড (Public Reader Mode)</strong> সক্রিয় আছে। লেখা যোগ বা সম্পাদনা করতে অ্যাডমিন লগইন করুন।
+                বর্তমানে                <strong>লগইন করা হয়নি।</strong> লগইন ছাড়া আর্কাইভ ফাঁকা দেখাবে — প্রবেশ করতে অ্যাডমিন লগইন করুন।
               </span>
             )}
             {authError && <p className="text-xs text-[var(--danger)] mt-1">{authError}</p>}
@@ -433,30 +431,6 @@ export function SettingsBackupView() {
           </div>
         </div>
 
-        {/* Archive Maintenance Utilities (Admin Only) */}
-        {isAdmin && (
-          <div className="pt-4 border-t border-dashed border-[#CBB393] dark:border-[#3D342A] flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--ink-soft)]">
-            <span>Archive workspace state (Admin only):</span>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={resetToSampleArchive}
-                className="inline-flex items-center gap-1 hover:text-[var(--ink)] underline underline-offset-4 cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Restore literary sample pages
-              </button>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={clearToBlankJournal}
-                className="hover:text-[var(--danger)] underline underline-offset-4 cursor-pointer"
-              >
-                Start with blank journal
-              </button>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* AI Consent Modal */}

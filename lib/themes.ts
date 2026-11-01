@@ -1,4 +1,4 @@
-import {
+import type {
   AppearanceConfig,
   AppearancePreset,
   AppThemeDefinition,
@@ -683,7 +683,6 @@ export const FACTORY_PRESETS: AppearancePreset[] = [
   {
     id: 'preset-minimal-chalk',
     name: 'Minimal Chalk',
-    nameEn: 'Minimal Chalk',
     description: 'Pure white canvas, monochrome ink, and distraction-free layout for deep writing sessions.',
     config: {
       schemaVersion: 1,

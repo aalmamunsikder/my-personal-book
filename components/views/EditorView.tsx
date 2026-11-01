@@ -7,13 +7,11 @@ import {
   ArrowLeft,
   BookOpen,
   Calendar,
-  Check,
   Heart,
   Maximize2,
   Minimize2,
   Plus,
   Palette,
-  RefreshCw,
   Trash2,
   X,
   Sparkles,
@@ -28,11 +26,12 @@ import {
   formatEditorialDate,
   resolveContentFontScript,
 } from '../../lib/entry-utils';
-import { EntryMood, EntryStatus, EntryType, FontPreference, JournalEntry } from '../../types/entry';
+import type { EntryMood, EntryStatus, EntryType, FontPreference, JournalEntry } from '../../types/entry';
 import { AiConsentModal } from '../ai/AiConsentModal';
 import { AiAssistPanel } from '../ai/AiAssistPanel';
+import { SaveStateIndicator } from '../common/SaveStateIndicator';
 import { getStoredAiSettings, saveStoredAiSettings } from '../../lib/ai-client';
-import { MetadataSuggestion } from '../../types/ai';
+import type { MetadataSuggestion } from '../../types/ai';
 
 export function EditorView() {
   const {
@@ -50,7 +49,6 @@ export function EditorView() {
     moveToTrash,
     openEntryForReading,
     createNewEntry,
-    adminEmail,
     isAdmin,
     appearanceConfig,
     setAppearanceStudioOpen,
@@ -139,7 +137,7 @@ export function EditorView() {
 
   // Focus writing area when opening a fresh empty entry
   useEffect(() => {
-    if (currentEntry && !currentEntry.content && textareaRef.current) {
+    if (currentEntry?.id && !currentEntry.content && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [currentEntry?.id, currentEntry?.content]);
@@ -249,34 +247,12 @@ export function EditorView() {
 
           {/* Save Status & Page Tools */}
           <div className="flex items-center gap-3">
-            <div className="text-xs text-[var(--ink-soft)] flex items-center gap-1.5" aria-live="polite">
-              {saveState === 'saving' && <span>Saving…</span>}
-              {saveState === 'saved' && (
-                <span className="inline-flex items-center gap-1 text-[var(--olive)]">
-                  <Check className="w-3.5 h-3.5" />
-                  Saved
-                </span>
-              )}
-              {saveState === 'dirty' && (
-                <button
-                  type="button"
-                  onClick={() => updateEntry(currentEntry.id, {}, true)}
-                  className="underline text-[var(--accent)]"
-                >
-                  Save now
-                </button>
-              )}
-              {saveState === 'failed' && (
-                <button
-                  type="button"
-                  onClick={() => retryFailedSave(currentEntry.id)}
-                  className="inline-flex items-center gap-1 text-[var(--danger)] underline"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Saved locally · Retry sync
-                </button>
-              )}
-            </div>
+            <SaveStateIndicator
+              saveState={saveState}
+              className="flex items-center gap-1.5 text-[var(--ink-soft)]"
+              onSaveNow={() => updateEntry(currentEntry.id, {}, true)}
+              onRetry={() => retryFailedSave(currentEntry.id)}
+            />
 
             <button
               type="button"
@@ -666,8 +642,6 @@ export function EditorView() {
         onClose={() => setAiPanelOpen(false)}
         entry={currentEntry}
         selectedText={selectedText}
-        adminEmail={adminEmail}
-        adminPasskey="versevault"
         onApplyTitle={handleApplyTitle}
         onInsertAtCursor={handleInsertAtCursor}
         onReplaceContent={handleReplaceContent}

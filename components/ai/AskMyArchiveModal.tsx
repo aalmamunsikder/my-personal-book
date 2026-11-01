@@ -13,16 +13,14 @@ import {
   Folder,
 } from 'lucide-react';
 import { requestAiAssist } from '../../lib/ai-client';
-import { AiRequestPayload, AiResponsePayload, ArchiveMatchSource } from '../../types/ai';
-import { JournalCollection, JournalEntry } from '../../types/entry';
+import type { AiRequestPayload, AiResponsePayload, ArchiveMatchSource } from '../../types/ai';
+import type { JournalCollection, JournalEntry } from '../../types/entry';
 
 interface AskMyArchiveModalProps {
   isOpen: boolean;
   onClose: () => void;
   entries: JournalEntry[];
   collections: JournalCollection[];
-  adminEmail: string;
-  adminPasskey?: string;
   onSelectEntry: (entryId: string) => void;
 }
 
@@ -31,8 +29,6 @@ export function AskMyArchiveModal({
   onClose,
   entries,
   collections,
-  adminEmail,
-  adminPasskey,
   onSelectEntry,
 }: AskMyArchiveModalProps) {
   const [query, setQuery] = useState('');
@@ -77,8 +73,6 @@ export function AskMyArchiveModal({
       customQuery: query,
       contextScope: selectedCollectionId === 'all' ? 'archive' : 'collection',
       contextEntries: contextEntriesPayload,
-      adminEmail,
-      adminPasskey: adminPasskey || 'versevault',
     };
 
     try {

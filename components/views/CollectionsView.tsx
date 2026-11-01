@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useJournal } from '../../context/JournalContext';
 import { COLLECTION_ACCENTS } from '../../lib/entry-utils';
-import { JournalCollection } from '../../types/entry';
+import type { JournalCollection } from '../../types/entry';
 
 export function CollectionsView() {
   const {

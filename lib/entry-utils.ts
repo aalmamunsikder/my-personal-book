@@ -1,4 +1,4 @@
-import { EntryLanguage, EntryMood, EntryStatus, EntryType, FontPreference, JournalCollection, JournalEntry } from '../types/entry';
+import type { EntryLanguage, EntryMood, EntryStatus, EntryType, FontPreference, JournalCollection, JournalEntry } from '../types/entry';
 
 export const ENTRY_TYPES: { value: EntryType; label: string; banglaLabel: string; description: string }[] = [
   { value: 'diary', label: 'Diary', banglaLabel: 'দিনলিপি', description: 'Daily life, personal experiences, feelings, reflections' },

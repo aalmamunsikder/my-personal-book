@@ -1,4 +1,4 @@
-import { EntryMood, EntryType, PageVariation } from '../types/entry';
+import type { EntryMood, EntryType, PageVariation } from '../types/entry';
 
 export interface PageVariationMeta {
   id: PageVariation;

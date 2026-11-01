@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { BookOpen, RefreshCw, Sparkles } from 'lucide-react';
-import { JournalEntry } from '../../types/entry';
+import type { JournalEntry } from '../../types/entry';
 import { formatBanglaFullDate, getSingleLinePreview } from '../../lib/entry-utils';
 import { bookSound } from '../../lib/book-sound-engine';
 

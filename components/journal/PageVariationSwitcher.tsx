@@ -10,7 +10,7 @@ import {
   Moon,
   Sparkles,
 } from 'lucide-react';
-import { PageVariation } from '../../types/entry';
+import type { PageVariation } from '../../types/entry';
 import { PAGE_VARIATIONS } from '../../lib/journal-templates';
 import { bookSound } from '../../lib/book-sound-engine';
 

@@ -10,11 +10,12 @@ import {
   getSingleLinePreview,
   toBanglaDigits,
   toSafeFilenameSlug,
-} from './entry-utils';
-import { sanitizeEntryPayload } from './validations';
-import { INITIAL_COLLECTIONS, INITIAL_ENTRIES } from './seed-data';
-import { buildJsonBackup } from './export-utils';
-import { JOURNAL_TEMPLATES, PAGE_VARIATIONS, resolveEffectivePageVariation } from './journal-templates';
+} from './entry-utils.ts';
+import { sanitizeEntryPayload } from './validations.ts';
+import { SAMPLE_COLLECTIONS as INITIAL_COLLECTIONS, SAMPLE_ENTRIES as INITIAL_ENTRIES } from './seed-data.ts';
+import { buildJsonBackup } from './export-utils.ts';
+import { JOURNAL_TEMPLATES, PAGE_VARIATIONS, resolveEffectivePageVariation } from './journal-templates.ts';
+import { FACTORY_THEMES, PAGE_TEMPLATES } from './themes.ts';
 
 test('countWords accurately counts Bangla, English, and mixed text', () => {
   assert.equal(countWords(''), 0);
@@ -112,7 +113,7 @@ test('toSafeFilenameSlug keeps Bangla Unicode characters while stripping unsafe 
 
 test('JOURNAL_TEMPLATES and PAGE_VARIATIONS provide complete literary templates and page variations', () => {
   assert.equal(PAGE_VARIATIONS.length, 6);
-  assert.equal(JOURNAL_TEMPLATES.length, 7);
+  assert.equal(JOURNAL_TEMPLATES.length, 8);
 
   for (const tpl of JOURNAL_TEMPLATES) {
     assert.ok(tpl.nameBn.length > 0);
@@ -127,3 +128,71 @@ test('JOURNAL_TEMPLATES and PAGE_VARIATIONS provide complete literary templates 
 });
 
 
+
+test('Themes guide 3.1 and 5: every factory theme and layout template is registered', () => {
+  assert.deepEqual(Object.keys(FACTORY_THEMES), [
+    'heritage-parchment',
+    'botanical-journal',
+    'midnight-library',
+    'rosewood-letters',
+    'ocean-ink',
+    'old-library',
+    'minimal-chalk',
+    'desert-clay',
+    'lavender-nocturne',
+  ]);
+  // TEMPLATE-01..10 from the guide, in the order the guide lists them.
+  assert.deepEqual(Object.keys(PAGE_TEMPLATES), [
+    'classic-journal',
+    'clean-letter',
+    'poetry-manuscript',
+    'quote-folio',
+    'pocket-fragment',
+    'daily-reflection',
+    'literary-book-page',
+    'marginalia',
+    'distraction-free',
+    'vintage-journal',
+  ]);
+  for (const template of Object.values(PAGE_TEMPLATES)) {
+    assert.ok(template.name.length > 0);
+    assert.ok(template.nameBn.length > 0);
+    assert.ok(template.description.length > 0);
+  }
+});
+
+test('SEC backup: JSON export carries no passphrase material (base spec 9.2)', () => {
+  const locked = sanitizeEntryPayload(
+    {
+      ...INITIAL_ENTRIES[0],
+      isLocked: true,
+      lockPasswordHash: 'a'.repeat(64),
+      lockSalt: 's'.repeat(32),
+      lockHint: 'বইমেলার সাল',
+    },
+    INITIAL_ENTRIES[0].userId
+  );
+  const serialized = JSON.stringify(buildJsonBackup([locked], INITIAL_COLLECTIONS, []));
+  assert.equal(serialized.includes('lockPassword'), false);
+  assert.equal(serialized.includes('lockPasswordHash'), false);
+  assert.equal(serialized.includes('lockSalt'), false);
+  assert.equal(serialized.includes('a'.repeat(64)), false);
+  // The writing itself survives the sanitiser untouched.
+  assert.equal(serialized.includes(INITIAL_ENTRIES[0].content.slice(0, 12)), true);
+});
+
+test('SEC lock: hashing a passphrase never yields the passphrase, and NFKC variants verify', async () => {
+  const { NO_LOCK_SECRET, setLockSecret, verifyLockSecret } = await import('./entry-lock.ts');
+  assert.deepEqual(NO_LOCK_SECRET, { lockPasswordHash: '', lockSalt: '' });
+
+  const secret = await setLockSecret('নশ্বরতা 123');
+  assert.equal(secret.lockPasswordHash.includes('নশ্বরতা'), false);
+  assert.equal(secret.lockPasswordHash.length, 64);
+  assert.equal(secret.lockSalt.length, 32);
+
+  assert.equal(await verifyLockSecret('নশ্বরতা 123', secret), true);
+  assert.equal(await verifyLockSecret('নশ্বরতা 124', secret), false);
+  assert.equal(await verifyLockSecret('', secret), false);
+  // A locked document with no credentials can never be opened by an empty attempt.
+  assert.equal(await verifyLockSecret('', { lockPasswordHash: '', lockSalt: '' }), false);
+});

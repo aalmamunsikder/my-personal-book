@@ -1,24 +1,12 @@
-import type {NextConfig} from 'next';
+import {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: false,
   },
-  // Allow access to remote image placeholder.
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**', // This allows any path under the hostname
-      },
-    ],
-  },
+  // No remotePatterns: every illustration is served from /public, so the /_next/image proxy is not
+  // allowed to fetch an arbitrary host on the app's behalf.
   output: 'standalone',
   transpilePackages: ['motion'],
   webpack: (config, {dev}) => {

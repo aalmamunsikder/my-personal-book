@@ -1,4 +1,4 @@
-import { AiRequestPayload, AiTask } from '../types/ai';
+import type { AiRequestPayload, AiTask } from '../types/ai';
 
 export const AI_SYSTEM_INSTRUCTION = `You are the thoughtful literary companion for VerseVault, a private Bangla and English personal diary and literary archive.
 Your role is to offer possibilities, literary insights, translations, and suggestions to assist the author.

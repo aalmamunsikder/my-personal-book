@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Shield, RefreshCw, Trash2, Check, Lock, Cpu } from 'lucide-react';
-import { getStoredAiSettings, saveStoredAiSettings } from '../../lib/ai-client';
-import { AiSettings } from '../../types/ai';
+import { getStoredAiSettings, hydrateAiSettingsFromCloud, saveStoredAiSettings } from '../../lib/ai-client';
+import type { AiSettings } from '../../types/ai';
 
 interface AiSettingsSectionProps {
   onOpenConsentModal: () => void;
@@ -12,6 +12,17 @@ interface AiSettingsSectionProps {
 export function AiSettingsSection({ onOpenConsentModal }: AiSettingsSectionProps) {
   const [aiSettings, setAiSettings] = useState<AiSettings>(() => getStoredAiSettings());
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  // The server holds the consent state that actually gates a request, so show that copy, not the cache.
+  useEffect(() => {
+    let cancelled = false;
+    void hydrateAiSettingsFromCloud().then((latest) => {
+      if (!cancelled) setAiSettings(latest);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleToggleAi = () => {
     if (!aiSettings.hasConsented && !aiSettings.enabled) {

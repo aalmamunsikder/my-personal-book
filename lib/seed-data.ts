@@ -1,9 +1,11 @@
-import { JournalCollection, JournalEntry, JournalSettings, JournalTag } from '../types/entry';
+import type { JournalCollection, JournalEntry, JournalSettings, JournalTag } from '../types/entry';
 import { countWords } from './entry-utils';
 
 export const DEFAULT_OWNER_ID = 'local-owner-vault';
 
-export const INITIAL_COLLECTIONS: JournalCollection[] = [
+// Prototype fixtures. The diary ships empty (spec 4.1: mock content must be removed before
+// launch); these arrays exist for tests and are never loaded into a real archive.
+const rawSeedCollections: Omit<JournalCollection, 'version'>[] = [
   {
     id: 'col-dampotyo',
     userId: DEFAULT_OWNER_ID,
@@ -66,7 +68,7 @@ export const INITIAL_COLLECTIONS: JournalCollection[] = [
   },
 ];
 
-export const INITIAL_TAGS: JournalTag[] = [
+export const SAMPLE_TAGS: JournalTag[] = [
   { id: 'tag-dampotyo', userId: DEFAULT_OWNER_ID, name: 'দাম্পত্য', normalizedName: 'দাম্পত্য', createdAt: '2025-01-10T10:00:00.000Z' },
   { id: 'tag-obhiman', userId: DEFAULT_OWNER_ID, name: 'অভিমান', normalizedName: 'অভিমান', createdAt: '2025-01-10T10:00:00.000Z' },
   { id: 'tag-bhalobasha', userId: DEFAULT_OWNER_ID, name: 'ভালোবাসা', normalizedName: 'ভালোবাসা', createdAt: '2025-01-10T10:00:00.000Z' },
@@ -76,7 +78,7 @@ export const INITIAL_TAGS: JournalTag[] = [
   { id: 'tag-solitude', userId: DEFAULT_OWNER_ID, name: 'solitude', normalizedName: 'solitude', createdAt: '2025-01-18T10:00:00.000Z' },
 ];
 
-const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
+const rawSeedEntries: Omit<JournalEntry, 'wordCount' | 'lockPasswordHash' | 'lockSalt' | 'version'>[] = [
   {
     id: 'entry-2025-01-28-obhiman',
     userId: DEFAULT_OWNER_ID,
@@ -105,7 +107,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-dampotyo',
     tags: ['দাম্পত্য', 'অভিমান', 'ভালোবাসা'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -137,7 +138,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-jibondorshon',
     tags: ['জীবনদর্শন', 'পরিবার'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -168,7 +168,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-jibondorshon',
     tags: ['জীবনদর্শন', 'স্মৃতি'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -197,7 +196,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-dampotyo',
     tags: ['দাম্পত্য', 'অভিমান'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -226,7 +224,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-poribar',
     tags: ['পরিবার', 'ভালোবাসা'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -253,8 +250,7 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     pageVariation: 'epistolary-letter',
     collectionId: 'col-nirobota',
     tags: ['নৈঃশব্দ্য', 'অভিমান'],
-    isLocked: true,
-    lockPassword: '1234',
+    isLocked: false,
     lockHint: 'ডেমো পাসওয়ার্ড: 1234',
     isTrashed: false,
     deletedAtIso: '',
@@ -283,7 +279,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-nirobota',
     tags: ['নৈঃশব্দ্য', 'হেমন্ত'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -309,7 +304,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-obhiman',
     tags: ['অভিমান', 'নৈঃশব্দ্য'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -337,7 +331,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-poribar',
     tags: ['পরিবার', 'স্মৃতি'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -362,7 +355,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-nirobota',
     tags: ['solitude'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -388,7 +380,6 @@ const rawSeedEntries: Omit<JournalEntry, 'wordCount'>[] = [
     collectionId: 'col-kherokhata',
     tags: ['নৈঃশব্দ্য'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -415,7 +406,6 @@ What we actually need is a quiet room—a page that respects silence, keeps stan
     collectionId: 'col-kherokhata',
     tags: ['solitude'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -444,7 +434,6 @@ What we actually need is a quiet room—a page that respects silence, keeps stan
     collectionId: 'col-obhiman',
     tags: ['জীবনদর্শন', 'নৈঃশব্দ্য'],
     isLocked: false,
-    lockPassword: '',
     lockHint: '',
     isTrashed: false,
     deletedAtIso: '',
@@ -453,9 +442,17 @@ What we actually need is a quiet room—a page that respects silence, keeps stan
   },
 ];
 
-export const INITIAL_ENTRIES: JournalEntry[] = rawSeedEntries.map((entry) => ({
+export const SAMPLE_ENTRIES: JournalEntry[] = rawSeedEntries.map((entry) => ({
   ...entry,
   wordCount: countWords(entry.content),
+  version: 1,
+  lockPasswordHash: '',
+  lockSalt: '',
+}));
+
+export const SAMPLE_COLLECTIONS: JournalCollection[] = rawSeedCollections.map((col) => ({
+  ...col,
+  version: 1,
 }));
 
 export const INITIAL_SETTINGS: JournalSettings = {
