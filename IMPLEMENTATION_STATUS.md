@@ -290,6 +290,20 @@ Three defects surfaced only because the deployed artifact was read instead of th
 3. **Set the server environment**: `GEMINI_API_KEY` (secret), `GEMINI_MODEL` to a model id confirmed
    against the provider's catalogue, `VERSEVAULT_OWNER_EMAIL`.
 4. **Register the authorized origins** in Firebase Auth for the domain the app is actually served from.
+   **This is now a live blocker, observed, not predicted.** On 2026-11-01 signing in from
+   `https://aal-dairy.vercel.app/` returns `Firebase: Error (auth/unauthorized-domain)`. The cause is
+   measured in the deployed artifact: the chunks served by Vercel initialise Auth with
+   `projectId`/`authDomain` = `gen-lang-client-0869508722` / `gen-lang-client-0869508722.firebaseapp.com`,
+   and an AI-Studio-created project authorises only `localhost` plus that project's own
+   `*.firebaseapp.com` / `*.web.app` hosts. `aal-dairy.vercel.app` is not on the list, so the Google OAuth
+   client refuses the popup's calling origin. The fix is a Console action — **Authentication → Settings →
+   Authorized domains → add `aal-dairy.vercel.app`** — and there is no CLI or `firebase.json` path for it
+   (checked: `firebase login:list` reports no authorized account, and `gcloud` is not installed here, but
+   neither would manage this resource anyway). Do **not** add `vercel.app` or a bare wildcard to cover
+   preview deploys: that authorises every Vercel-hosted site to complete sign-in against this Auth
+   project. Preview URLs are random `*-<hash>.vercel.app` hosts, so either add each one that needs auth
+   testing or test sign-in on the production alias only. Nothing in this repository can be changed to work
+   around it — the check is on the provider side.
 5. **Put `npm run test:rules` in CI** on an image with Java 21+ (Temurin 21 works; 17 is refused by
    firebase-tools 15). Locally it needs the same JDK on `PATH` plus `node_modules/.bin/firebase`.
 6. **Decide CSP enforcement with the measured number, not a guess.** Production has now been checked:
