@@ -1,0 +1,6 @@
+{
+  "name": "VerseVault — Personal Diary & Literary Archive",
+  "description": "A private, single-owner digital diary and literary archive for daily entries, poems, quotes, fragments, and prose in Bangla and English.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

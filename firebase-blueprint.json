@@ -1,0 +1,366 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Single owner profile record for the private diary.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Owner display name",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp"
+        }
+      },
+      "required": ["userId", "displayName", "createdAt", "updatedAt"]
+    },
+    "Entry": {
+      "title": "Entry",
+      "description": "A private diary entry, poem, quote, fragment, or prose piece.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Optional entry title (empty string if untitled)",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Optional poem or prose subtitle",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "content": {
+          "type": "string",
+          "description": "Original UTF-8 writing preserving all line breaks and stanzas",
+          "minLength": 0,
+          "maxLength": 200000
+        },
+        "type": {
+          "type": "string",
+          "description": "Category of writing",
+          "enum": ["diary", "poem", "quote", "fragment", "prose"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Entry lifecycle status",
+          "enum": ["draft", "complete", "archived"]
+        },
+        "entryDate": {
+          "type": "string",
+          "description": "Diary date in YYYY-MM-DD format supporting backdating",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "mood": {
+          "type": "string",
+          "description": "Optional mood annotation",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "language": {
+          "type": "string",
+          "description": "Detected or chosen language script",
+          "enum": ["bn", "en", "mixed", "other"]
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Whether the entry is marked as favorite"
+        },
+        "attribution": {
+          "type": "string",
+          "description": "Optional quote source or author attribution",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "fontPreference": {
+          "type": "string",
+          "description": "Preferred reading/writing typography",
+          "enum": ["auto", "bangla", "serif", "sans"]
+        },
+        "pageVariation": {
+          "type": "string",
+          "description": "Selected manuscript paper style variation",
+          "enum": [
+            "vintage-parchment",
+            "ruled-notebook",
+            "poetry-scroll",
+            "epistolary-letter",
+            "dot-commonplace",
+            "nocturnal-vellum"
+          ]
+        },
+        "wordCount": {
+          "type": "number",
+          "description": "Cached word count"
+        },
+        "collectionId": {
+          "type": "string",
+          "description": "Optional collection ID (empty string if none)",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "tags": {
+          "type": "array",
+          "description": "Bounded list of up to 10 normalized tag names",
+          "maxLength": 10
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Whether this entry is locked with a password for public visitors"
+        },
+        "lockPassword": {
+          "type": "string",
+          "description": "Optional entry password (empty string when unlocked)",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "lockHint": {
+          "type": "string",
+          "description": "Optional password hint shown on the locked page plate",
+          "minLength": 0,
+          "maxLength": 160
+        },
+        "isTrashed": {
+          "type": "boolean",
+          "description": "Soft-deletion flag for Trash"
+        },
+        "deletedAtIso": {
+          "type": "string",
+          "description": "ISO timestamp when moved to trash, or empty string",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "subtitle",
+        "content",
+        "type",
+        "status",
+        "entryDate",
+        "mood",
+        "language",
+        "isFavorite",
+        "attribution",
+        "fontPreference",
+        "pageVariation",
+        "wordCount",
+        "collectionId",
+        "tags",
+        "isLocked",
+        "lockPassword",
+        "lockHint",
+        "isTrashed",
+        "deletedAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Collection": {
+      "title": "Collection",
+      "description": "Thematic notebook grouping diary entries, poems, quotes, or fragments.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Collection title in Bangla or English",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional notebook description",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "accent": {
+          "type": "string",
+          "description": "Muted accent token",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "sortOrder": {
+          "type": "number",
+          "description": "Display sort order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["userId", "name", "description", "accent", "sortOrder", "createdAt", "updatedAt"]
+    },
+    "Tag": {
+      "title": "Tag",
+      "description": "Owner tag record.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display tag name",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "normalizedName": {
+          "type": "string",
+          "description": "Lowercase normalized tag name",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        }
+      },
+      "required": ["userId", "name", "normalizedName", "createdAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Owner appearance, writing, and backup preferences.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark", "system"]
+        },
+        "readingWidth": {
+          "type": "string",
+          "enum": ["standard", "wide"]
+        },
+        "density": {
+          "type": "string",
+          "enum": ["comfortable", "compact"]
+        },
+        "defaultEntryType": {
+          "type": "string",
+          "enum": ["diary", "poem", "quote", "fragment", "prose"]
+        },
+        "defaultFont": {
+          "type": "string",
+          "enum": ["auto", "bangla", "serif", "sans"]
+        },
+        "showWordCount": {
+          "type": "boolean"
+        },
+        "defaultMood": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "autosaveEnabled": {
+          "type": "boolean"
+        },
+        "lastBackupAt": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "theme",
+        "readingWidth",
+        "density",
+        "defaultEntryType",
+        "defaultFont",
+        "showWordCount",
+        "defaultMood",
+        "autosaveEnabled",
+        "lastBackupAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "Owner profile keyed by Firebase Auth UID."
+    },
+    "/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/Entry" },
+      "description": "Private owner diary entries, poems, quotes, fragments, and prose."
+    },
+    "/collections/{collectionId}": {
+      "schema": { "$ref": "#/entities/Collection" },
+      "description": "Thematic collections owned by the user."
+    },
+    "/tags/{tagId}": {
+      "schema": { "$ref": "#/entities/Tag" },
+      "description": "Tags owned by the user."
+    },
+    "/settings/{userId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Owner settings keyed by Firebase Auth UID."
+    }
+  }
+}

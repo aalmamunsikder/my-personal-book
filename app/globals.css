@@ -1,0 +1,412 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =========================================================================
+   VERSEVAULT THEMES SYSTEM - 8 Factory Themes + Customization Tokens
+   ========================================================================= */
+
+:root {
+  /* Default: Theme 01 - Heritage Parchment */
+  --app-bg: #EDE4D6;
+  --surface: #FFF9EF;
+  --surface-secondary: #F4EBDD;
+  --ink: #30261F;
+  --ink-secondary: #66584C;
+  --ink-muted: #817366;
+  --accent: #754832;
+  --accent-soft: #E8D5C3;
+  --border: #DCCDBB;
+  --page-rule: rgba(117, 72, 50, 0.14);
+  --ui-dark-surface: #38271F;
+  --ui-dark-text: #F8EEDC;
+
+  /* Backwards compatibility aliases */
+  --paper: var(--app-bg);
+  --page: var(--surface);
+  --page-muted: var(--surface-secondary);
+  --ink-soft: var(--ink-secondary);
+  --line: var(--border);
+  --olive: #74785A;
+  --danger: #A64E45;
+
+  /* Layout and Reading Dimensions */
+  --reading-width: 720px;
+  --reading-line-height: 1.85;
+  --rule-gap: 2.25rem;
+}
+
+/* Theme 01 — Heritage Parchment (Default) */
+[data-theme="heritage-parchment"] {
+  --app-bg: #EDE4D6;
+  --surface: #FFF9EF;
+  --surface-secondary: #F4EBDD;
+  --ink: #30261F;
+  --ink-secondary: #66584C;
+  --ink-muted: #817366;
+  --accent: #754832;
+  --accent-soft: #E8D5C3;
+  --border: #DCCDBB;
+  --page-rule: rgba(117, 72, 50, 0.14);
+  --paper: #EDE4D6;
+  --page: #FFF9EF;
+  --page-muted: #F4EBDD;
+  --line: #DCCDBB;
+}
+
+/* Theme 02 — Botanical Journal */
+[data-theme="botanical-journal"] {
+  --app-bg: #E9EDE3;
+  --surface: #FAFCF5;
+  --surface-secondary: #F0F3E9;
+  --ink: #263329;
+  --ink-secondary: #52604F;
+  --ink-muted: #6E7A68;
+  --accent: #526B4D;
+  --accent-soft: #DCE6D5;
+  --border: #D2DCCB;
+  --page-rule: rgba(82, 107, 77, 0.14);
+  --paper: #E9EDE3;
+  --page: #FAFCF5;
+  --page-muted: #F0F3E9;
+  --line: #D2DCCB;
+}
+
+/* Theme 03 — Midnight Library */
+[data-theme="midnight-library"] {
+  --app-bg: #1C201F;
+  --surface: #292E2B;
+  --surface-secondary: #323834;
+  --ink: #F3EBDD;
+  --ink-secondary: #D0C5B4;
+  --ink-muted: #B4A995;
+  --accent: #C29368;
+  --accent-soft: #4B3B2D;
+  --border: #4C514A;
+  --page-rule: rgba(194, 147, 104, 0.18);
+  --paper: #1C201F;
+  --page: #292E2B;
+  --page-muted: #323834;
+  --line: #4C514A;
+}
+
+/* Theme 04 — Rosewood Letters */
+[data-theme="rosewood-letters"] {
+  --app-bg: #F1E5E1;
+  --surface: #FFF8F5;
+  --surface-secondary: #F7ECE8;
+  --ink: #382724;
+  --ink-secondary: #705650;
+  --ink-muted: #856D66;
+  --accent: #8B5149;
+  --accent-soft: #F0DAD4;
+  --border: #E4CFC8;
+  --page-rule: rgba(139, 81, 73, 0.14);
+  --paper: #F1E5E1;
+  --page: #FFF8F5;
+  --page-muted: #F7ECE8;
+  --line: #E4CFC8;
+}
+
+/* Theme 05 — Ocean & Ink */
+[data-theme="ocean-ink"] {
+  --app-bg: #E6EDF0;
+  --surface: #F8FCFD;
+  --surface-secondary: #EDF3F5;
+  --ink: #202F39;
+  --ink-secondary: #4D606A;
+  --ink-muted: #697B84;
+  --accent: #355F73;
+  --accent-soft: #D7E6EC;
+  --border: #CCDCE3;
+  --page-rule: rgba(53, 95, 115, 0.14);
+  --paper: #E6EDF0;
+  --page: #F8FCFD;
+  --page-muted: #EDF3F5;
+  --line: #CCDCE3;
+}
+
+/* Theme 06 — Old Library */
+[data-theme="old-library"] {
+  --app-bg: #E9DFD1;
+  --surface: #FFF9ED;
+  --surface-secondary: #F1E7D8;
+  --ink: #33221F;
+  --ink-secondary: #66504A;
+  --ink-muted: #806A62;
+  --accent: #6F2F35;
+  --accent-soft: #EAD7D5;
+  --border: #D9C7B6;
+  --page-rule: rgba(111, 47, 53, 0.14);
+  --paper: #E9DFD1;
+  --page: #FFF9ED;
+  --page-muted: #F1E7D8;
+  --line: #D9C7B6;
+}
+
+/* Theme 07 — Minimal Chalk */
+[data-theme="minimal-chalk"] {
+  --app-bg: #ECEBE7;
+  --surface: #FFFFFF;
+  --surface-secondary: #F5F4F1;
+  --ink: #242424;
+  --ink-secondary: #555555;
+  --ink-muted: #707070;
+  --accent: #55514B;
+  --accent-soft: #E8E6E1;
+  --border: #DDDBD5;
+  --page-rule: rgba(85, 81, 75, 0.12);
+  --paper: #ECEBE7;
+  --page: #FFFFFF;
+  --page-muted: #F5F4F1;
+  --line: #DDDBD5;
+}
+
+/* Theme 08 — Desert Clay */
+[data-theme="desert-clay"] {
+  --app-bg: #EFE3D6;
+  --surface: #FFF9F1;
+  --surface-secondary: #F4E9DE;
+  --ink: #342821;
+  --ink-secondary: #6B5547;
+  --ink-muted: #826B5C;
+  --accent: #A3543B;
+  --accent-soft: #F1DCCF;
+  --border: #E0CABB;
+  --page-rule: rgba(163, 84, 59, 0.14);
+  --paper: #EFE3D6;
+  --page: #FFF9F1;
+  --page-muted: #F4E9DE;
+  --line: #E0CABB;
+}
+
+/* Theme 09 — Lavender Nocturne */
+[data-theme="lavender-nocturne"] {
+  --app-bg: #ECE8F1;
+  --surface: #FBF9FE;
+  --surface-secondary: #F2EEF7;
+  --ink: #30283B;
+  --ink-secondary: #625672;
+  --ink-muted: #786C86;
+  --accent: #68517F;
+  --accent-soft: #E6DDEE;
+  --border: #D9D0E3;
+  --page-rule: rgba(104, 81, 127, 0.14);
+  --paper: #ECE8F1;
+  --page: #FBF9FE;
+  --page-muted: #F2EEF7;
+  --line: #D9D0E3;
+}
+
+/* Dark mode fallback override if user chooses OS dark */
+.dark:not([data-theme]) {
+  --paper: #171613;
+  --page: #201E1A;
+  --page-muted: #282520;
+  --ink: #EAE4D7;
+  --ink-soft: #A39B8B;
+  --line: #332F28;
+  --accent: #B88B73;
+  --accent-soft: #362C25;
+  --olive: #9CA17E;
+  --danger: #D46F65;
+}
+
+/* =========================================================================
+   BASE BODY AND TYPOGRAPHY
+   ========================================================================= */
+
+body {
+  font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--app-bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+[lang="bn"],
+.font-bangla {
+  font-family: var(--font-bangla), sans-serif;
+}
+
+.font-literary {
+  font-family: var(--font-literary), Georgia, serif;
+}
+
+.font-ui {
+  font-family: var(--font-ui), sans-serif;
+}
+
+.journal-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: var(--reading-line-height, 1.95);
+}
+
+.journal-content[data-script="serif"] {
+  font-family: var(--font-literary), Georgia, serif;
+}
+
+.journal-content[data-script="bn"] {
+  font-family: var(--font-bangla), var(--font-literary), sans-serif;
+  line-height: 2.05;
+}
+
+.journal-content[data-script="sans"] {
+  font-family: var(--font-ui), var(--font-bangla), sans-serif;
+}
+
+/* =========================================================================
+   PAPER SURFACES (10 Surfaces from Section 4)
+   ========================================================================= */
+
+/* PAPER-01: Clean Cotton */
+.paper-clean-cotton {
+  background-color: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* PAPER-02: Cream Stationery */
+.paper-cream-stationery {
+  background-color: var(--surface);
+  box-shadow: 0 1px 4px rgba(45, 30, 15, 0.05);
+}
+
+/* PAPER-03: Ruled Journal */
+.paper-ruled-journal,
+.ruled-paper {
+  background-color: var(--surface);
+  background-image: linear-gradient(to bottom, transparent calc(var(--rule-gap, 2.25rem) - 1px), var(--page-rule, var(--line)) calc(var(--rule-gap, 2.25rem) - 1px));
+  background-size: 100% var(--rule-gap, 2.25rem);
+  line-height: var(--rule-gap, 2.25rem);
+}
+
+/* PAPER-04: Dot Grid */
+.paper-dot-grid {
+  background-color: var(--surface);
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* PAPER-05: Fine Parchment */
+.paper-fine-parchment {
+  background-color: var(--surface);
+  background-image:
+    radial-gradient(ellipse at top left, rgba(255, 255, 255, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse at bottom right, rgba(0, 0, 0, 0.02) 0%, transparent 70%);
+}
+
+/* PAPER-06: Manuscript */
+.paper-manuscript {
+  background-color: var(--surface);
+  background-image: linear-gradient(90deg, transparent 40px, var(--border) 40px, var(--border) 41px, transparent 41px);
+}
+
+/* PAPER-07: Recycled Paper */
+.paper-recycled-paper {
+  background-color: var(--surface);
+  background-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.015) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+/* PAPER-08: Night Paper */
+.paper-night-paper {
+  background-color: var(--surface);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* PAPER-09: Pure White */
+.paper-pure-white {
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* PAPER-10: Linen */
+.paper-linen {
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.012) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0, 0, 0, 0.012) 25%, transparent 25%);
+  background-size: 6px 6px;
+}
+
+/* =========================================================================
+   ACCESSIBILITY: REDUCED MOTION
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================================================================
+   PRINT STYLESHEET (Section 12.2)
+   ========================================================================= */
+
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #111111 !important;
+  }
+
+  .app-shell-sidebar,
+  .no-print,
+  nav,
+  header,
+  footer.app-footer,
+  button,
+  .action-bar {
+    display: none !important;
+  }
+
+  .journal-content {
+    color: #1A1A1A !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-size: 12pt !important;
+    line-height: 1.6 !important;
+  }
+
+  article {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .poem-stanza {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .quote-attribution {
+    break-before: avoid;
+    page-break-before: avoid;
+  }
+}
+
+/* Subtle Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-soft);
+}
