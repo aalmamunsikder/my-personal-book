@@ -79,6 +79,7 @@ async function verifyOwnerSession(req: NextRequest): Promise<{ uid: string; idTo
   try {
     ({ payload: claims } = await jwtVerify(idToken, firebaseJwks, {
       issuer: [
+        `https://securetoken.google.com/${PROJECT_ID}`,
         `https://securetoken.googleapis.com/v1/token/projects/${PROJECT_ID}`,
         `https://securetoken.googleapis.com/v1/token/${PROJECT_ID}`,
       ],

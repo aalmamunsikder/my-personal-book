@@ -97,7 +97,7 @@ service cloud.firestore {
         // engine can evaluate: a ceiling on the count (Payload #8) and on the total characters, which
         // also caps any single tag. The 60-character-per-tag and string-type rules live in
         // sanitizeEntryPayload(), the only writer of this field.
-        data.tags is list && data.tags.size() <= 10 && data.tags.join('').size() <= 600 &&
+        data.tags is list && data.tags.size() <= 10 && (data.tags.size() == 0 || data.tags.join('').size() <= 600) &&
         data.isLocked is bool &&
         // The plaintext password never leaves the device; only a salted PBKDF2 digest is stored.
         data.lockPasswordHash is string && data.lockPasswordHash.size() <= 128 &&
@@ -269,6 +269,12 @@ service cloud.firestore {
         (('version' in existingData ? existingData.version : 0) + 1);
     }
 
+    // Allows the verified owner to read a document that already belongs to them OR check existence
+    // (resource == null) inside a transaction before creating a new document.
+    function isOwnerOrUncreated(uid) {
+      return resource == null || existing().userId == uid;
+    }
+
     // 4. Collection Match Blocks
     //
     // SECURITY BOUNDARY: every read below requires the verified owner. There is deliberately no
@@ -276,7 +282,7 @@ service cloud.firestore {
     // `existing().isTrashed == false`, `sortOrder >= 0` and `name.size() >= 1` read gates were
     // tautologies that made the whole archive world-readable (and exposed each entry's userId).
     match /profiles/{userId} {
-      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow get: if isOwner(userId) && isOwnerOrUncreated(request.auth.uid);
       allow list: if isAdmin() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(userId) && isOwner(userId) && isValidProfile(incoming()) &&
         incoming().createdAt == request.time && incoming().updatedAt == request.time;
@@ -292,7 +298,7 @@ service cloud.firestore {
     match /entries/{entryId} {
       allow get: if isAdmin() &&
         isValidId(entryId) &&
-        existing().userId == request.auth.uid;
+        isOwnerOrUncreated(request.auth.uid);
       allow list: if isAdmin() &&
         resource.data.userId == request.auth.uid;
       allow create: if isValidId(entryId) && isAdmin() && isValidEntry(incoming()) &&
@@ -311,7 +317,7 @@ service cloud.firestore {
     match /collections/{collectionId} {
       allow get: if isAdmin() &&
         isValidId(collectionId) &&
-        existing().userId == request.auth.uid;
+        isOwnerOrUncreated(request.auth.uid);
       allow list: if isAdmin() &&
         resource.data.userId == request.auth.uid;
       allow create: if isValidId(collectionId) && isAdmin() && isValidCollection(incoming()) &&
@@ -332,7 +338,7 @@ service cloud.firestore {
     match /tags/{tagId} {
       allow get: if isAdmin() &&
         isValidId(tagId) &&
-        existing().userId == request.auth.uid;
+        isOwnerOrUncreated(request.auth.uid);
       allow list: if isAdmin() &&
         resource.data.userId == request.auth.uid;
       allow create: if isValidId(tagId) && isAdmin() && isValidTag(incoming()) &&
@@ -346,7 +352,7 @@ service cloud.firestore {
     }
 
     match /settings/{userId} {
-      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow get: if isOwner(userId) && isOwnerOrUncreated(request.auth.uid);
       allow list: if isAdmin() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(userId) && isOwner(userId) && isValidSettings(incoming()) &&
         incoming().updatedAt == request.time;
@@ -363,7 +369,7 @@ service cloud.firestore {
     }
 
     match /aiUsage/{userId} {
-      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow get: if isOwner(userId) && isOwnerOrUncreated(request.auth.uid);
       allow create: if isOwner(userId) && isValidAiUsage(incoming());
       allow update: if isOwner(userId) && isValidAiUsage(incoming()) &&
         existing().userId == request.auth.uid &&
@@ -374,7 +380,7 @@ service cloud.firestore {
     }
 
     match /aiUsageEvents/{eventId} {
-      allow get: if isAdmin() && isValidId(eventId) && existing().userId == request.auth.uid;
+      allow get: if isAdmin() && isValidId(eventId) && isOwnerOrUncreated(request.auth.uid);
       allow list: if isAdmin() && resource.data.userId == request.auth.uid;
       allow create: if isAdmin() && eventId == incoming().requestId && isValidAiUsageEvent(incoming());
       allow update: if false;
@@ -382,7 +388,7 @@ service cloud.firestore {
     }
 
     match /aiSettings/{userId} {
-      allow get: if isOwner(userId) && existing().userId == request.auth.uid;
+      allow get: if isOwner(userId) && isOwnerOrUncreated(request.auth.uid);
       allow list: if false;
       allow create: if isOwner(userId) && isValidAiSettings(incoming()) &&
         incoming().createdAt == request.time && incoming().updatedAt == request.time;

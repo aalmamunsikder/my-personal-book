@@ -342,6 +342,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestWriteRef = useRef<Record<string, number>>({});
+  const inFlightWriteRef = useRef<Record<string, Promise<unknown>>>({});
   const serverVersionRef = useRef<Record<string, number>>({});
   // Local changes no server write has confirmed, and deletions that could not be sent. Both decide
   // whether a snapshot may replace, keep or drop what the author holds.
@@ -494,16 +495,24 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         setVaultLocked(false);
         setAdminLoginModalOpen(false);
         try {
-          await setDoc(
-            doc(db, 'profiles', currUser.uid),
-            {
-              userId: currUser.uid,
-              displayName: (currUser.displayName || currUser.email || 'Journal Admin').slice(0, 120),
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-          );
+          const profileRef = doc(db, 'profiles', currUser.uid);
+          const displayName = (currUser.displayName || currUser.email || 'Journal Admin').slice(0, 120);
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(profileRef);
+            if (!snap.exists()) {
+              tx.set(profileRef, {
+                userId: currUser.uid,
+                displayName,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
+            } else if (snap.data()?.displayName !== displayName) {
+              tx.update(profileRef, {
+                displayName,
+                updatedAt: serverTimestamp(),
+              });
+            }
+          });
         } catch {
           // Ignore if profile already exists with immutable createdAt
         }
@@ -641,64 +650,76 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       const sanitized = sanitizeEntryPayload(entry, user.uid);
       const fields = entryToFirestoreFields(sanitized, user.uid);
       const docRef = doc(db, 'entries', sanitized.id);
-      const baseVersion = serverVersionRef.current[sanitized.id] ?? sanitized.version;
 
-      try {
-        const writtenVersion = await runTransaction(db, async (tx) => {
-          const snap = await tx.get(docRef);
-          if (!snap.exists()) {
+      const previousWrite = inFlightWriteRef.current[sanitized.id] ?? Promise.resolve();
+      const runSave = async () => {
+        await previousWrite.catch(() => undefined);
+        // If a newer edit for the same entry has already been queued, let the latest one win.
+        if (latestWriteRef.current[entry.id] !== token) return;
+
+        let attemptedBaseVersion = serverVersionRef.current[sanitized.id] ?? sanitized.version;
+        try {
+          const writtenVersion = await runTransaction(db, async (tx) => {
+            const snap = await tx.get(docRef);
+            if (!snap.exists()) {
+              tx.set(docRef, {
+                ...fields,
+                version: 1,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
+              return 1;
+            }
+            const current = snap.data() ?? {};
+            const currentVersion = Number(current.version ?? 0);
+            attemptedBaseVersion = serverVersionRef.current[sanitized.id] ?? sanitized.version;
+            if (currentVersion !== attemptedBaseVersion) {
+              throw { __conflict: true, serverVersion: currentVersion };
+            }
+            const nextVersion = currentVersion + 1;
+            // A full replace, not a merge: documents written before the passphrase was hashed still
+            // carry a plaintext `lockPassword`, and only a replace can drop it from the archive.
             tx.set(docRef, {
               ...fields,
-              version: 1,
-              createdAt: serverTimestamp(),
+              version: nextVersion,
+              createdAt: current.createdAt ?? serverTimestamp(),
               updatedAt: serverTimestamp(),
             });
-            return 1;
-          }
-          const current = snap.data() ?? {};
-          const currentVersion = Number(current.version ?? 0);
-          if (currentVersion !== baseVersion) {
-            throw { __conflict: true, serverVersion: currentVersion };
-          }
-          const nextVersion = currentVersion + 1;
-          // A full replace, not a merge: documents written before the passphrase was hashed still
-          // carry a plaintext `lockPassword`, and only a replace can drop it from the archive.
-          tx.set(docRef, {
-            ...fields,
-            version: nextVersion,
-            createdAt: current.createdAt,
-            updatedAt: serverTimestamp(),
+            return nextVersion;
           });
-          return nextVersion;
-        });
 
-        serverVersionRef.current[sanitized.id] = writtenVersion;
-        writeServerVersions(serverVersionRef.current);
-        dirtyIdsRef.current.entries.delete(sanitized.id);
-        setEntries((prev) =>
-          prev.map((e) => (e.id === sanitized.id ? { ...e, version: writtenVersion } : e))
-        );
-        if (latestWriteRef.current[entry.id] === token) {
-          setSaveState('saved');
-          setLastSavedAt(new Date().toISOString());
-        }
-      } catch (err) {
-        const conflict = Boolean((err as { __conflict?: boolean })?.__conflict);
-        // Nothing is confirmed by a failed write, so the change stays dirty and a later snapshot
-        // must not replace it.
-        dirtyIdsRef.current.entries.add(entry.id);
-        if (latestWriteRef.current[entry.id] === token) {
-          setSaveState(conflict ? 'conflict' : 'failed');
-        }
-        if (conflict) {
-          console.error(
-            `Autosave conflict on ${sanitized.id}: archive is at v${(err as { serverVersion?: number }).serverVersion}, ` +
-              `local draft was based on v${baseVersion}. The newer local draft is preserved, not overwritten.`
+          serverVersionRef.current[sanitized.id] = writtenVersion;
+          writeServerVersions(serverVersionRef.current);
+          dirtyIdsRef.current.entries.delete(sanitized.id);
+          setEntries((prev) =>
+            prev.map((e) => (e.id === sanitized.id ? { ...e, version: writtenVersion } : e))
           );
-        } else {
-          console.error('Cloud autosave error (preserved locally):', err);
+          if (latestWriteRef.current[entry.id] === token) {
+            setSaveState('saved');
+            setLastSavedAt(new Date().toISOString());
+          }
+        } catch (err) {
+          const conflict = Boolean((err as { __conflict?: boolean })?.__conflict);
+          // Nothing is confirmed by a failed write, so the change stays dirty and a later snapshot
+          // must not replace it.
+          dirtyIdsRef.current.entries.add(entry.id);
+          if (latestWriteRef.current[entry.id] === token) {
+            setSaveState(conflict ? 'conflict' : 'failed');
+          }
+          if (conflict) {
+            console.error(
+              `Autosave conflict on ${sanitized.id}: archive is at v${(err as { serverVersion?: number }).serverVersion}, ` +
+                `local draft was based on v${attemptedBaseVersion}. The newer local draft is preserved, not overwritten.`
+            );
+          } else {
+            console.error('Cloud autosave error (preserved locally):', err);
+          }
         }
-      }
+      };
+
+      const task = runSave();
+      inFlightWriteRef.current[sanitized.id] = task;
+      await task;
     },
     [isFirebaseAdmin, user]
   );

@@ -40,6 +40,11 @@ export const metadata: Metadata = {
     description:
       'A private, single-owner digital diary and literary archive for daily entries, poems, quotes, fragments, and prose in Bangla and English.',
   },
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

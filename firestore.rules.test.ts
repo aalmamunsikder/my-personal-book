@@ -353,3 +353,39 @@ test('the rules use no language construct the engine refuses to resolve', () => 
     );
   }
 });
+
+test('transaction existence check (tx.get before create) and blank draft creation payload pass', () => {
+  const helper = functionBody('isOwnerOrUncreated');
+  assert.match(helper, /resource == null \|\| existing\(\)\.userId == uid/);
+  assert.match(ENTRY_GET.condition, /isOwnerOrUncreated\(request\.auth\.uid\)/);
+
+  const blankDraft = validEntryPayload({
+    userId: 'kYNN2FbgP6eYd55KSOFQA6y0FCU2',
+    title: '',
+    subtitle: '',
+    content: '',
+    type: 'diary',
+    status: 'draft',
+    entryDate: '2026-11-01',
+    mood: '',
+    language: 'en',
+    isFavorite: false,
+    attribution: '',
+    fontPreference: 'auto',
+    pageVariation: 'dot-commonplace',
+    wordCount: 0,
+    collectionId: '',
+    tags: [],
+    isLocked: false,
+    lockPasswordHash: '',
+    lockSalt: '',
+    lockHint: '',
+    isTrashed: false,
+    deletedAtIso: '',
+    version: 1,
+    pageTemplateId: '',
+    appearanceOverrideJson: '',
+  });
+  assert.equal(validateAgainst('Entry', blankDraft), true);
+});
+
