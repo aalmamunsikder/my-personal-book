@@ -108,6 +108,27 @@ function forgetServerVersion(versions: Record<string, number>, id: string): void
 }
 
 /**
+ * Seeds the confirmation record for a browser that stored the archive before that record existed. The
+ * client never raises a document's `version` — only a confirmed server write does — so a local copy at
+ * version 2 or higher is proof the server held it at least once, which is exactly what the merge needs
+ * to tell "deleted on the server" apart from "never uploaded". Without this, an archive written by an
+ * older build is treated as unsent forever and re-uploads anything removed by hand.
+ */
+function seedConfirmedVersions(versions: Record<string, number>, items: unknown): boolean {
+  if (!Array.isArray(items)) return false;
+  let changed = false;
+  for (const item of items) {
+    const version = typeof item?.version === 'number' ? item.version : 0;
+    const id = typeof item?.id === 'string' ? item.id : '';
+    if (version >= 2 && id && !(id in versions)) {
+      versions[id] = version;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
  * A deletion made while signed out has no way to reach Firestore, and the archive would otherwise
  * hand it back on the next sync. Queuing the id keeps that promise across a reload.
  */
@@ -356,6 +377,9 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         if (savedEntries) {
           const parsed = JSON.parse(savedEntries);
           if (Array.isArray(parsed) && !cancelled) setEntries(parsed);
+          if (seedConfirmedVersions(serverVersionRef.current, parsed)) {
+            writeServerVersions(serverVersionRef.current);
+          }
         } else {
           const legacy = localStorage.getItem(STORAGE_KEYS.legacyEntries);
           if (legacy) {
@@ -368,6 +392,9 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         if (savedCols && !cancelled) {
           const parsed = JSON.parse(savedCols);
           if (Array.isArray(parsed)) setCollections(parsed);
+          if (seedConfirmedVersions(serverVersionRef.current, parsed)) {
+            writeServerVersions(serverVersionRef.current);
+          }
         }
 
         const savedTags = localStorage.getItem(STORAGE_KEYS.tags);
