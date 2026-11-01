@@ -15,6 +15,7 @@
 11. **Server-Side Session Check**: `/api/ai-assist` verifies the caller's Firebase ID token against Google's JWKS (issuer pinned to the project, `aud == projectId`, `email_verified == true`, email equal to the configured owner) before reading budget or calling the provider. There is no shared passkey. A request whose metering write fails is refused rather than spent.
 12. **Secrets Stay Out of Artifacts and Logs**: JSON/ZIP exports strip `lockPasswordHash`, `lockSalt` and any legacy `lockPassword`; server logs record request shape (`requestId`, `task`, `model`, `durationMs`) only — never prompts, completions, entry content, or validation values that could contain a diary line.
 13. **Storage Is Owner-Only and Shaped**: every object must live under `/{uid}/…`, and `read` (which in Storage rules carries `get`, `download` *and* `list`) requires `request.auth.uid == uid` with `email_verified == true`. There is no public prefix, because a Storage rule cannot read the Firestore document that would hold a "published" flag and the specifications allow no public surface. A `create`/`update` is additionally capped at 5 MiB; `delete` is not size-gated, since `request.resource` is absent on a delete. Any path outside the uid shape is unmatched, and `rules_version = '2'` denies it.
+14. **Prototype Content Never Reaches a Shipped Artifact**: the `SAMPLE_*` fixtures in `lib/seed-data.ts` are diary writing in prototype form — poems and prose about the author's family and married life — and must appear in no browser bundle, because a static chunk is downloadable by anyone who knows to ask for it. The ruleset cannot enforce this, so the boundary is the module graph: no client module may import `lib/seed-data.ts`. One imported symbol is enough to pull the whole file in, and `SAMPLE_ENTRIES` cannot be tree-shaken out of it because it is derived by a `countWords()` call terser cannot prove side-effect free. Constants the client legitimately needs (`DEFAULT_OWNER_ID`, `INITIAL_SETTINGS`) live in `lib/journal-defaults.ts`, which holds no Bangla text and no fixture ids. `fixture-isolation.test.ts` enforces both halves under `npm test`.
 
 ## 2. The Payload Catalogue (grown from the original "Dirty Dozen")
 
@@ -41,6 +42,7 @@
 21. **Payload 21 (Tag List Smuggling)**: `create` on `/entries/entry-1` with 11 tags, or with tags whose total length is 601 characters however they are packed (including one 601-character element) -> `PERMISSION_DENIED`.
 22. **Payload 22 (Unscoped Archive Read)**: `list` on `/entries` issued by the owner with no `where('userId','==',uid)` filter -> `PERMISSION_DENIED`. The list rule is evaluated against the query, so an unscoped read is refused rather than silently narrowed (see §3.3).
 23. **Payload 23 (World-Readable Object)**: an anonymous `getDownloadURL`, `getMetadata` or `list` on `/{uid}/covers/a.png`, and on any `public/…` path -> `PERMISSION_DENIED`; an unverified-email session is refused the same way (invariant 13).
+24. **Payload 24 (Fixture Exfiltration Through the Bundle)**: a client module that imports `lib/seed-data.ts` for one constant -> `npm test` fails, because the build then ships all 13 prototype entry bodies, their document ids and the collection descriptions as public static JavaScript (invariant 14). The measured acceptance form: 0 of 13 bodies, 0 of 13 ids, 0 of 6 descriptions present anywhere under `.next/static`. This one was real — it was found by reading the *deployed* chunk, not the source.
 
 ## 3. Rules-Language Limits (found by executing the rules, not by reading them)
 
@@ -81,12 +83,28 @@ difference is enforced elsewhere rather than wished away:
 | `firestore.rules.emulator.test.ts` | `npm run test:rules` | 38 payloads, evaluated by the emulator's rules engine through the browser SDK |
 | `firestore.rules.rest.test.ts` | `npm run test:rules` | 15 payloads through `lib/firestore-rest.ts` — the writer `/api/ai-assist` actually uses, plus a drift check that every `AI_TASKS` value is accepted by the rules and that `firebase.json` names the database the app writes to |
 | `storage.rules.emulator.test.ts` | `npm run test:rules` | 6 payloads: no anonymous `get`/`download`/`list`, owner-prefix isolation, size ceiling, and no public prefix |
+| `fixture-isolation.test.ts` | `npm test` | Payload 24: no client module may import the prototype fixtures, and the module that replaced them holds no diary content (invariant 14) |
 | `tools/verify-ai-route-guard.sh` | `npm run test:route-guard` | Payload 18 against the **built** route over HTTP: anonymous, non-JWT bearer, and unsigned `alg:none` JWT each return `401 UNAUTHENTICATED` before the provider is reached, with no configuration or stack in the body |
 
 Payloads 1–17 and 19–23 are covered by the engine tests (QA items SEC-001…SEC-009 and SEC-012…SEC-014
-among them); Payload 18 by the route guard; SEC-010 and SEC-011 are not rule-testable, for the reason
-given in §3.4. `npm run test:rules` needs Java 21+ for the emulator.
-Java 21+ for the emulator.
+among them); Payload 18 by the route guard; Payload 24 by the static import gate; SEC-010 and SEC-011 are
+not rule-testable, for the reason given in §3.4. `npm run test:rules` needs Java 21+ for the emulator.
+
+**Production evidence, measured on 2026-11-01 against `https://aal-dairy.vercel.app/`** (read-only:
+HTTP requests, the deployed chunks, the browser console — details in `IMPLEMENTATION_STATUS.md` §1.3):
+
+- Payload 18 holds in production. Anonymous → `401 UNAUTHENTICATED`; `Bearer not.a.real.token` → `401
+  UNAUTHENTICATED`; an unsigned `alg:none` JWT forging the real project id → `403` from the Vercel edge
+  before the handler ran. No stack, no configuration in any body.
+- Invariant 12 holds in what the browser downloads: no `serviceAccount`, `service_role`,
+  `FIREBASE_ADMIN`, `GEMINI_API_KEY`, `-----BEGIN`, `private_key` or `client_email` string in the 10
+  shared chunks or the route chunk. The publishable Firebase web API key and project id are present, as
+  designed for client config.
+- Invariant 14 did **not** hold in production, and no source-level review would have caught it: the
+  deployed chunk carried all 13 fixture bodies. Fixed as described; it needs a redeploy to stop.
+- The Report-Only CSP reports exactly 6 violations on the signed-out page, all of them `script-src
+  'self'` refusals of Next.js inline bootstrap scripts, and nothing else — so enforcement is a nonce
+  question, not a directive-design question.
 
 What this still does not establish: the ruleset is not **deployed**, so the owner's live project is still
 governed by whatever was published last; the route guard proves only **rejection** — the emulator cannot

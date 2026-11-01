@@ -32,14 +32,15 @@ satisfied as written, it is listed as a gap here rather than silently reinterpre
 
 | Command | Result at this commit |
 |---|---|
-| `npm test --silent` | **42 tests, 42 pass, 0 fail** across 3 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12) |
+| `npm test --silent` | **46 tests, 46 pass, 0 fail** across 4 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12), `fixture-isolation.test.ts` (4) |
 | `npm run test:rules` | **59 tests, 59 pass, 0 fail**: `firestore.rules.emulator.test.ts` (38), `firestore.rules.rest.test.ts` (15), `storage.rules.emulator.test.ts` (6). These are evaluated by the real rules engine in the Firestore/Storage emulators |
 | `npm run test:route-guard` | **3 checks pass** — spec Payload 18 executed against the *built* `/api/ai-assist`: an anonymous request, a non-JWT bearer and an unsigned `alg:none` JWT each get `401 UNAUTHENTICATED`, with no provider call and no leaked configuration or stack. `tools/verify-ai-route-guard.sh` runs `next build` first, starts its own server, and refuses to test against one it did not start |
 | `npx tsc --noEmit` | clean, no output |
 | `npm run lint` | **0 errors, 8 warnings** (all 8 are `@next/next/no-img-element` in `components/common/JournalArtwork.tsx`) |
 | `npm run build` | succeeds; route table is `/` (static), `/_not-found` (static), `/api/ai-assist` (dynamic) |
 
-**101 tests, 101 pass**, plus the 3-check route guard that runs the built handler over HTTP.
+**105 tests, 105 pass**, plus the 3-check route guard that runs the built handler over HTTP. Every
+number in this table was re-measured after the fixture-isolation change (§1.3).
 
 `npm run test:rules` boots the Firebase emulators, and those need **Java 21 or newer** — firebase-tools
 15.34.2 rejects a 17 runtime ("no longer supports Java version before 21"). On this machine the run uses
@@ -107,6 +108,56 @@ Both files now import the shipped modules (`lib/ai-prompts.ts`, `lib/ai-contract
 `lib/ai-guards.ts`) or read the shipped artifacts from disk (`firestore.rules`,
 `firebase-blueprint.json`).
 
+### 1.3 What the live deployment was measured to do
+
+On 2026-11-01 the running site (`https://aal-dairy.vercel.app/`) was probed read-only: HTTP requests,
+the deployed JavaScript chunks, and the browser console. Nothing was written, and no credential was
+printed by any of these probes.
+
+- **`vercel.json` is actually applied.** `GET /` returns 200 with `Content-Security-Policy-Report-Only`
+  (12 directives, Firebase Firestore/Identity Toolkit/Secure Token origins in `connect-src`),
+  `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`. F-17 has
+  production evidence for the first time.
+- **Report-only CSP: 6 violations, all one kind.** Every console message on the signed-out home page is
+  an `info`-level `script-src 'self'` complaint about an inline script — Next.js's own bootstrap, each
+  with a distinct `sha256-…`. No other directive is violated and there are no other console errors.
+  That is the number §4.6 was written to produce, and it says enforcement needs a **nonce**, not the
+  six hashes: the hashes are computed per build, so pinning them breaks on the next deploy.
+- **Spec Payload 18, executed against production.** `POST /api/ai-assist` with no credential → `401`
+  `UNAUTHENTICATED` ("Sign in as the journal owner to use the AI companion."); with `Bearer not.a.real.token`
+  → `401` `UNAUTHENTICATED` ("Your session could not be verified. Please sign in again."); with an
+  unsigned `alg:none` JWT whose claims forge the real project id → **`403 Forbidden` from the Vercel edge**
+  (`bom1::…`), so the handler was never reached. All three refused, no stack and no configuration in
+  the bodies. The bodies do echo `provider: { label: "Google Gemini", model: "gemini-3.8-flash" }` —
+  not a leak: the same string is deliberately rendered in `components/ai/AiConsentModal.tsx:84` and
+  ships in the client bundle. The edge's `403` is a rejection, not proof this repository's verifier
+  handled that token; the emulator and route-guard evidence stands.
+- **No secret is in what the browser downloads.** Across the 10 shared chunks plus
+  `app/page-*.js`: zero hits for `serviceAccount`, `service_role`, `FIREBASE_ADMIN`, `GEMINI_API_KEY`,
+  `-----BEGIN`, `private_key`, `client_email`, and zero hits for a `=== "versevault"` comparison (the
+  surviving `versevault` substrings are `localStorage` key names). What *is* present is the publishable
+  Firebase web API key and the project id, inlined from `firebase-applet-config.json` — client config by
+  design, protected by the ruleset rather than by secrecy. SEC-015 has production evidence.
+
+Two defects surfaced only because the deployed artifact was read instead of the source:
+
+1. **The prototype diary shipped to the public.** All 13 sample entry bodies (2,721 characters of
+   personal-style Bangla poems and prose), all 13 entry ids and all 6 collection descriptions were
+   downloadable from `/_next/static/chunks/app/page-*.js`. `context/JournalContext.tsx:37` imported
+   `DEFAULT_OWNER_ID` and `INITIAL_SETTINGS` from `lib/seed-data.ts`, and because
+   `SAMPLE_ENTRIES` is derived by a `countWords()` call, terser cannot prove the module is side-effect
+   free and so cannot drop it. Fixed by moving the two constants to `lib/journal-defaults.ts`;
+   `fixture-isolation.test.ts` now fails the build if any client module imports the fixtures again
+   (4 assertions) and asserts the module the client *may* import contains no Bangla text and no fixture
+   ids. A rebuild measures **0 of 13 bodies, 0 of 13 ids, 0 of 6 descriptions** in the bundle; the eight
+   tag *names* that still appear come from `lib/journal-templates.ts` and shipped UI placeholders, not
+   from `lib/seed-data.ts`. **The live site keeps serving them until this is deployed.**
+2. **A stale instruction on the live auth path.** The popup-blocked error told users to sign in with the
+   hard-coded admin passkey that this session removed, naming the owner's email address in the copy.
+   Replaced with the accurate instruction at [context/JournalContext.tsx:1108](file:///data/my-personal-book/context/JournalContext.tsx#L1108);
+   no `পাসকি`/passkey reference remains anywhere in the source.
+
 ---
 
 ## 2. What the tests do **not** prove
@@ -135,15 +186,20 @@ Both files now import the shipped modules (`lib/ai-prompts.ts`, `lib/ai-contract
   `GEMINI_MODEL`'s default value **`gemini-3.8-flash` is an unverified model id**. If it is wrong the
   route fails closed with `PROVIDER_UNAVAILABLE`/`PROVIDER_TIMEOUT`, but the AI feature is unshipped
   until one real request succeeds.
-- **Nothing has been deployed.** No rules published, no data migrated, no Storage bucket touched. See §4.
+- **The app is deployed; this repository's security posture is not.** The Vercel site is live and was
+  measured (§1.3), but **no rules published, no data migrated, no Storage bucket touched, and the live
+  bundle is an older build** — it predates the fixture-isolation and auth-copy fixes, so it still ships
+  the prototype diary prose. Nothing in this table describes what the deployed project's *ruleset*
+  enforces. See §4.
 - **`storage.rules` guards a feature the app does not have.** The Themes guide defers uploads ("No large
   image upload system is required initially") and nothing in this repository calls the Storage SDK. The
   file exists so the bucket cannot sit in the console's default test mode; its ruleset is owner-only and
   executed by the emulator. If uploads are ever built, they must live under `/{uid}/…` — anything else is
   unreachable, by design and by test.
-- **Browser verification was limited.** The unsigned-in UI was rendered and screenshotted (empty
-  archive, sign-in modal with no passkey field, reading view). Every screen behind authentication is
-  unverified visually.
+- **Browser verification is still only the signed-out surface.** Locally and on the live site the
+  unsigned-in UI was rendered and screenshotted (empty archive, sign-in modal with no passkey field,
+  reading view), and the live console was read for CSP violations. Every screen behind authentication is
+  unverified visually, and the responsive matrix (F-16) has no evidence at all.
 
 ---
 
@@ -151,7 +207,7 @@ Both files now import the shipped modules (`lib/ai-prompts.ts`, `lib/ai-contract
 
 | ID | Feature | Status | Evidence / gap |
 |---|---|---|---|
-| F-01 | My Journal Home | Implemented, unsigned-in render verified | Screenshot taken of the empty-archive state; the seeded demo archive is **not** loaded (`lib/seed-data.ts` exports `SAMPLE_*` fixtures used only by tests) |
+| F-01 | My Journal Home | Implemented, unsigned-in render verified | Screenshot taken of the empty-archive state; the seeded demo archive is **not** loaded, and after §1.3 it is no longer **bundled** either (`fixture-isolation.test.ts` gates it). The deployment still serving the old bundle keeps shipping those fixtures until it is redeployed |
 | F-02 | Diary timeline | Implemented, unit-tested | `filterAndSortEntries` tests (Bangla + English) |
 | F-03 | Entry editor | Implemented, **not visually verified** | Requires a signed-in session |
 | F-04 | Autosave & recovery | Implemented; save-state UI is now honest | `components/common/SaveStateIndicator.tsx` renders all seven states. Previously `local` and `conflict` rendered **nothing**, so a page held only in browser memory looked identical to a page safely in the archive |
@@ -215,8 +271,14 @@ Both files now import the shipped modules (`lib/ai-prompts.ts`, `lib/ai-contract
 4. **Register the authorized origins** in Firebase Auth for the domain the app is actually served from.
 5. **Put `npm run test:rules` in CI** on an image with Java 21+ (Temurin 21 works; 17 is refused by
    firebase-tools 15). Locally it needs the same JDK on `PATH` plus `node_modules/.bin/firebase`.
-6. **Re-check CSP in Report-Only** on a Preview deployment, then decide whether to enforce.
-7. Housekeeping done at this commit: `package-lock.json` is tracked (an emulator run is not reproducible
+6. **Decide CSP enforcement with the measured number, not a guess.** Production has now been checked:
+   the signed-out page reports exactly 6 violations, all `script-src 'self'` refusals of Next.js's own
+   inline bootstrap scripts, and nothing else. Enforcing therefore needs a **nonce**
+   (`script-src 'self' 'nonce-…'` per request); pinning the six reported `sha256-…` values would break on
+   the next build, because they are computed per deploy. Until then the header stays Report-Only.
+7. **Redeploy the app.** The live bundle predates §1.3's two fixes, so the public site still ships the
+   prototype diary prose and the stale passkey instruction. Pushing `main` deploys automatically.
+8. Housekeeping done at this commit: `package-lock.json` is tracked (an emulator run is not reproducible
    without pinned `firebase-tools`), and `tsconfig.tsbuildinfo` is gitignored.
 
 ---
@@ -251,12 +313,14 @@ Both files now import the shipped modules (`lib/ai-prompts.ts`, `lib/ai-contract
 
 Blocking items: rules are written and now engine-verified, but **undeployed**, so the owner's live
 archive is still governed by a ruleset this repository has no evidence for beyond "it denies anonymous
-reads today" (§2, §4.1); no migration/backfill has
-been run for existing archive documents (§4.2); there is no signed-in or responsive verification with
-real evidence (§2, F-16); and the AI provider has never been called, so the model id is unverified (§2).
+reads today" (§2, §4.1); no migration/backfill has been run for existing archive documents (§4.2); there
+is no signed-in or responsive verification with real evidence (§2, F-16); the AI provider has never been
+called, so the model id is unverified (§2); and the deployment that *is* live serves a build that ships
+the prototype diary prose to any visitor who asks a static chunk for it (§1.3, §4.7).
 The P0 privacy defects this work started from — world-readable entries, plaintext passphrases, and a
 hard-coded admin passkey that bypassed both the lock and the AI budget — are closed, and the first two
 are now closed by engine results rather than by reading the rule text.
 The gap the emulator work closed is the one that made the security story unfalsifiable — the rules used
-to be *claimed* rather than *run*. Running them found three shipping defects (§1.1), which is the
-argument for treating deployment, not the test suite, as the remaining work.
+to be *claimed* rather than *run*. Running them found three shipping defects (§1.1). Reading the
+deployed artifact found two more that no source-level review could see (§1.3). That is the argument for
+treating deployment, not the test suite, as the remaining work.

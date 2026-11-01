@@ -1,10 +1,10 @@
-import type { JournalCollection, JournalEntry, JournalSettings, JournalTag } from '../types/entry';
+import type { JournalCollection, JournalEntry, JournalTag } from '../types/entry';
 import { countWords } from './entry-utils';
+import { DEFAULT_OWNER_ID } from './journal-defaults';
 
-export const DEFAULT_OWNER_ID = 'local-owner-vault';
-
-// Prototype fixtures. The diary ships empty (spec 4.1: mock content must be removed before
-// launch); these arrays exist for tests and are never loaded into a real archive.
+// Prototype fixtures only. `context/JournalContext.tsx` must not import from this file: anything it
+// pulls in is reachable from the client bundle, and this module's contents are the diary author's
+// private writing, which the specs require to be absent from a shipped build.
 const rawSeedCollections: Omit<JournalCollection, 'version'>[] = [
   {
     id: 'col-dampotyo',
@@ -454,17 +454,3 @@ export const SAMPLE_COLLECTIONS: JournalCollection[] = rawSeedCollections.map((c
   ...col,
   version: 1,
 }));
-
-export const INITIAL_SETTINGS: JournalSettings = {
-  userId: DEFAULT_OWNER_ID,
-  theme: 'light',
-  readingWidth: 'standard',
-  density: 'comfortable',
-  defaultEntryType: 'diary',
-  defaultFont: 'auto',
-  showWordCount: true,
-  defaultMood: '',
-  autosaveEnabled: true,
-  lastBackupAt: '',
-  updatedAt: '2025-01-28T08:00:00.000Z',
-};

@@ -34,7 +34,7 @@ import {
   handleFirestoreError,
   OperationType,
 } from '../lib/firebase';
-import { DEFAULT_OWNER_ID, INITIAL_SETTINGS } from '../lib/seed-data';
+import { DEFAULT_OWNER_ID, INITIAL_SETTINGS } from '../lib/journal-defaults';
 import { countWords, detectScriptLanguage, getLocalTodayDateString } from '../lib/entry-utils';
 import { NO_LOCK_SECRET, setLockSecret, verifyLockSecret } from '../lib/entry-lock';
 import {
@@ -1105,7 +1105,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       const msg =
         err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request'
-          ? 'পপআপ ব্লক হয়েছে। নিচে আপনার অ্যাডমিন ইমেইল (aalmamunsikder@gmail.com) ও পাসকি দিয়ে প্রবেশ করুন।'
+          ? 'পপআপ ব্লক হয়েছে। ব্রাউজারে এই সাইটের পপআপ অনুমতি দিয়ে আবার “Google দিয়ে সাইন-ইন” চাপুন.'
           : err?.message || 'Google লগইন সম্পন্ন করা যায়নি।';
       setAuthError(msg);
       return false;
