@@ -59,7 +59,7 @@ export function PageVariationSwitcher({
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[10.5px] font-bangla transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               isActive
                 ? 'bg-gradient-to-b from-[#5F412C] to-[#462E1D] text-[#FDF8F0] font-medium border border-[#8E694A] shadow-[0_1px_3px_rgba(30,16,7,0.28),inset_0_1px_0_rgba(255,235,205,0.25)]'
-                : 'text-[#4E3929] dark:text-[#CDB89E] border border-transparent hover:bg-[#D9C3A3]/65 dark:hover:bg-[#383027]'
+                : 'text-[#4E3929] dark:text-[#CDB89E] bg-[#EADFC8]/70 dark:bg-[#2A231C] border border-transparent hover:bg-[#D9C3A3]/65 dark:hover:bg-[#383027]'
             }`}
           >
             <Icon className="w-3 h-3 shrink-0" />

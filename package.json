@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node --import ./tools/register-ts-resolver.mjs --test firestore.rules.test.ts ai-features.test.ts fixture-isolation.test.ts owner-privacy.test.ts lib/entry-utils.test.ts",
+    "test": "node --import ./tools/register-ts-resolver.mjs --test firestore.rules.test.ts ai-features.test.ts fixture-isolation.test.ts owner-privacy.test.ts archive-merge.test.ts lib/entry-utils.test.ts",
     "test:rules": "firebase emulators:exec --project demo-versevault-rules --only firestore,storage \"node --import ./tools/register-ts-resolver.mjs --test firestore.rules.emulator.test.ts && node --import ./tools/register-ts-resolver.mjs --test firestore.rules.rest.test.ts && node --import ./tools/register-ts-resolver.mjs --test storage.rules.emulator.test.ts\"",
     "test:route-guard": "next build && bash tools/verify-ai-route-guard.sh",
     "clean": "next clean"

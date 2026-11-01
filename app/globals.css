@@ -197,8 +197,20 @@
   --line: #D9D0E3;
 }
 
-/* Dark mode fallback override if user chooses OS dark */
-.dark:not([data-theme]) {
+/* Dark mode is a palette decision, not only a class. Every `dark:` utility in the app flips on
+   `.dark`, so the tokens have to flip with it — otherwise pale utility text renders on a light
+   parchment token and the contrast is 1.0:1. `midnight-library` already ships dark tokens, so it is
+   the one theme left alone. */
+.dark:not([data-theme="midnight-library"]) {
+  --app-bg: #171613;
+  --surface: #201E1A;
+  --surface-secondary: #282520;
+  --ink-secondary: #A39B8B;
+  --ink-muted: #8C8474;
+  --border: #332F28;
+  --page-rule: rgba(184, 139, 115, 0.18);
+  --ui-dark-surface: #241F1A;
+  --ui-dark-text: #F2E9D9;
   --paper: #171613;
   --page: #201E1A;
   --page-muted: #282520;

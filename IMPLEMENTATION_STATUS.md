@@ -32,15 +32,20 @@ satisfied as written, it is listed as a gap here rather than silently reinterpre
 
 | Command | Result at this commit |
 |---|---|
-| `npm test --silent` | **50 tests, 50 pass, 0 fail** across 5 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12), `fixture-isolation.test.ts` (4), `owner-privacy.test.ts` (4) |
+| `npm test --silent` | **59 tests, 59 pass, 0 fail** across 6 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12), `archive-merge.test.ts` (9), `fixture-isolation.test.ts` (4), `owner-privacy.test.ts` (4) |
 | `npm run test:rules` | **59 tests, 59 pass, 0 fail**: `firestore.rules.emulator.test.ts` (38), `firestore.rules.rest.test.ts` (15), `storage.rules.emulator.test.ts` (6). These are evaluated by the real rules engine in the Firestore/Storage emulators |
 | `npm run test:route-guard` | **3 checks pass** — spec Payload 18 executed against the *built* `/api/ai-assist`: an anonymous request, a non-JWT bearer and an unsigned `alg:none` JWT each get `401 UNAUTHENTICATED`, with no provider call and no leaked configuration or stack. `tools/verify-ai-route-guard.sh` runs `next build` first, starts its own server, and refuses to test against one it did not start |
 | `npx tsc --noEmit` | clean, no output |
 | `npm run lint` | **0 errors, 8 warnings** (all 8 are `@next/next/no-img-element` in `components/common/JournalArtwork.tsx`) |
 | `npm run build` | succeeds; route table is `/` (static), `/_not-found` (static), `/api/ai-assist` (dynamic) |
 
-**109 tests, 109 pass**, plus the 3-check route guard that runs the built handler over HTTP. Every
-number in this table was re-measured after the fixture-isolation and owner-privacy changes (§1.3).
+**118 tests, 118 pass**, plus the 3-check route guard that runs the built handler over HTTP. `npm test`
+and `npm run test:rules` were re-measured after the fixture-isolation, owner-privacy and archive-merge
+changes (§1.3, §1.4), including a second full emulator run after the version-record persistence landed.
+`npm run test:route-guard` and `npm run build` were **not** re-run at this commit — both invoke
+`next build`, which shares `.next` with the owner's running dev server and wedges it; the route they
+exercise (`app/api/ai-assist/route.ts`) is unchanged since the measurement above, and `tsc --noEmit`
+covers the client changes.
 
 `npm run test:rules` boots the Firebase emulators, and those need **Java 21 or newer** — firebase-tools
 15.34.2 rejects a 17 runtime ("no longer supports Java version before 21"). On this machine the run uses
@@ -123,7 +128,9 @@ printed by any of these probes.
   an `info`-level `script-src 'self'` complaint about an inline script — Next.js's own bootstrap, each
   with a distinct `sha256-…`. No other directive is violated and there are no other console errors.
   That is the number §4.6 was written to produce, and it says enforcement needs a **nonce**, not the
-  six hashes: the hashes are computed per build, so pinning them breaks on the next deploy.
+  six hashes: the hashes are computed per build, so pinning them breaks on the next deploy. A separate
+  `default-src 'self'` refusal of the Firebase Auth popup frame was measured on the sign-in path and is
+  recorded with this item in §4.6 — enforcement needs both fixes, not one.
 - **Spec Payload 18, executed against production.** `POST /api/ai-assist` with no credential → `401`
   `UNAUTHENTICATED` ("Sign in as the journal owner to use the AI companion."); with `Bearer not.a.real.token`
   → `401` `UNAUTHENTICATED` ("Your session could not be verified. Please sign in again."); with an
@@ -176,6 +183,108 @@ Three defects surfaced only because the deployed artifact was read instead of th
    requires the comparison value to exist in the client, so the address remains in one chunk as data. The
    server-side default in `app/api/ai-assist/route.ts:22` is not shipped to the browser. The Report-Only
    CSP re-check on the new build reported the same 6 inline-script violations and nothing else.
+
+### 1.4 Owner-reported defect: deleted writing came back
+
+Reported on 2026-11-01 — *"why things contents are coming back even I delete"*. Three separate causes,
+all in the client archive layer, found by reading the write/sync paths rather than by probing the
+deployment:
+
+1. **A signed-out delete was only a local-state mutation.** `permanentlyDeleteEntry` and
+   `deleteCollection` update React state and `localStorage`, and when no session exists there is no
+   `deleteDoc` at all. Nothing recorded the intent, so the document still existed in the archive and the
+   next `onSnapshot` handed it straight back.
+2. **The snapshot merge was additive-only.** It unioned remote documents into local state with no
+   concept of "this id was deleted here", so any local removal was invisible to it.
+3. **The same merge silently overwrote unsent writing.** It accepted any remote document with
+   `version >= local.version`, while local edits never bump `version` — the local copy's version is the
+   one the server last confirmed. So a document edited while signed out was replaced by the server copy
+   on the next snapshot, with no warning. That is data loss in the opposite direction from the one the
+   owner reported, and it is the more serious of the two: the specs make preserving the author's writing
+   the primary rule.
+
+Fixed by extracting the reconciliation rule into a pure module so it can be executed rather than argued
+about. [lib/archive-merge.ts](file:///data/my-personal-book/lib/archive-merge.ts) takes
+`local`, `remote`, `serverKnownIds`, `dirtyIds` and `pendingDeleteIds` and resolves precedence as:
+a queued delete wins over both sides; unsent (dirty) local writing outranks **any** remote version; a
+remote-only id is added; and a local id the server no longer has is dropped **only** if the server had
+confirmed it at least once and it is not dirty. The consequence that matters: an empty snapshot clears an
+archive that is fully synchronised (someone really did delete it) but can never erase writing that has
+not been safely stored.
+
+The two inputs the rule needs are tracked where the writes happen, in
+[context/JournalContext.tsx](file:///data/my-personal-book/context/JournalContext.tsx): `dirtyIdsRef` is
+marked before any local mutation and cleared **only** on the confirmed success path of
+`syncEntryToCloud` (a failed write re-marks it — nothing is confirmed by a failed write), and
+`pendingDeletesRef` is persisted to `localStorage` under `versevault_pending_deletes_v5` so a delete made
+while signed out survives a reload and is replayed as a real `deleteDoc` the next time the archive
+syncs, cleared only when that delete succeeds. Both `onSnapshot` handlers now call `mergeArchive`
+instead of unioning.
+
+`archive-merge.test.ts` (9 tests) executes the rule: server-removed document drops, never-synced local
+document is kept as a pending upload, dirty local survives the server's absence, a higher remote version
+does **not** clobber dirty local, a confirmed document is replaced at `remote.version >= local.version`,
+a new remote document is added, a queued delete is not resurrected, an empty snapshot clears a
+fully-synced archive, and the merge is idempotent.
+
+**One residual found while documenting it, and fixed in the same pass.** The rule decides "the server
+deleted this" from `serverKnownIds`, which came from an in-memory `serverVersionRef`. `localStorage`
+survives a reload but that ref does not, so after a refresh every local document looked never-synced and
+a deletion made on the server — in the Firebase Console, or from another tab — would be handed back
+anyway. Same bug through a different door. The confirmation record is now persisted under
+`versevault_server_versions_v5`: read during hydration, written whenever a snapshot or a confirmed
+transaction records a version, pruned when our own `deleteDoc` succeeds, and fail-soft in both
+directions (a store we cannot read or write loses the record and the merge then *keeps* local writing,
+which is the safe direction). The version bookkeeping also moved out of the `setState` updaters, so a
+StrictMode double-invoke cannot write the wrong set and a queued updater cannot be overtaken by a
+snapshot.
+
+**Rendered check of the new storage path** (headless Chrome against the dev server, no session): seeded
+`versevault_entries_v5`, a `versevault_server_versions_v5` record and a queued delete, then reloaded — all
+three keys survive hydration and the page reports no error. Corrupting the version record to `'{not json'`
+and reloading left the archive intact, which is the fail-soft direction the invariant requires. The
+helpers themselves are not unit-tested; only the pure rule is.
+
+**What this does not prove:** no signed-in session has run any of it. The replay path and the dirty
+tracking need a real owner token against the real archive, which is destructive to exercise — see §2. The
+rule itself is proven; the wiring around it is read, not run.
+
+---
+
+### 1.5 Dark mode: the cause was a token/utility mismatch, not taste
+
+Reported as *"the dark mode is looking disgusting"*. Measured rather than judged: every leaf text node on
+the rendered home surface was read out of the browser with its computed colour, the pixel behind it was
+sampled from a screenshot, and the WCAG ratio computed from the pair. Before the fix the unsigned-in dark
+view had **44 text nodes below 3:1**, several at **1.01:1** — literally invisible.
+
+The mechanism was structural, and no amount of adding `dark:` classes would have fixed it:
+
+- `context/JournalContext.tsx` puts `.dark` on `<html>` from `settings.theme`, and *also* always sets
+  `data-theme` from the appearance config. The only dark-token block in `app/globals.css` was
+  `.dark:not([data-theme])` — which therefore **never matched**. So every `dark:` utility in the app
+  flipped to its dark value while `--paper`, `--surface`, `--ink` and `--line` stayed light-parchment.
+  Pale utility text on a light token is the 1.01:1 case; dark token text on a `dark:` utility surface is
+  the mirror image of it.
+- Fix: the block is now `.dark:not([data-theme="midnight-library"])` and carries the full token set
+  (`--app-bg`, `--surface`, `--surface-secondary`, `--ink-secondary`, `--ink-muted`, `--border`,
+  `--page-rule`, `--ui-dark-*`) alongside the ones it already had. `midnight-library` is the one factory
+  theme that already ships dark tokens, so it is left alone.
+- Two utilities then sat on top of that: the selected index row
+  ([components/book/OpenLeatherJournalSpread.tsx:2399](file:///data/my-personal-book/components/book/OpenLeatherJournalSpread.tsx#L2399))
+  paired `dark:from-`/`dark:to-` but left `via-[#EFE0C8]` light, so the middle of the row stayed a bright
+  band; and the stacked page frames, the empty-state slab, the search chip and four hover states had light
+  parchment with no dark pair at all. A scan for the same class of bug (`via-[#…]` present, `dark:via-`
+  absent, on any line that already carries `dark:`) returns **0 remaining** sites.
+
+**Re-measured after the fix: 0 text nodes below 3:1 in dark mode**, and the same measurement in light mode
+is unchanged (its two flags are artifacts of the sampler: a box so densely filled by glyphs that the most
+common pixel *is* the text colour). Both modes were then read as rendered PNGs — dark shows dark leather
+with dark pages and pale ink, light is unchanged from before. Screenshots: `/tmp/mode-dark-open.png`,
+`/tmp/mode-light-open.png`.
+
+This is a palette decision, so it is listed for the owner in §5: in dark mode the eight light factory
+themes now render one dark palette instead of their own.
 
 ---
 
@@ -238,9 +347,9 @@ Three defects surfaced only because the deployed artifact was read instead of th
 | F-08 | Calendar browsing | Implemented, **not verified** | no test, no signed-in render |
 | F-09 | Search & filters | Implemented, unit-tested | Bangla + English substring tests |
 | F-10 | Favorites | Implemented, **not verified** | write path needs a session |
-| F-11 | Archive & trash | Implemented, **not verified**; destructive paths deliberately not exercised | Permanent deletion needs a verified backup before any live test |
+| F-11 | Archive & trash | Implemented; reconciliation rule **executed**, destructive paths not run | §1.4: the delete-then-reappear defect is fixed and covered by 9 tests on the pure merge rule. Permanent deletion against the live archive still needs a verified backup and explicit authorization, so the Firestore `deleteDoc` and the queued-delete replay have never been exercised with a real session |
 | F-12 | Statistics | Implemented, unit-tested | `countWords`, `toBanglaDigits` |
-| F-13 | Settings & personalization | Implemented, partially verified | 9 factory themes + 10 page templates asserted against the Themes guide in `entry-utils.test.ts` |
+| F-13 | Settings & personalization | Implemented, partially verified | 9 factory themes + 10 page templates asserted against the Themes guide in `entry-utils.test.ts`. Dark mode is now measured, not eyeballed: 0 rendered text nodes below 3:1 in dark, unchanged in light (§1.5) |
 | F-14 | Markdown & JSON export | Implemented, unit-tested | `buildJsonBackup` is called for real; a test asserts no `lockPassword`/`lockPasswordHash`/`lockSalt` reaches the payload while the writing itself survives byte-for-byte |
 | F-15 | Owner auth & rules | Implemented and **executed by the rules engine** | 59 emulator tests cover anonymous denial, owner isolation, key allowlists, id hardening, ceilings, immutability, versioning, consent and metering (§1.1). The catch-all still denies anything unmatched, and `storage.rules` grants no anonymous read of any kind. Not yet verified against the owner's deployed project — see §4.1 |
 | F-16 | Responsive UX | **NOT VERIFIED** | The old file cited `.playwright-cli/desktop-view.png` and `.playwright-cli/mobile-view.png`; **that directory does not exist and no Playwright run exists in this repository** |
@@ -287,6 +396,14 @@ Three defects surfaced only because the deployed artifact was read instead of th
    including the "cannot be reused" case), but any document missing `version` cannot be updated until it
    is backfilled. **This must run against a verified backup, with explicit authorization, and never as a
    bulk destructive script.**
+   **Owner decision recorded 2026-11-01:** the pre-existing prototype/test documents are not needed —
+   *"I do not need any doc / I will create new"*. So the v5 backfill is not required for them; they can be
+   discarded instead of migrated. Two honest consequences of that decision: the documents are still
+   physically in the project's Firestore and will sync **down** into a fresh client archive on the first
+   sign-in, so "start new" does not happen by itself; and deleting them from the real archive is a
+   destructive operation this repository will not run without explicit authorization plus a verified
+   backup, per §2. The simplest compliant route is to delete them by hand in the Firebase Console, which
+   needs nothing from here.
 3. **Set the server environment**: `GEMINI_API_KEY` (secret), `GEMINI_MODEL` to a model id confirmed
    against the provider's catalogue, `VERSEVAULT_OWNER_EMAIL`.
 4. **Register the authorized origins** in Firebase Auth for the domain the app is actually served from.
@@ -304,13 +421,26 @@ Three defects surfaced only because the deployed artifact was read instead of th
    project. Preview URLs are random `*-<hash>.vercel.app` hosts, so either add each one that needs auth
    testing or test sign-in on the production alias only. Nothing in this repository can be changed to work
    around it — the check is on the provider side.
+   **Resolved, and verified live.** The owner added `aal-dairy.vercel.app` in the Console on 2026-11-01.
+   Re-probed from the deployed site: the popup now reaches the Firebase handler and advances to
+   `accounts.google.com/v3/signin/identifier` with `context_uri=https://aal-dairy.vercel.app`, with no
+   `auth/unauthorized-domain` error anywhere in the dialog. That proves the calling origin is authorised.
+   It does **not** prove a sign-in completes — no session has been established in this workspace, so
+   §2's "no signed-in flow has been exercised" still stands, and that first successful sign-in is now the
+   moment the pre-existing archive documents sync down (see §4.2).
 5. **Put `npm run test:rules` in CI** on an image with Java 21+ (Temurin 21 works; 17 is refused by
    firebase-tools 15). Locally it needs the same JDK on `PATH` plus `node_modules/.bin/firebase`.
-6. **Decide CSP enforcement with the measured number, not a guess.** Production has now been checked:
+6. **Decide CSP enforcement with the measured numbers, not a guess.** Production has now been checked:
    the signed-out page reports exactly 6 violations, all `script-src 'self'` refusals of Next.js's own
    inline bootstrap scripts, and nothing else. Enforcing therefore needs a **nonce**
    (`script-src 'self' 'nonce-…'` per request); pinning the six reported `sha256-…` values would break on
-   the next build, because they are computed per deploy. Until then the header stays Report-Only.
+   the next build, because they are computed per deploy. **A second finding changes the shape of the fix:**
+   while verifying the sign-in fix, report-only mode also flagged
+   `Framing 'https://gen-lang-client-0869508722.firebaseapp.com/' violates "default-src 'self'"`. That is
+   Firebase Auth's own popup frame, so enforcing CSP needs **both** a nonce for the inline scripts and
+   `frame-src https://*.firebaseapp.com`; either one alone breaks something — the nonce alone blocks
+   sign-in, `frame-src` alone still refuses every bootstrap script. The header stays Report-Only until
+   both are in place and re-measured.
 7. **Deploy verification is done for all three §1.3 fixes.** The live build now serves no fixture prose,
    no stale passkey instruction and no rendered owner address (measured above). The remaining deploy work
    is the Firestore/Storage ruleset and the server environment (§4.1, §4.3) — the app artifact itself is
@@ -336,6 +466,11 @@ Three defects surfaced only because the deployed artifact was read instead of th
 - **AI consent, enablement and daily budget are read from Firestore, not localStorage.** The browser
   copy is a UI convenience; the route decides. A request whose metering write fails is refused rather
   than spent.
+- **Dark mode now overrides the light factory themes.** Before §1.5 the theme picker and dark mode fought
+  each other and the result was invisible text; now, with `.dark` on the root, the eight light palettes
+  render one dark token set and only `midnight-library` keeps its own. The visible consequence: choosing
+  "Botanical Journal" while in dark mode no longer shows a green-tinted paper. If per-theme dark variants
+  are wanted, that is nine dark palettes to design — a product decision, not a defect.
 - **A metering event no longer carries its own timestamp field.** The rules refuse `createdAt` on
   `/aiUsageEvents/{requestId}` because the REST writer cannot ask the server for one (§1.1.2), so a
   stored value would have been the client's clock. The history is still ordered and still server-owned:

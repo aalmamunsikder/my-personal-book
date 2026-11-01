@@ -35,6 +35,7 @@ import {
   OperationType,
 } from '../lib/firebase';
 import { DEFAULT_OWNER_ID, INITIAL_SETTINGS } from '../lib/journal-defaults';
+import { mergeArchive } from '../lib/archive-merge';
 import { countWords, detectScriptLanguage, getLocalTodayDateString } from '../lib/entry-utils';
 import { NO_LOCK_SECRET, setLockSecret, verifyLockSecret } from '../lib/entry-lock';
 import {
@@ -62,8 +63,79 @@ const STORAGE_KEYS = {
   settings: 'versevault_settings_v5',
   initialized: 'versevault_initialized_v5',
   unlockedEntries: 'versevault_unlocked_entries_v5',
+  pendingDeletes: 'versevault_pending_deletes_v5',
+  serverVersions: 'versevault_server_versions_v5',
   legacyEntries: 'versevault_entries_v4',
 };
+
+interface PendingDeletes {
+  entries: Set<string>;
+  collections: Set<string>;
+}
+
+/**
+ * The last version the server confirmed, per document id. This is what lets the merge tell "the server
+ * deleted it" from "it was never uploaded", so it has to survive a reload like the delete queue does.
+ */
+function readServerVersions(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.serverVersions);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    for (const [id, version] of Object.entries(parsed)) {
+      if (typeof version === 'number' && Number.isFinite(version) && version >= 1) out[id] = version;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeServerVersions(versions: Record<string, number>): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.serverVersions, JSON.stringify(versions));
+  } catch {
+    // A full or unavailable store loses the confirmation record; the merge then keeps local writing,
+    // which is the safe direction.
+  }
+}
+
+function forgetServerVersion(versions: Record<string, number>, id: string): void {
+  if (!(id in versions)) return;
+  delete versions[id];
+  writeServerVersions(versions);
+}
+
+/**
+ * A deletion made while signed out has no way to reach Firestore, and the archive would otherwise
+ * hand it back on the next sync. Queuing the id keeps that promise across a reload.
+ */
+function readPendingDeletes(): PendingDeletes {
+  const empty: PendingDeletes = { entries: new Set(), collections: new Set() };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.pendingDeletes);
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as { entries?: unknown; collections?: unknown };
+    return {
+      entries: new Set(Array.isArray(parsed.entries) ? (parsed.entries as string[]) : []),
+      collections: new Set(Array.isArray(parsed.collections) ? (parsed.collections as string[]) : []),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function writePendingDeletes(pending: PendingDeletes): void {
+  try {
+    localStorage.setItem(
+      STORAGE_KEYS.pendingDeletes,
+      JSON.stringify({ entries: [...pending.entries], collections: [...pending.collections] })
+    );
+  } catch {
+    // A full or unavailable store loses the replay queue, never the archive itself.
+  }
+}
 
 /**
  * v4 kept a per-entry passphrase in plaintext and mirrored it into Firestore. Reading it back
@@ -250,6 +322,13 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestWriteRef = useRef<Record<string, number>>({});
   const serverVersionRef = useRef<Record<string, number>>({});
+  // Local changes no server write has confirmed, and deletions that could not be sent. Both decide
+  // whether a snapshot may replace, keep or drop what the author holds.
+  const dirtyIdsRef = useRef<{ entries: Set<string>; collections: Set<string> }>({
+    entries: new Set(),
+    collections: new Set(),
+  });
+  const pendingDeletesRef = useRef<PendingDeletes>({ entries: new Set(), collections: new Set() });
 
   // The Firebase session is the only thing that grants write access. Hiding UI is not security,
   // so there is no locally-faked admin session.
@@ -268,6 +347,11 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
     const hydrate = async () => {
       try {
+        pendingDeletesRef.current = readPendingDeletes();
+        // A snapshot may already have landed while this effect was queued; never roll the record back.
+        if (Object.keys(serverVersionRef.current).length === 0) {
+          serverVersionRef.current = readServerVersions();
+        }
         const savedEntries = localStorage.getItem(STORAGE_KEYS.entries);
         if (savedEntries) {
           const parsed = JSON.parse(savedEntries);
@@ -406,6 +490,23 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authReady || !isFirebaseAdmin || !user) return;
 
+    // Deletions queued while signed out go first, so the snapshot below arrives without them.
+    const replayDeletes = (kind: keyof PendingDeletes, path: 'entries' | 'collections') => {
+      for (const id of Array.from(pendingDeletesRef.current[kind])) {
+        void deleteDoc(doc(db, path, id))
+          .then(() => {
+            pendingDeletesRef.current[kind].delete(id);
+            writePendingDeletes(pendingDeletesRef.current);
+            forgetServerVersion(serverVersionRef.current, id);
+          })
+          .catch((err) => {
+            console.error(`Failed replaying a queued ${path} deletion:`, err);
+          });
+      }
+    };
+    replayDeletes('entries', 'entries');
+    replayDeletes('collections', 'collections');
+
     const entriesQuery = query(collection(db, 'entries'), where('userId', '==', user.uid));
 
     const unsubEntries = onSnapshot(
@@ -419,18 +520,20 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
             updatedAt: timestampToIso(d.data().updatedAt, entry.updatedAt),
           };
         });
+        // Recorded outside the state updater so a StrictMode double-invoke cannot write the wrong set,
+        // and so the confirmation survives a reload (the merge needs it to decide what "absent" means).
+        for (const remote of remoteEntries) {
+          serverVersionRef.current[remote.id] = remote.version;
+        }
+        writeServerVersions(serverVersionRef.current);
         setEntries((prev) => {
-          const map = new Map<string, JournalEntry>();
-          for (const item of prev) map.set(item.id, item);
-          for (const remote of remoteEntries) {
-            serverVersionRef.current[remote.id] = remote.version;
-            const local = map.get(remote.id);
-            // A local draft with an unsent edit must never be replaced by the server copy.
-            if (!local || remote.version >= local.version) {
-              map.set(remote.id, remote);
-            }
-          }
-          return Array.from(map.values());
+          return mergeArchive({
+            local: prev,
+            remote: remoteEntries,
+            serverKnownIds: Object.keys(serverVersionRef.current),
+            dirtyIds: dirtyIdsRef.current.entries,
+            pendingDeleteIds: pendingDeletesRef.current.entries,
+          });
         });
       },
       (err) => {
@@ -453,10 +556,16 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
             };
           })
           .sort((a, b) => a.sortOrder - b.sortOrder);
+        for (const remote of remoteCols) serverVersionRef.current[remote.id] = remote.version;
+        writeServerVersions(serverVersionRef.current);
         setCollections((prev) => {
-          for (const remote of remoteCols) serverVersionRef.current[remote.id] = remote.version;
-          const localOnly = prev.filter((c) => !remoteCols.some((r) => r.id === c.id));
-          return [...remoteCols, ...localOnly].sort((a, b) => a.sortOrder - b.sortOrder);
+          return mergeArchive({
+            local: prev,
+            remote: remoteCols,
+            serverKnownIds: Object.keys(serverVersionRef.current),
+            dirtyIds: dirtyIdsRef.current.collections,
+            pendingDeleteIds: pendingDeletesRef.current.collections,
+          }).sort((a, b) => a.sortOrder - b.sortOrder);
         });
       },
       (err) => {
@@ -493,6 +602,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
   const syncEntryToCloud = useCallback(
     async (entry: JournalEntry) => {
       if (!isFirebaseAdmin || !user) {
+        dirtyIdsRef.current.entries.add(entry.id);
         setSaveState('local');
         setLastSavedAt(new Date().toISOString());
         return;
@@ -536,6 +646,8 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         });
 
         serverVersionRef.current[sanitized.id] = writtenVersion;
+        writeServerVersions(serverVersionRef.current);
+        dirtyIdsRef.current.entries.delete(sanitized.id);
         setEntries((prev) =>
           prev.map((e) => (e.id === sanitized.id ? { ...e, version: writtenVersion } : e))
         );
@@ -545,6 +657,9 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         const conflict = Boolean((err as { __conflict?: boolean })?.__conflict);
+        // Nothing is confirmed by a failed write, so the change stays dirty and a later snapshot
+        // must not replace it.
+        dirtyIdsRef.current.entries.add(entry.id);
         if (latestWriteRef.current[entry.id] === token) {
           setSaveState(conflict ? 'conflict' : 'failed');
         }
@@ -738,6 +853,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!settings.autosaveEnabled && !immediateSave) {
+        dirtyIdsRef.current.entries.add(id);
         setSaveState(isFirebaseAdmin ? 'dirty' : 'local');
         return;
       }
@@ -810,14 +926,25 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
   const permanentlyDeleteEntry = useCallback(
     (id: string) => {
+      // Queued first, before any state change: without it a document still held by Firestore would be
+      // handed back by the next snapshot, which is the opposite of what deleting means.
+      pendingDeletesRef.current.entries.add(id);
+      writePendingDeletes(pendingDeletesRef.current);
       setEntries((prev) => prev.filter((e) => e.id !== id));
+      dirtyIdsRef.current.entries.delete(id);
       if (activeEntryId === id) {
         setActiveEntryId(null);
       }
       if (isFirebaseAdmin && user) {
-        deleteDoc(doc(db, 'entries', id)).catch((err) => {
-          console.error('Failed deleting entry from cloud:', err);
-        });
+        deleteDoc(doc(db, 'entries', id))
+          .then(() => {
+            pendingDeletesRef.current.entries.delete(id);
+            writePendingDeletes(pendingDeletesRef.current);
+            forgetServerVersion(serverVersionRef.current, id);
+          })
+          .catch((err) => {
+            console.error('Failed deleting entry from cloud:', err);
+          });
       }
     },
     [activeEntryId, isFirebaseAdmin, user]
@@ -926,6 +1053,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
           return nextVersion;
         });
         serverVersionRef.current[sanitized.id] = writtenVersion;
+        writeServerVersions(serverVersionRef.current);
         setCollections((prev) =>
           prev.map((c) => (c.id === sanitized.id ? { ...c, version: writtenVersion } : c))
         );
@@ -984,9 +1112,16 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
 
   const deleteCollection = useCallback(
     (id: string) => {
+      pendingDeletesRef.current.collections.add(id);
+      writePendingDeletes(pendingDeletesRef.current);
       setCollections((prev) => prev.filter((col) => col.id !== id));
       setEntries((prev) =>
-        prev.map((e) => (e.collectionId === id ? { ...e, collectionId: '' } : e))
+        prev.map((e) => {
+          if (e.collectionId !== id) return e;
+          // Detaching an entry is an unsent edit, so it must survive the next snapshot.
+          dirtyIdsRef.current.entries.add(e.id);
+          return { ...e, collectionId: '' };
+        })
       );
       if (activeCollectionId === id) {
         setActiveCollectionId(null);
@@ -994,10 +1129,15 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
           setActiveSection('collections');
         }
       }
+      dirtyIdsRef.current.collections.delete(id);
       if (isFirebaseAdmin && user) {
-        deleteDoc(doc(db, 'collections', id)).catch((err) =>
-          console.error('Failed deleting collection from cloud:', err)
-        );
+        deleteDoc(doc(db, 'collections', id))
+          .then(() => {
+            pendingDeletesRef.current.collections.delete(id);
+            writePendingDeletes(pendingDeletesRef.current);
+            forgetServerVersion(serverVersionRef.current, id);
+          })
+          .catch((err) => console.error('Failed deleting collection from cloud:', err));
       }
     },
     [activeCollectionId, activeSection, isFirebaseAdmin, user]

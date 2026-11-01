@@ -1592,9 +1592,9 @@ export function OpenLeatherJournalSpread() {
              ==================================================================== */}
           <div className="flex-1 min-w-0 relative rounded-[15px] bg-[#BEA380] p-[3px] sm:p-[6px] shadow-[inset_0_0_0_1px_rgba(65,42,22,0.55),0_12px_28px_rgba(12,6,2,0.45)]">
             {/* Second Stacked Page Layer (Simulated gilt deckled edges) */}
-            <div className="rounded-[12px] bg-[#D6BFA0] p-[3px] sm:p-[5px] border border-[#AE926F] shadow-inner">
+            <div className="rounded-[12px] bg-[#D6BFA0] dark:bg-[#3A3226] p-[3px] sm:p-[5px] border border-[#AE926F] dark:border-[#4C4436] shadow-inner">
               {/* Third Stacked Page Layer */}
-              <div className="rounded-[10px] bg-[#E6D5BA] p-[2px] sm:p-[4px] border border-[#C3A987]">
+              <div className="rounded-[10px] bg-[#E6D5BA] dark:bg-[#2E2820] p-[2px] sm:p-[4px] border border-[#C3A987] dark:border-[#443C30]">
                 {/* Settings & Backup Full View */}
                 {leftPageMode === 'settings' ? (
                   <div className="bg-[var(--page)] rounded-[8px] p-4 sm:p-8 min-h-[690px] border border-[var(--line)]">
@@ -2396,7 +2396,7 @@ export function OpenLeatherJournalSpread() {
                                         }}
                                         className={`group relative flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-[7px] transition-all cursor-pointer border ${
                                           isSelected
-                                            ? 'bg-gradient-to-r from-[#E6D3B5] via-[#EFE0C8] to-[#E6D3B5] dark:from-[#352D24] dark:to-[#2D261E] border-[#AD8B63] dark:border-[#665441] shadow-[0_3px_10px_rgba(45,28,12,0.12),inset_0_1px_0_rgba(255,252,245,0.75)]'
+                                            ? 'bg-gradient-to-r from-[#E6D3B5] via-[#EFE0C8] to-[#E6D3B5] dark:from-[#352D24] dark:via-[#312A21] dark:to-[#2D261E] border-[#AD8B63] dark:border-[#665441] shadow-[0_3px_10px_rgba(45,28,12,0.12),inset_0_1px_0_rgba(255,252,245,0.75)]'
                                             : 'bg-[#FAF3E6]/55 dark:bg-[#27211B]/55 border-[#DFCBB0]/80 dark:border-[#393027] hover:bg-[#EFE1C9]/85 dark:hover:bg-[#302820] hover:border-[#C5AB88]'
                                         }`}
                                       >

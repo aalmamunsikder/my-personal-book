@@ -18,6 +18,26 @@
 14. **Prototype Content Never Reaches a Shipped Artifact**: the `SAMPLE_*` fixtures in `lib/seed-data.ts` are diary writing in prototype form — poems and prose about the author's family and married life — and must appear in no browser bundle, because a static chunk is downloadable by anyone who knows to ask for it. The ruleset cannot enforce this, so the boundary is the module graph: no client module may import `lib/seed-data.ts`. One imported symbol is enough to pull the whole file in, and `SAMPLE_ENTRIES` cannot be tree-shaken out of it because it is derived by a `countWords()` call terser cannot prove side-effect free. Constants the client legitimately needs (`DEFAULT_OWNER_ID`, `INITIAL_SETTINGS`) live in `lib/journal-defaults.ts`, which holds no Bangla text and no fixture ids. `fixture-isolation.test.ts` enforces both halves under `npm test`.
 15. **The Owner's Identity Is Not a Display Value**: the owner's email address authenticates a session; it is not content. It may exist in exactly two places — the server that verifies the token (`app/api/ai-assist/route.ts`) and one module-private constant used for comparison (`context/JournalContext.tsx`) — and it must never be exported, never reach the context value, never be interpolated into a message, and never be passed to Google as a `login_hint`, because an anonymous visitor or a wrong-account caller would otherwise read it off the screen or out of a static chunk. Screens that mean "which account is this" render the session's own `user?.email`, and `prompt: 'select_account'` keeps the chooser unpre-filled. The residual is accepted, not hidden: client-side gating requires the comparison value to exist in the client, so the address remains in one chunk as data, never as rendered copy. `owner-privacy.test.ts` enforces all four halves under `npm test`.
 
+16. **A Deletion Sticks, and Unsent Writing Is Never Clobbered**: the client-side archive
+    reconciliation is where both failure modes live, so its precedence is an invariant, not an
+    implementation detail. (a) A document the server no longer has is dropped from local state **only**
+    if the server confirmed it at least once *and* it carries no unsent local change; otherwise it is
+    kept as a pending upload. (b) Unsent local writing outranks **any** remote version — the client may
+    never replace writing the server has not acknowledged with the stored copy. (c) A delete issued
+    without a session is recorded as a pending delete, persisted across reload, replayed as a real
+    `deleteDoc` on the next sync, cleared only when that delete succeeds, and never resurrected by a
+    snapshot. (d) `version` is server-owned: the client never bumps it locally, which is what makes the
+    local copy's version evidence of the last thing the server confirmed, and therefore what makes (a)
+    decidable instead of guesswork. (e) Because (a) depends on that record, it is **durable**: written to
+    `localStorage` under `versevault_server_versions_v5` on every snapshot and every confirmed
+    transaction, pruned when our own delete succeeds, and fail-soft — a store that cannot be read or
+    written loses the record, and the merge then keeps local writing. `rules-unit-testing` cannot express
+    any of this — the engine has no
+    notion of a caller's unsent edits — so the boundary is a single pure function, `lib/archive-merge.ts`,
+    and `archive-merge.test.ts` executes the precedence. The empty-snapshot case is the one to read
+    carefully: an empty `onSnapshot` **must** clear an archive that is fully synchronised (someone really
+    deleted it) and **must not** erase writing that has not been safely stored.
+
 ## 2. The Payload Catalogue (grown from the original "Dirty Dozen")
 
 1. **Payload 1 (Unauthenticated Read)**: `auth = null` attempting `get` on `/entries/entry-1` -> `PERMISSION_DENIED`.
@@ -45,6 +65,13 @@
 23. **Payload 23 (World-Readable Object)**: an anonymous `getDownloadURL`, `getMetadata` or `list` on `/{uid}/covers/a.png`, and on any `public/…` path -> `PERMISSION_DENIED`; an unverified-email session is refused the same way (invariant 13).
 24. **Payload 24 (Fixture Exfiltration Through the Bundle)**: a client module that imports `lib/seed-data.ts` for one constant -> `npm test` fails, because the build then ships all 13 prototype entry bodies, their document ids and the collection descriptions as public static JavaScript (invariant 14). The measured acceptance form: 0 of 13 bodies, 0 of 13 ids, 0 of 6 descriptions present anywhere under `.next/static`. This one was real — it was found by reading the *deployed* chunk, not the source.
 25. **Payload 25 (Identity Disclosure Through the UI)**: an anonymous visitor reads the owner's address off the login screen; a caller who signs in with the wrong account is told whose address to use; or `login_hint` hands it to Google's chooser for every visitor -> `npm test` fails (invariant 15). All three happened on the live site at once.
+
+26. **Payload 26 (Resurrected Deletion / Clobbered Unsent Writing)**: an `onSnapshot` that omits a
+    document the owner deleted while signed out, or that carries a remote copy at a higher `version`
+    than a locally-edited page, and is allowed to overwrite client state -> `npm test` fails
+    (invariant 16). Both halves happened in real use, reported as *"contents are coming back even I
+    delete"*; the second half is the worse one, because it silently discarded writing the server had
+    never acknowledged. Nine executed cases in `archive-merge.test.ts` now pin the precedence.
 
 ## 3. Rules-Language Limits (found by executing the rules, not by reading them)
 
@@ -87,12 +114,13 @@ difference is enforced elsewhere rather than wished away:
 | `storage.rules.emulator.test.ts` | `npm run test:rules` | 6 payloads: no anonymous `get`/`download`/`list`, owner-prefix isolation, size ceiling, and no public prefix |
 | `fixture-isolation.test.ts` | `npm test` | Payload 24: no client module may import the prototype fixtures, and the module that replaced them holds no diary content (invariant 14) |
 | `owner-privacy.test.ts` | `npm test` | Payload 25: the owner's address appears only in the verifier and the gating constant, is never exported or interpolated, and is not a Google login hint (invariant 15) |
+| `archive-merge.test.ts` | `npm test` | Payload 26: 9 executed cases of the reconciliation rule — a server-side removal drops only a confirmed, non-dirty document, unsent local writing survives an absent *and* a higher-versioned remote copy, a queued delete is replayed and never resurrected, an empty snapshot clears a fully-synced archive, and the merge is idempotent (invariant 16) |
 | `tools/verify-ai-route-guard.sh` | `npm run test:route-guard` | Payload 18 against the **built** route over HTTP: anonymous, non-JWT bearer, and unsigned `alg:none` JWT each return `401 UNAUTHENTICATED` before the provider is reached, with no configuration or stack in the body |
 
 Payloads 1–17 and 19–23 are covered by the engine tests (QA items SEC-001…SEC-009 and SEC-012…SEC-014
-among them); Payload 18 by the route guard; Payloads 24 and 25 by the static module-graph and copy gates;
-SEC-010 and SEC-011 are not rule-testable, for the reason given in §3.4. `npm run test:rules` needs Java
-21+ for the emulator.
+among them); Payload 18 by the route guard; Payloads 24, 25 and 26 by the static module-graph, copy and
+reconciliation gates; SEC-010 and SEC-011 are not rule-testable, for the reason given in §3.4. `npm run
+test:rules` needs Java 21+ for the emulator.
 
 **Production evidence, measured on 2026-11-01 against `https://aal-dairy.vercel.app/`** (read-only:
 HTTP requests, the deployed chunks, the browser console — details in `IMPLEMENTATION_STATUS.md` §1.3):
