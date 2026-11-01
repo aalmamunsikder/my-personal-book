@@ -8,8 +8,9 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+// No Google login hint: that would bake the owner's address into the bundle and pre-fill the account
+// chooser for every visitor. select_account keeps the chooser, so the owner picks their own account.
 googleProvider.setCustomParameters({
-  login_hint: 'aalmamunsikder@gmail.com',
   prompt: 'select_account',
 });
 

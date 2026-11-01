@@ -48,7 +48,9 @@ import {
   sanitizeTagPayload,
 } from '../lib/validations';
 
-export const ADMIN_EMAIL = 'aalmamunsikder@gmail.com';
+// Gating only. This address must never be interpolated into user-visible text: a wrong-account
+// visitor can otherwise read it straight off the login screen, and it is baked into the bundle.
+const ADMIN_EMAIL = 'aalmamunsikder@gmail.com';
 
 // Features guide 2.3 / 8.2 requires server saves to be debounced by roughly 900-1200ms.
 const AUTOSAVE_DEBOUNCE_MS = 1000;
@@ -110,7 +112,6 @@ export interface CreateEntryOptions {
 interface JournalContextValue {
   user: User | null;
   isAdmin: boolean;
-  adminEmail: string;
   authReady: boolean;
   authError: string | null;
   clearAuthError: () => void;
@@ -369,9 +370,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currUser) => {
       if (currUser && currUser.email && currUser.email.toLowerCase() !== ADMIN_EMAIL) {
-        setAuthError(
-          `শুধুমাত্র অ্যাডমিন (${ADMIN_EMAIL}) লেখা যোগ বা সম্পাদনা করতে পারবেন। (Signed-in email ${currUser.email} is not the Admin.)`
-        );
+        setAuthError('শুধুমাত্র এই আর্কাইভের মালিকের অ্যাকাউন্ট লেখা যোগ বা সম্পাদনা করতে পারবেন।');
         await signOut(auth);
         setUser(null);
         setAuthReady(true);
@@ -1091,9 +1090,7 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
       const signedEmail = res.user?.email?.toLowerCase() || '';
       if (signedEmail !== ADMIN_EMAIL) {
         await signOut(auth);
-        setAuthError(
-          `অ্যাক্সেস অনুমোদিত নয়। শুধুমাত্র ${ADMIN_EMAIL} অ্যাকাউন্ট দিয়ে অ্যাডমিন লগইন করা যাবে।`
-        );
+        setAuthError('অ্যাক্সেস অনুমোদিত নয়। এই আর্কাইভের মালিকের Google অ্যাকাউন্ট দিয়েই শুধু লগইন করা যাবে।');
         return false;
       }
       setVaultLocked(false);
@@ -1176,7 +1173,6 @@ export function JournalProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       isAdmin,
-      adminEmail: ADMIN_EMAIL,
       authReady,
       authError,
       clearAuthError,

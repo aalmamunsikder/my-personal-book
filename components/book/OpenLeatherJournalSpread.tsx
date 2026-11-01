@@ -42,7 +42,7 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import { ADMIN_EMAIL, useJournal } from '../../context/JournalContext';
+import { useJournal } from '../../context/JournalContext';
 import {
   countCharacters,
   countWords,
@@ -447,7 +447,7 @@ export function OpenLeatherJournalSpread() {
     return activeEntries.filter((e) => e.entryDate === selectedCalendarDate);
   }, [activeEntries, selectedCalendarDate]);
 
-  // Action Handlers (Gated by Admin Email aalmamunsikder@gmail.com for write/edit/delete)
+  // Write/edit/delete are gated on the signed-in owner account (isAdmin)
   const handleStartNewEntry = (options?: {
     type?: EntryType;
     entryDate?: string;
@@ -995,7 +995,7 @@ export function OpenLeatherJournalSpread() {
               }
             }}
             aria-label={isAdmin ? 'Sign out admin' : 'Admin login'}
-            title={isAdmin ? `Admin: ${ADMIN_EMAIL} (ক্লিক করে লগআউট)` : `Admin Login (${ADMIN_EMAIL})`}
+            title={isAdmin ? `${user?.email ?? 'মালিক'} (ক্লিক করে লগআউট)` : 'মালিক লগইন'}
             className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
           >
             {isAdmin ? (
@@ -1050,7 +1050,7 @@ export function OpenLeatherJournalSpread() {
                   <div className="px-3 py-2 rounded-lg bg-[#3A2417] border border-[#7D5638] flex items-center justify-between text-xs mb-2">
                     <span className="flex items-center gap-1.5 text-[#EAD5BE] truncate">
                       <ShieldCheck className="w-4 h-4 text-[#7EB865] shrink-0" />
-                      <span className="truncate">Admin ({ADMIN_EMAIL})</span>
+                      <span className="truncate">{user?.email ?? 'মালিক'}</span>
                     </span>
                     <button
                       type="button"
@@ -1072,7 +1072,7 @@ export function OpenLeatherJournalSpread() {
                   >
                     <span className="flex items-center gap-2">
                       <KeyRound className="w-3.5 h-3.5 text-[#D8A668]" />
-                      <span>Admin Login ({ADMIN_EMAIL})</span>
+                      <span>মালিক লগইন</span>
                     </span>
                     <LogIn className="w-3.5 h-3.5 text-[#D8A668]" />
                   </button>
@@ -1558,9 +1558,9 @@ export function OpenLeatherJournalSpread() {
               <div className="px-2 space-y-1.5">
                 {isAdmin ? (
                   <div className="p-2 rounded-lg bg-[#3A2417] border border-[#7D5638] flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-[#EAD5BE] truncate" title={`Logged in as ${ADMIN_EMAIL}`}>
+                    <span className="flex items-center gap-1.5 text-[#EAD5BE] truncate" title={user?.email ?? 'মালিক'}>
                       <ShieldCheck className="w-3.5 h-3.5 text-[#7EB865] shrink-0" />
-                      <span className="truncate">Admin ({ADMIN_EMAIL.split('@')[0]})</span>
+                      <span className="truncate">{user?.email ?? 'মালিক'}</span>
                     </span>
                     <button
                       type="button"
@@ -1578,7 +1578,7 @@ export function OpenLeatherJournalSpread() {
                     className="w-full py-1.5 px-2.5 rounded-lg bg-[#3A2518] hover:bg-[#4E3220] border border-[#8B6343]/60 text-xs text-[#E8D8C3] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <KeyRound className="w-3.5 h-3.5 text-[#D8A668]" />
-                    <span>Admin Login ({ADMIN_EMAIL})</span>
+                    <span>মালিক লগইন</span>
                   </button>
                 )}
               </div>
@@ -3365,7 +3365,7 @@ export function OpenLeatherJournalSpread() {
                                     onClick={() => setAdminLoginModalOpen(true)}
                                     className="text-[var(--ink-soft)] hover:text-[var(--accent)] underline font-bangla cursor-pointer"
                                   >
-                                    আপনি কি ডায়েরির লেখক ({ADMIN_EMAIL})? অ্যাডমিন লগইন করুন
+                                    আপনি কি এই ডায়েরির মালিক? Google দিয়ে লগইন করুন
                                   </button>
                                 </div>
                               </div>
@@ -3759,7 +3759,7 @@ export function OpenLeatherJournalSpread() {
         </div>
       )}
 
-      {/* Admin Login Modal (aalmamunsikder@gmail.com) */}
+      {/* Admin Login Modal — gated on the signed-in owner account */}
       {adminLoginModalOpen && (
         <div
           role="dialog"
@@ -3796,7 +3796,7 @@ export function OpenLeatherJournalSpread() {
             </div>
 
             <p className="text-xs text-[var(--ink-soft)] font-bangla leading-relaxed">
-              এটি একটি ব্যক্তিগত ডায়েরি। লেখা যোগ, সম্পাদনা বা পাসওয়ার্ড লক সেট করতে অ্যাডমিন ({ADMIN_EMAIL}) হিসেবে Google দিয়ে সাইন-ইন করুন।
+              এটি একটি ব্যক্তিগত ডায়েরি। লেখা যোগ, সম্পাদনা বা পাসওয়ার্ড লক সেট করতে মালিকের Google অ্যাকাউন্ট দিয়ে সাইন-ইন করুন।
             </p>
 
             {authError && (
@@ -3813,7 +3813,7 @@ export function OpenLeatherJournalSpread() {
                 className="w-full"
               >
                 <LogIn className="w-4 h-4 text-[#DFB578]" />
-                <span>Google দিয়ে সাইন-ইন ({ADMIN_EMAIL})</span>
+                <span>Google দিয়ে সাইন-ইন</span>
               </LeatherClaspButton>
 
             </div>

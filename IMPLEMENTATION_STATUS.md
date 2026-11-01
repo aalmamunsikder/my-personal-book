@@ -32,15 +32,15 @@ satisfied as written, it is listed as a gap here rather than silently reinterpre
 
 | Command | Result at this commit |
 |---|---|
-| `npm test --silent` | **46 tests, 46 pass, 0 fail** across 4 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12), `fixture-isolation.test.ts` (4) |
+| `npm test --silent` | **50 tests, 50 pass, 0 fail** across 5 files: `firestore.rules.test.ts` (15), `ai-features.test.ts` (15), `lib/entry-utils.test.ts` (12), `fixture-isolation.test.ts` (4), `owner-privacy.test.ts` (4) |
 | `npm run test:rules` | **59 tests, 59 pass, 0 fail**: `firestore.rules.emulator.test.ts` (38), `firestore.rules.rest.test.ts` (15), `storage.rules.emulator.test.ts` (6). These are evaluated by the real rules engine in the Firestore/Storage emulators |
 | `npm run test:route-guard` | **3 checks pass** — spec Payload 18 executed against the *built* `/api/ai-assist`: an anonymous request, a non-JWT bearer and an unsigned `alg:none` JWT each get `401 UNAUTHENTICATED`, with no provider call and no leaked configuration or stack. `tools/verify-ai-route-guard.sh` runs `next build` first, starts its own server, and refuses to test against one it did not start |
 | `npx tsc --noEmit` | clean, no output |
 | `npm run lint` | **0 errors, 8 warnings** (all 8 are `@next/next/no-img-element` in `components/common/JournalArtwork.tsx`) |
 | `npm run build` | succeeds; route table is `/` (static), `/_not-found` (static), `/api/ai-assist` (dynamic) |
 
-**105 tests, 105 pass**, plus the 3-check route guard that runs the built handler over HTTP. Every
-number in this table was re-measured after the fixture-isolation change (§1.3).
+**109 tests, 109 pass**, plus the 3-check route guard that runs the built handler over HTTP. Every
+number in this table was re-measured after the fixture-isolation and owner-privacy changes (§1.3).
 
 `npm run test:rules` boots the Firebase emulators, and those need **Java 21 or newer** — firebase-tools
 15.34.2 rejects a 17 runtime ("no longer supports Java version before 21"). On this machine the run uses
@@ -140,7 +140,7 @@ printed by any of these probes.
   Firebase web API key and the project id, inlined from `firebase-applet-config.json` — client config by
   design, protected by the ruleset rather than by secrecy. SEC-015 has production evidence.
 
-Two defects surfaced only because the deployed artifact was read instead of the source:
+Three defects surfaced only because the deployed artifact was read instead of the source:
 
 1. **The prototype diary shipped to the public.** All 13 sample entry bodies (2,721 characters of
    personal-style Bangla poems and prose), all 13 entry ids and all 6 collection descriptions were
@@ -152,11 +152,25 @@ Two defects surfaced only because the deployed artifact was read instead of the 
    (4 assertions) and asserts the module the client *may* import contains no Bangla text and no fixture
    ids. A rebuild measures **0 of 13 bodies, 0 of 13 ids, 0 of 6 descriptions** in the bundle; the eight
    tag *names* that still appear come from `lib/journal-templates.ts` and shipped UI placeholders, not
-   from `lib/seed-data.ts`. **The live site keeps serving them until this is deployed.**
+   from `lib/seed-data.ts`. This was pushed and the deployment re-measured: the live chunk now serves
+   **0 of 13** bodies, **0 of 13** ids and **0 of 6** descriptions.
 2. **A stale instruction on the live auth path.** The popup-blocked error told users to sign in with the
    hard-coded admin passkey that this session removed, naming the owner's email address in the copy.
    Replaced with the accurate instruction at [context/JournalContext.tsx:1108](file:///data/my-personal-book/context/JournalContext.tsx#L1108);
    no `পাসকি`/passkey reference remains anywhere in the source.
+3. **The owner's personal email address was public.** It was rendered to *anonymous* visitors in 14
+   places (`Admin Account: …`, `Sign in with Google (…)`, `Admin Login (…)`), handed to any wrong-account
+   caller by two rejection messages, baked into the bundle as the Google `login_hint`, and re-sent live on
+   the re-scan that confirmed fix 1. `ADMIN_EMAIL` is now a module-private constant used only for gating —
+   it is no longer exported and no longer reaches the context value, so no component can print it. Where a
+   screen means "which account is this", it now reads the session's own `user?.email`. `login_hint` is gone
+   and `prompt: 'select_account'` stays, so the chooser is not pre-filled for strangers.
+   `owner-privacy.test.ts` (4 assertions) fails `npm test` if the address appears in any other client
+   module, if the constant is exported again, if a rejection message interpolates it, or if the login hint
+   returns. Measured in the rebuilt bundle: the address survives in exactly **1 of 19** chunks, and there
+   it is the gating comparison (`…@gmail.com` assigned to one constant) with no rendered copy beside it —
+   an honest residual, because comparing on the client requires the value to be *in* the client. The
+   server-side default in `app/api/ai-assist/route.ts:22` is not shipped to the browser.
 
 ---
 
@@ -197,9 +211,11 @@ Two defects surfaced only because the deployed artifact was read instead of the 
   executed by the emulator. If uploads are ever built, they must live under `/{uid}/…` — anything else is
   unreachable, by design and by test.
 - **Browser verification is still only the signed-out surface.** Locally and on the live site the
-  unsigned-in UI was rendered and screenshotted (empty archive, sign-in modal with no passkey field,
-  reading view), and the live console was read for CSP violations. Every screen behind authentication is
-  unverified visually, and the responsive matrix (F-16) has no evidence at all.
+  unsigned-in UI was rendered (empty archive, login modal, Settings & Backup view, reading view) and the
+  live console was read for CSP violations. After the copy changes the modal and the backup view were
+  re-read from the live DOM as **text, not pixels** — the in-app browser reported a hidden viewport, so no
+  screenshot could be taken, and nothing was visually confirmed about layout. Every screen behind
+  authentication is unverified, and the responsive matrix (F-16) has no evidence at all.
 
 ---
 
@@ -276,8 +292,9 @@ Two defects surfaced only because the deployed artifact was read instead of the 
    inline bootstrap scripts, and nothing else. Enforcing therefore needs a **nonce**
    (`script-src 'self' 'nonce-…'` per request); pinning the six reported `sha256-…` values would break on
    the next build, because they are computed per deploy. Until then the header stays Report-Only.
-7. **Redeploy the app.** The live bundle predates §1.3's two fixes, so the public site still ships the
-   prototype diary prose and the stale passkey instruction. Pushing `main` deploys automatically.
+7. **Redeploy after the owner-privacy change.** The live build already carries fixes 1 and 2 of §1.3
+   (re-measured after the push: no fixture prose, no stale passkey copy). It still predates fix 3, so your
+   address stays visible to anonymous visitors and in their Google account chooser until this is pushed.
 8. Housekeeping done at this commit: `package-lock.json` is tracked (an emulator run is not reproducible
    without pinned `firebase-tools`), and `tsconfig.tsbuildinfo` is gitignored.
 
@@ -291,6 +308,11 @@ Two defects surfaced only because the deployed artifact was read instead of the 
   readable, and there is no bypass. A forgotten passphrase is now unrecoverable by design.
 - **Anonymous visitors can no longer read entries.** Public reading needs an explicit, scoped design;
   the specs' "hiding UI is not security" rule left no compliant option but to deny.
+- **The login screens no longer name you.** Signed-out copy says "the archive owner's Google account"
+  instead of printing your address, the two rejection messages say the same, and the identity row shows
+  the email of whoever is actually signed in. If the UI naming the owner was deliberate — a household
+  device where you need to see which account to pick — that affordance is gone, and it is the one part of
+  this change that is a product decision rather than a defect fix.
 - **AI consent, enablement and daily budget are read from Firestore, not localStorage.** The browser
   copy is a UI convenience; the route decides. A request whose metering write fails is refused rather
   than spent.
@@ -315,12 +337,13 @@ Blocking items: rules are written and now engine-verified, but **undeployed**, s
 archive is still governed by a ruleset this repository has no evidence for beyond "it denies anonymous
 reads today" (§2, §4.1); no migration/backfill has been run for existing archive documents (§4.2); there
 is no signed-in or responsive verification with real evidence (§2, F-16); the AI provider has never been
-called, so the model id is unverified (§2); and the deployment that *is* live serves a build that ships
-the prototype diary prose to any visitor who asks a static chunk for it (§1.3, §4.7).
+called, so the model id is unverified (§2); and the live build still prints the owner's personal address
+on signed-out screens and pre-fills it in the Google chooser, because §1.3.3 has not been deployed yet.
 The P0 privacy defects this work started from — world-readable entries, plaintext passphrases, and a
 hard-coded admin passkey that bypassed both the lock and the AI budget — are closed, and the first two
 are now closed by engine results rather than by reading the rule text.
 The gap the emulator work closed is the one that made the security story unfalsifiable — the rules used
 to be *claimed* rather than *run*. Running them found three shipping defects (§1.1). Reading the
-deployed artifact found two more that no source-level review could see (§1.3). That is the argument for
+deployed artifact found three more that no source-level review could see (§1.3) — and the third was
+caught by re-reading the live bundle to confirm the first fix had landed. That is the argument for
 treating deployment, not the test suite, as the remaining work.

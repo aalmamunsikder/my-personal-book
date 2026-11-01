@@ -16,6 +16,7 @@
 12. **Secrets Stay Out of Artifacts and Logs**: JSON/ZIP exports strip `lockPasswordHash`, `lockSalt` and any legacy `lockPassword`; server logs record request shape (`requestId`, `task`, `model`, `durationMs`) only — never prompts, completions, entry content, or validation values that could contain a diary line.
 13. **Storage Is Owner-Only and Shaped**: every object must live under `/{uid}/…`, and `read` (which in Storage rules carries `get`, `download` *and* `list`) requires `request.auth.uid == uid` with `email_verified == true`. There is no public prefix, because a Storage rule cannot read the Firestore document that would hold a "published" flag and the specifications allow no public surface. A `create`/`update` is additionally capped at 5 MiB; `delete` is not size-gated, since `request.resource` is absent on a delete. Any path outside the uid shape is unmatched, and `rules_version = '2'` denies it.
 14. **Prototype Content Never Reaches a Shipped Artifact**: the `SAMPLE_*` fixtures in `lib/seed-data.ts` are diary writing in prototype form — poems and prose about the author's family and married life — and must appear in no browser bundle, because a static chunk is downloadable by anyone who knows to ask for it. The ruleset cannot enforce this, so the boundary is the module graph: no client module may import `lib/seed-data.ts`. One imported symbol is enough to pull the whole file in, and `SAMPLE_ENTRIES` cannot be tree-shaken out of it because it is derived by a `countWords()` call terser cannot prove side-effect free. Constants the client legitimately needs (`DEFAULT_OWNER_ID`, `INITIAL_SETTINGS`) live in `lib/journal-defaults.ts`, which holds no Bangla text and no fixture ids. `fixture-isolation.test.ts` enforces both halves under `npm test`.
+15. **The Owner's Identity Is Not a Display Value**: the owner's email address authenticates a session; it is not content. It may exist in exactly two places — the server that verifies the token (`app/api/ai-assist/route.ts`) and one module-private constant used for comparison (`context/JournalContext.tsx`) — and it must never be exported, never reach the context value, never be interpolated into a message, and never be passed to Google as a `login_hint`, because an anonymous visitor or a wrong-account caller would otherwise read it off the screen or out of a static chunk. Screens that mean "which account is this" render the session's own `user?.email`, and `prompt: 'select_account'` keeps the chooser unpre-filled. The residual is accepted, not hidden: client-side gating requires the comparison value to exist in the client, so the address remains in one chunk as data, never as rendered copy. `owner-privacy.test.ts` enforces all four halves under `npm test`.
 
 ## 2. The Payload Catalogue (grown from the original "Dirty Dozen")
 
@@ -43,6 +44,7 @@
 22. **Payload 22 (Unscoped Archive Read)**: `list` on `/entries` issued by the owner with no `where('userId','==',uid)` filter -> `PERMISSION_DENIED`. The list rule is evaluated against the query, so an unscoped read is refused rather than silently narrowed (see §3.3).
 23. **Payload 23 (World-Readable Object)**: an anonymous `getDownloadURL`, `getMetadata` or `list` on `/{uid}/covers/a.png`, and on any `public/…` path -> `PERMISSION_DENIED`; an unverified-email session is refused the same way (invariant 13).
 24. **Payload 24 (Fixture Exfiltration Through the Bundle)**: a client module that imports `lib/seed-data.ts` for one constant -> `npm test` fails, because the build then ships all 13 prototype entry bodies, their document ids and the collection descriptions as public static JavaScript (invariant 14). The measured acceptance form: 0 of 13 bodies, 0 of 13 ids, 0 of 6 descriptions present anywhere under `.next/static`. This one was real — it was found by reading the *deployed* chunk, not the source.
+25. **Payload 25 (Identity Disclosure Through the UI)**: an anonymous visitor reads the owner's address off the login screen; a caller who signs in with the wrong account is told whose address to use; or `login_hint` hands it to Google's chooser for every visitor -> `npm test` fails (invariant 15). All three happened on the live site at once.
 
 ## 3. Rules-Language Limits (found by executing the rules, not by reading them)
 
@@ -84,11 +86,13 @@ difference is enforced elsewhere rather than wished away:
 | `firestore.rules.rest.test.ts` | `npm run test:rules` | 15 payloads through `lib/firestore-rest.ts` — the writer `/api/ai-assist` actually uses, plus a drift check that every `AI_TASKS` value is accepted by the rules and that `firebase.json` names the database the app writes to |
 | `storage.rules.emulator.test.ts` | `npm run test:rules` | 6 payloads: no anonymous `get`/`download`/`list`, owner-prefix isolation, size ceiling, and no public prefix |
 | `fixture-isolation.test.ts` | `npm test` | Payload 24: no client module may import the prototype fixtures, and the module that replaced them holds no diary content (invariant 14) |
+| `owner-privacy.test.ts` | `npm test` | Payload 25: the owner's address appears only in the verifier and the gating constant, is never exported or interpolated, and is not a Google login hint (invariant 15) |
 | `tools/verify-ai-route-guard.sh` | `npm run test:route-guard` | Payload 18 against the **built** route over HTTP: anonymous, non-JWT bearer, and unsigned `alg:none` JWT each return `401 UNAUTHENTICATED` before the provider is reached, with no configuration or stack in the body |
 
 Payloads 1–17 and 19–23 are covered by the engine tests (QA items SEC-001…SEC-009 and SEC-012…SEC-014
-among them); Payload 18 by the route guard; Payload 24 by the static import gate; SEC-010 and SEC-011 are
-not rule-testable, for the reason given in §3.4. `npm run test:rules` needs Java 21+ for the emulator.
+among them); Payload 18 by the route guard; Payloads 24 and 25 by the static module-graph and copy gates;
+SEC-010 and SEC-011 are not rule-testable, for the reason given in §3.4. `npm run test:rules` needs Java
+21+ for the emulator.
 
 **Production evidence, measured on 2026-11-01 against `https://aal-dairy.vercel.app/`** (read-only:
 HTTP requests, the deployed chunks, the browser console — details in `IMPLEMENTATION_STATUS.md` §1.3):
@@ -101,7 +105,12 @@ HTTP requests, the deployed chunks, the browser console — details in `IMPLEMEN
   shared chunks or the route chunk. The publishable Firebase web API key and project id are present, as
   designed for client config.
 - Invariant 14 did **not** hold in production, and no source-level review would have caught it: the
-  deployed chunk carried all 13 fixture bodies. Fixed as described; it needs a redeploy to stop.
+  deployed chunk carried all 13 fixture bodies. Fixed, pushed, and **re-measured on the live site**: the
+  replacement chunk serves 0 of 13 bodies, 0 of 13 ids and 0 of 6 descriptions.
+- Invariant 15 did not hold either, in three ways at once — the address was rendered on signed-out
+  screens, quoted back to wrong-account callers, and sent to Google as a `login_hint`. It was caught by
+  re-reading the live bundle to confirm the fix above had landed. Fixed locally (1 of 19 chunks still
+  holds it, as gating data only); **it needs a deploy to stop being true in production.**
 - The Report-Only CSP reports exactly 6 violations on the signed-out page, all of them `script-src
   'self'` refusals of Next.js inline bootstrap scripts, and nothing else — so enforcement is a nonce
   question, not a directive-design question.

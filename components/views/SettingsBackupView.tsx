@@ -37,7 +37,6 @@ export function SettingsBackupView() {
   const {
     user,
     isAdmin,
-    adminEmail,
     authError,
     setAdminLoginModalOpen,
     signOutOwner,
@@ -391,7 +390,7 @@ export function SettingsBackupView() {
         <div className="space-y-1">
           <h2 className="text-lg font-literary font-medium text-[var(--ink)] flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[var(--accent)]" />
-            Private Archive &amp; Owner Authoring ({adminEmail})
+            Private Archive &amp; Owner Authoring
           </h2>
           <p className="text-xs text-[var(--ink-soft)] leading-relaxed max-w-2xl font-bangla">
             কোনো লেখা লগইন ছাড়া পড়া যায় না — Firestore rules অনুযায়ী সব read/write শুধুমাত্র যাচাইকৃত অ্যাডমিনের জন্য। পাসওয়ার্ড লক করা পাতা আলাদা করে খুলতে হয়।
@@ -402,7 +401,7 @@ export function SettingsBackupView() {
           <div className="text-xs text-[var(--ink)] font-bangla">
             {isAdmin ? (
               <span>
-                অ্যাডমিন হিসেবে লগইন আছেন: <strong>{user?.email || adminEmail}</strong> (সম্পূর্ণ লেখার ও সম্পাদনার অনুমতি সক্রিয়)
+                অ্যাডমিন হিসেবে লগইন আছেন: <strong>{user?.email ?? '—'}</strong> (সম্পূর্ণ লেখার ও সম্পাদনার অনুমতি সক্রিয়)
               </span>
             ) : (
               <span>
@@ -425,7 +424,7 @@ export function SettingsBackupView() {
                 size="md"
               >
                 <LogIn className="w-3.5 h-3.5 text-[#DFB578]" />
-                <span>Admin Login ({adminEmail})</span>
+                <span>মালিক লগইন</span>
               </LeatherClaspButton>
             )}
           </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Lock, LogIn } from 'lucide-react';
-import { ADMIN_EMAIL, useJournal } from '../../context/JournalContext';
+import { useJournal } from '../../context/JournalContext';
 import { BrassCornerOrnament, LeatherClaspButton } from '../ui/VerseVaultUI';
 
 export function OwnerLoginView() {
@@ -27,12 +27,12 @@ export function OwnerLoginView() {
             VerseVault
           </h1>
           <p className="text-xs sm:text-sm text-[var(--ink-soft)] font-bangla">
-            এই ডায়েরি সম্পূর্ণ ব্যক্তিগত। কোনো লেখা পড়তে বা লিখতে হলে অ্যাডমিন ({ADMIN_EMAIL}) হিসেবে Google দিয়ে লগইন করতে হবে।
+            এই ডায়েরি সম্পূর্ণ ব্যক্তিগত। কোনো লেখা পড়তে বা লিখতে হলে আর্কাইভের মালিকের Google অ্যাকাউন্টে সাইন-ইন করতে হবে।
           </p>
         </div>
 
         <div className="p-4 bg-[#E8D7BE]/60 dark:bg-[#2F271E] border border-[#C2A987] dark:border-[#493E31] rounded-[8px] text-xs text-[var(--ink-soft)] space-y-1.5 leading-relaxed">
-          <p className="font-semibold text-[var(--ink)]">Admin Account: {ADMIN_EMAIL}</p>
+          <p className="font-semibold text-[var(--ink)]">শুধুমাত্র আর্কাইভের মালিক প্রবেশ করতে পারবেন</p>
           <p className="font-bangla">
             লগইন ছাড়া কোনো পাতা লোড হয় না — Firestore rules অনুযায়ী anonymous read সম্পূর্ণ বন্ধ, তাই UI লুকিয়ে রাখাই একমাত্র সুরক্ষা নয়।
           </p>
@@ -52,7 +52,7 @@ export function OwnerLoginView() {
           disabled={!authReady}
         >
           <LogIn className="w-4 h-4 text-[#DFB578]" />
-          <span>{isAdmin ? 'Signed in' : `Sign in with Google (${ADMIN_EMAIL})`}</span>
+          <span>{isAdmin ? 'Signed in' : 'Google দিয়ে সাইন-ইন'}</span>
         </LeatherClaspButton>
 
         <p className="text-[11px] text-[var(--ink-soft)] text-center font-bangla">
