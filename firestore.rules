@@ -87,7 +87,11 @@ service cloud.firestore {
           'poetry-scroll',
           'epistolary-letter',
           'dot-commonplace',
-          'nocturnal-vellum'
+          'nocturnal-vellum',
+          'botanical-herbarium',
+          'royal-illuminated',
+          'deckle-handmade',
+          'ledger-chronicle'
         ] &&
         data.wordCount is int && data.wordCount >= 0 && data.wordCount <= 100000 &&
         data.collectionId is string && data.collectionId.size() <= 128 &&

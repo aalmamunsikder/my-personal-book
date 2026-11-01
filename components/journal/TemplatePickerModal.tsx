@@ -3,12 +3,22 @@
 import React, { useEffect, useState } from 'react';
 import { BookmarkPlus, Check, FilePlus2, Layers, Trash2 } from 'lucide-react';
 import {
+  DESK_BACKGROUNDS,
+  INK_COLOR_PRESETS,
   JOURNAL_TEMPLATES,
   JournalTemplate,
   PAGE_VARIATIONS,
   PageVariationMeta,
+  WRITING_STYLE_PRESETS,
 } from '../../lib/journal-templates';
-import type { EntryType, JournalEntry, PageVariation } from '../../types/entry';
+import type {
+  DeskBackgroundId,
+  EntryType,
+  InkColorId,
+  JournalEntry,
+  PageVariation,
+  WritingStyleId,
+} from '../../types/entry';
 import { BookDialogFrame } from '../common/BookDialogFrame';
 import {
   LeatherClaspButton,
@@ -24,6 +34,12 @@ interface TemplatePickerModalProps {
   onSelectTemplate: (template: JournalTemplate, mode: 'new' | 'current') => void;
   onSelectBlankVariation: (variation: PageVariation, mode: 'new' | 'current') => void;
   currentEntry?: JournalEntry | null;
+  deskBackground?: DeskBackgroundId;
+  onChangeDeskBackground?: (bg: DeskBackgroundId) => void;
+  writingStyle?: WritingStyleId;
+  onChangeWritingStyle?: (ws: WritingStyleId) => void;
+  inkColor?: InkColorId;
+  onChangeInkColor?: (ink: InkColorId) => void;
 }
 
 function PaperStyleSwatch({ kind }: { kind: PageVariationMeta['previewKind'] }) {
@@ -94,6 +110,58 @@ function PaperStyleSwatch({ kind }: { kind: PageVariationMeta['previewKind'] }) 
       </div>
     );
   }
+  if (kind === 'botanical') {
+    return (
+      <div
+        aria-hidden="true"
+        className="w-11 h-14 rounded-[4px] border border-[#7B8E6D] bg-gradient-to-br from-[#F4F7EE] to-[#E2EBD8] shadow-inner shrink-0 p-1.5 flex flex-col justify-between"
+      >
+        <div className="w-3 h-3 rounded-tr-full rounded-bl-full bg-[#5D7A52]/45 ml-auto" />
+        <div className="space-y-1">
+          <div className="w-6 h-[1.5px] bg-[#4F6846]/55" />
+          <div className="w-5 h-[1.5px] bg-[#4F6846]/40" />
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'illuminated') {
+    return (
+      <div
+        aria-hidden="true"
+        className="w-11 h-14 rounded-[4px] border-2 border-[#B37B34] bg-gradient-to-br from-[#FFF6E3] via-[#F5E3C0] to-[#E8CB97] shadow-inner shrink-0 p-1 flex flex-col justify-center items-center"
+      >
+        <div className="w-full h-full border border-[#8E352E]/60 rounded-[2px] flex flex-col items-center justify-center gap-1">
+          <div className="w-2 h-2 rotate-45 bg-[#B37B34]/75" />
+          <div className="w-5 h-[1.5px] bg-[#8E352E]/65" />
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'khadi') {
+    return (
+      <div
+        aria-hidden="true"
+        className="w-11 h-14 rounded-[4px] border border-[#A68966] bg-gradient-to-br from-[#EFE3CE] via-[#E5D3B7] to-[#D6BFA0] shadow-inner shrink-0 p-1.5 flex flex-col justify-between"
+      >
+        <div className="space-y-1.5 border-l border-dashed border-[#7A5B3E]/60 pl-1.5 h-full flex flex-col justify-center">
+          <div className="w-5 h-[1.5px] bg-[#6E5035]/60" />
+          <div className="w-4 h-[1.5px] bg-[#6E5035]/45" />
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'ledger') {
+    return (
+      <div
+        aria-hidden="true"
+        className="w-11 h-14 rounded-[4px] border border-[#9E886B] shadow-inner shrink-0"
+        style={{
+          background:
+            'linear-gradient(90deg, transparent 0px, transparent 10px, rgba(142,58,49,0.4) 10px, rgba(142,58,49,0.4) 11px, transparent 11px), repeating-linear-gradient(to bottom, #F9F2E4 0px, #F9F2E4 6px, rgba(120,100,78,0.25) 6px, rgba(120,100,78,0.25) 7px)',
+        }}
+      />
+    );
+  }
   return (
     <div
       aria-hidden="true"
@@ -111,8 +179,16 @@ export function TemplatePickerModal({
   onSelectTemplate,
   onSelectBlankVariation,
   currentEntry,
+  deskBackground = 'mahogany-study',
+  onChangeDeskBackground,
+  writingStyle = 'classic-book',
+  onChangeWritingStyle,
+  inkColor = 'sepia-walnut',
+  onChangeInkColor,
 }: TemplatePickerModalProps) {
-  const [applyMode, setApplyMode] = useState<'new' | 'current'>('new');
+  const [applyMode, setApplyMode] = useState<'new' | 'current'>(
+    currentEntry ? 'current' : 'new'
+  );
   const [categoryFilter, setCategoryFilter] = useState<'all' | EntryType>('all');
   const [customTemplates, setCustomTemplates] = useState<JournalTemplate[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -182,7 +258,7 @@ export function TemplatePickerModal({
   return (
     <BookDialogFrame
       open={open}
-      title="পাণ্ডুলিপি ছাঁচ ও পাতার নকশা (Archival Templates & Page Folio)"
+      title="পাণ্ডুলিপি ছাঁচ, পাতার নকশা ও লেখার টেবিল (Book Studio & Page Folio)"
       ariaLabelledBy="template-picker-modal-title"
       onClose={() => {
         bookSound.playBrassClickSound();
@@ -197,8 +273,129 @@ export function TemplatePickerModal({
       }
     >
         <p className="text-xs font-bangla text-[var(--ink-soft)] leading-relaxed">
-          নতুন পাতা শুরু করুন অথবা বর্তমান পাতায় পছন্দের কাগজের নকশা ও সাহিত্যিক কাঠামো প্রয়োগ করুন
+          পছন্দের লেখার টেবিলের আবহ (Desk Background), কাগজের ধরন (১০টি পাতা), হাতের লেখার ছাঁদ, ঝর্ণাকলমের কালি ও সাহিত্যিক টেমপ্লেট বেছে নিন।
         </p>
+
+        {/* Section 0: Writer's Desk Atmosphere, Writing Style & Fountain Ink */}
+        {(onChangeDeskBackground || onChangeWritingStyle || onChangeInkColor) && (
+          <div className="mt-4 p-3.5 rounded-[8px] bg-gradient-to-b from-[#F6EBD8] to-[#EAD8BD] dark:from-[#261F19] dark:to-[#1E1813] border border-[#C6AE8C] dark:border-[#463B2F] space-y-4">
+            {onChangeDeskBackground && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B]">
+                    ✦ লেখার টেবিলের আবহ (Writer’s Desk Background — ৮টি পরিবেশ)
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {DESK_BACKGROUNDS.map((bg) => {
+                    const active = deskBackground === bg.id;
+                    return (
+                      <button
+                        key={bg.id}
+                        type="button"
+                        onClick={() => {
+                          bookSound.playBrassClickSound();
+                          onChangeDeskBackground(bg.id);
+                        }}
+                        className={`p-2 rounded-[6px] border text-left transition-all flex items-center gap-2 cursor-pointer ${
+                          active
+                            ? 'bg-[#5A3E28] text-[#FDF8F0] border-[#D8A668] ring-1 ring-[#D8A668]/50 shadow-xs'
+                            : 'bg-[#FBF5E9] dark:bg-[#2B231C] text-[#3A281B] dark:text-[#DFCBB0] border-[#C9B190] dark:border-[#4A3E32] hover:bg-[#EFE0C8]'
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="w-6 h-6 rounded-full border border-white/30 shrink-0 shadow-inner"
+                          style={{ background: bg.swatchGradient }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[11px] font-bold font-bangla truncate">
+                            {bg.nameBn}
+                          </span>
+                          <span
+                            className={`block text-[9.5px] truncate ${
+                              active ? 'text-[#E8D2B5]' : 'text-[var(--ink-soft)]'
+                            }`}
+                          >
+                            {bg.shortLabel}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-dashed border-[#CBB494] dark:border-[#3E3328]">
+              {onChangeWritingStyle && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B] block">
+                    ✦ লেখার ছাঁদ ও বিন্যাস (Writing Style)
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {WRITING_STYLE_PRESETS.map((ws) => {
+                      const active = writingStyle === ws.id;
+                      return (
+                        <button
+                          key={ws.id}
+                          type="button"
+                          onClick={() => {
+                            bookSound.playPenScratchSound();
+                            onChangeWritingStyle(ws.id);
+                          }}
+                          title={ws.description}
+                          className={`px-2.5 py-1.5 rounded-[5px] border text-left text-[11px] font-bangla transition-all cursor-pointer truncate ${
+                            active
+                              ? 'bg-[#5A3E28] text-[#FDF8F0] border-[#D8A668] font-semibold'
+                              : 'bg-[#FBF5E9] dark:bg-[#2B231C] text-[#3A281B] dark:text-[#DFCBB0] border-[#C9B190] dark:border-[#4A3E32] hover:bg-[#EFE0C8]'
+                          }`}
+                        >
+                          {ws.nameBn}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {onChangeInkColor && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B] block">
+                    ✦ ঝর্ণাকলমের কালি (Fountain Pen Ink)
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {INK_COLOR_PRESETS.map((ink) => {
+                      const active = inkColor === ink.id;
+                      return (
+                        <button
+                          key={ink.id}
+                          type="button"
+                          onClick={() => {
+                            bookSound.playInkStampSound();
+                            onChangeInkColor(ink.id);
+                          }}
+                          className={`px-2.5 py-1.5 rounded-[5px] border text-left text-[11px] font-bangla transition-all flex items-center gap-2 cursor-pointer truncate ${
+                            active
+                              ? 'bg-[#5A3E28] text-[#FDF8F0] border-[#D8A668] font-semibold'
+                              : 'bg-[#FBF5E9] dark:bg-[#2B231C] text-[#3A281B] dark:text-[#DFCBB0] border-[#C9B190] dark:border-[#4A3E32] hover:bg-[#EFE0C8]'
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5 rounded-full border border-white/40 shrink-0"
+                            style={{ backgroundColor: ink.swatchHex }}
+                          />
+                          <span className="truncate">{ink.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Target Action Mode Bar: Create New Page vs Apply to Current Open Page */}
         <div className="mt-4 px-3 py-2.5 rounded-[6px] bg-[#EADBC4] dark:bg-[#272019] border border-[#C8AF8C] dark:border-[#3E3328] flex flex-wrap items-center justify-between gap-2">
@@ -261,11 +458,11 @@ export function TemplatePickerModal({
 
         {/* Template & variation grids (the shared frame supplies the scroll) */}
         <div className="mt-5 space-y-6">
-          {/* Section 1: 6 Blank Paper & Page Variations with Visual Swatches */}
+          {/* Section 1: 10 Blank Paper & Page Variations with Visual Swatches */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5F422D] dark:text-[#D8B485] font-bangla">
-                ✦ ১. কাগজের ধরন ও পৃষ্ঠার নকশা (6 Manuscript Paper Styles)
+                ✦ ১. কাগজের ধরন ও পৃষ্ঠার নকশা (10 Manuscript Paper Styles)
               </span>
               <span className="flex-1 h-[1px] bg-gradient-to-r from-[#C8B192] dark:from-[#4A3D2F] to-transparent" />
             </div>

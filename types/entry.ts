@@ -8,7 +8,49 @@ export type PageVariation =
   | 'poetry-scroll'
   | 'epistolary-letter'
   | 'dot-commonplace'
-  | 'nocturnal-vellum';
+  | 'nocturnal-vellum'
+  | 'botanical-herbarium'
+  | 'royal-illuminated'
+  | 'deckle-handmade'
+  | 'ledger-chronicle';
+
+export type WritingStyleId =
+  | 'classic-book'
+  | 'poetic-centered'
+  | 'fountain-calligraphy'
+  | 'epistolary-intimate'
+  | 'compact-chronicle'
+  | 'grand-folio';
+
+export type InkColorId =
+  | 'sepia-walnut'
+  | 'oxford-midnight'
+  | 'oxblood-crimson'
+  | 'forest-moss'
+  | 'royal-amethyst'
+  | 'gilded-amber';
+
+export type DeskBackgroundId =
+  | 'mahogany-study'
+  | 'rainy-veranda'
+  | 'candlelight-library'
+  | 'botanical-conservatory'
+  | 'royal-velvet'
+  | 'autumn-courtyard'
+  | 'starlit-roof'
+  | 'minimal-sandstone';
+
+export interface ReadingBookmark {
+  entryId: string;
+  entryTitle: string;
+  entryDate: string;
+  scrollTop: number;
+  scrollProgress: number;
+  cursorOffset?: number;
+  excerpt: string;
+  updatedAtIso: string;
+  isEditing?: boolean;
+}
 
 export type EntryMood =
   | ''

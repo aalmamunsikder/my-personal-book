@@ -138,7 +138,11 @@
             "poetry-scroll",
             "epistolary-letter",
             "dot-commonplace",
-            "nocturnal-vellum"
+            "nocturnal-vellum",
+            "botanical-herbarium",
+            "royal-illuminated",
+            "deckle-handmade",
+            "ledger-chronicle"
           ]
         },
         "wordCount": {

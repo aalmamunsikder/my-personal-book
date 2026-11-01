@@ -1,4 +1,11 @@
-import type { EntryMood, EntryType, PageVariation } from '../types/entry';
+import type {
+  DeskBackgroundId,
+  EntryMood,
+  EntryType,
+  InkColorId,
+  PageVariation,
+  WritingStyleId,
+} from '../types/entry';
 
 export interface PageVariationMeta {
   id: PageVariation;
@@ -6,7 +13,17 @@ export interface PageVariationMeta {
   nameEn: string;
   shortLabel: string;
   description: string;
-  previewKind: 'parchment' | 'ruled' | 'poetry' | 'letter' | 'dot' | 'nocturnal';
+  previewKind:
+    | 'parchment'
+    | 'ruled'
+    | 'poetry'
+    | 'letter'
+    | 'dot'
+    | 'nocturnal'
+    | 'botanical'
+    | 'illuminated'
+    | 'khadi'
+    | 'ledger';
 }
 
 export const PAGE_VARIATIONS: PageVariationMeta[] = [
@@ -57,6 +74,327 @@ export const PAGE_VARIATIONS: PageVariationMeta[] = [
     shortLabel: 'Night Vellum',
     description: 'Deep midnight espresso vellum with warm golden ink and starlight glow.',
     previewKind: 'nocturnal',
+  },
+  {
+    id: 'botanical-herbarium',
+    nameBn: 'বনফুল ও ভেষজ পাতা',
+    nameEn: 'Botanical Herbarium',
+    shortLabel: 'Botanical',
+    description: 'Soft sage-cream cotton paper with pressed botanical leaf watermark and olive frame.',
+    previewKind: 'botanical',
+  },
+  {
+    id: 'royal-illuminated',
+    nameBn: 'স্বর্ণাক্ষর অলংকৃত পাতা',
+    nameEn: 'Illuminated Manuscript',
+    shortLabel: 'Illuminated',
+    description: 'Ornate gold-and-terracotta manuscript border with classic royal literary poise.',
+    previewKind: 'illuminated',
+  },
+  {
+    id: 'deckle-handmade',
+    nameBn: 'হাতে-বানানো খাদি কাগজ',
+    nameEn: 'Handmade Khadi Deckle',
+    shortLabel: 'Khadi Paper',
+    description: 'Tactile unbleached artisan khadi cotton paper with stitched spine marks.',
+    previewKind: 'khadi',
+  },
+  {
+    id: 'ledger-chronicle',
+    nameBn: 'আর্কাইভ খতিয়ান পাতা',
+    nameEn: 'Archival Chronicle Ledger',
+    shortLabel: 'Chronicle',
+    description: 'Structured archival column rules and fine grid lines for daily chronicles.',
+    previewKind: 'ledger',
+  },
+];
+
+export interface WritingStyleMeta {
+  id: WritingStyleId;
+  nameBn: string;
+  nameEn: string;
+  shortLabel: string;
+  description: string;
+  fontSizeClass: string;
+  lineHeightClass: string;
+  alignClass: string;
+  indentClass: string;
+  dropCap?: boolean;
+  letterSpacingClass?: string;
+}
+
+export const WRITING_STYLE_PRESETS: WritingStyleMeta[] = [
+  {
+    id: 'classic-book',
+    nameBn: 'মুদ্রিত সাহিত্য (Classic Book)',
+    nameEn: 'Classic Book Print',
+    shortLabel: 'Classic',
+    description: 'Balanced literary book typography with comfortable reading rhythm.',
+    fontSizeClass: 'text-base sm:text-[18px]',
+    lineHeightClass: 'leading-[1.95]',
+    alignClass: 'text-left',
+    indentClass: '',
+  },
+  {
+    id: 'poetic-centered',
+    nameBn: 'কাব্যিক ছন্দ (Centered Verse)',
+    nameEn: 'Centered Poetic Stanzas',
+    shortLabel: 'Poetic Center',
+    description: 'Centered stanza composition with generous breathing space between verses.',
+    fontSizeClass: 'text-base sm:text-[18.5px]',
+    lineHeightClass: 'leading-[2.15]',
+    alignClass: 'text-center',
+    indentClass: '',
+  },
+  {
+    id: 'fountain-calligraphy',
+    nameBn: 'ঝর্ণাকলমের ছাঁদ (Fountain Script)',
+    nameEn: 'Fountain Pen Manuscript',
+    shortLabel: 'Fountain Pen',
+    description: 'Expressive manuscript cadence with an illuminated first-letter drop cap.',
+    fontSizeClass: 'text-[17px] sm:text-[19.5px]',
+    lineHeightClass: 'leading-[2.05]',
+    alignClass: 'text-left',
+    indentClass: '',
+    dropCap: true,
+    letterSpacingClass: 'tracking-[0.012em]',
+  },
+  {
+    id: 'epistolary-intimate',
+    nameBn: 'চিঠির ঘরানা (Epistolary)',
+    nameEn: 'Intimate Letter Style',
+    shortLabel: 'Letter Style',
+    description: 'Warm personal letter flow with gentle paragraph breathing room.',
+    fontSizeClass: 'text-base sm:text-[18px]',
+    lineHeightClass: 'leading-[2.0]',
+    alignClass: 'text-left',
+    indentClass: 'pl-2 sm:pl-4 border-l-2 border-[#C8AF8C]/45',
+  },
+  {
+    id: 'compact-chronicle',
+    nameBn: 'ঘন দিনলিপি (Compact)',
+    nameEn: 'Compact Notebook',
+    shortLabel: 'Compact',
+    description: 'Crisp archival notebook density so long entries fit more lines per page.',
+    fontSizeClass: 'text-sm sm:text-[15.5px]',
+    lineHeightClass: 'leading-[1.78]',
+    alignClass: 'text-left',
+    indentClass: '',
+  },
+  {
+    id: 'grand-folio',
+    nameBn: 'বড় হরফের পাঠ (Grand Folio)',
+    nameEn: 'Grand Folio Large',
+    shortLabel: 'Large Print',
+    description: 'Spacious, high-comfort large literary type for effortless reading.',
+    fontSizeClass: 'text-lg sm:text-[21px]',
+    lineHeightClass: 'leading-[2.05]',
+    alignClass: 'text-left',
+    indentClass: '',
+  },
+];
+
+export interface InkColorMeta {
+  id: InkColorId;
+  nameBn: string;
+  nameEn: string;
+  shortLabel: string;
+  swatchHex: string;
+  lightColorHex: string;
+  darkColorHex: string;
+}
+
+export const INK_COLOR_PRESETS: InkColorMeta[] = [
+  {
+    id: 'sepia-walnut',
+    nameBn: 'প্রাচীন সেপিয়া (Walnut Sepia)',
+    nameEn: 'Antique Walnut Ink',
+    shortLabel: 'Walnut',
+    swatchHex: '#3B281B',
+    lightColorHex: '#2B1E16',
+    darkColorHex: '#F2E3CC',
+  },
+  {
+    id: 'oxford-midnight',
+    nameBn: 'অক্সফোর্ড নীলচে-কালো (Blue-Black)',
+    nameEn: 'Midnight Blue-Black',
+    shortLabel: 'Blue-Black',
+    swatchHex: '#1D354C',
+    lightColorHex: '#182B3E',
+    darkColorHex: '#D8E8F8',
+  },
+  {
+    id: 'oxblood-crimson',
+    nameBn: 'অক্সব্লাড খয়েরি (Writer’s Oxblood)',
+    nameEn: 'Writer’s Oxblood',
+    shortLabel: 'Oxblood',
+    swatchHex: '#63201D',
+    lightColorHex: '#4E1815',
+    darkColorHex: '#F6CDC9',
+  },
+  {
+    id: 'forest-moss',
+    nameBn: 'অরণ্য সবুজ কালি (Sherwood Green)',
+    nameEn: 'Sherwood Forest Ink',
+    shortLabel: 'Forest',
+    swatchHex: '#22422B',
+    lightColorHex: '#1B3623',
+    darkColorHex: '#D0ECD6',
+  },
+  {
+    id: 'royal-amethyst',
+    nameBn: 'রাজকীয় বেগুনি (Imperial Violet)',
+    nameEn: 'Imperial Amethyst',
+    shortLabel: 'Amethyst',
+    swatchHex: '#412652',
+    lightColorHex: '#341D42',
+    darkColorHex: '#E6D4F5',
+  },
+  {
+    id: 'gilded-amber',
+    nameBn: 'স্বর্ণাভ তাম্র (Gilded Copper)',
+    nameEn: 'Gilded Copper Ink',
+    shortLabel: 'Copper',
+    swatchHex: '#7A481D',
+    lightColorHex: '#593312',
+    darkColorHex: '#F7D79C',
+  },
+];
+
+export interface DeskBackgroundMeta {
+  id: DeskBackgroundId;
+  nameBn: string;
+  nameEn: string;
+  shortLabel: string;
+  descriptionBn: string;
+  swatchGradient: string;
+  backgroundCss: string;
+  patternCss: string;
+  ambientGlowCss: string;
+  accentHex: string;
+  isDarkScene: boolean;
+}
+
+export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
+  {
+    id: 'mahogany-study',
+    nameBn: 'মেহগনি কাঠের টেবিল',
+    nameEn: 'Mahogany Writer’s Desk',
+    shortLabel: 'Mahogany Desk',
+    descriptionBn: 'উষ্ণ পিতলের টেবিল ল্যাম্প ও প্রাচীন মেহগনি কাঠের লেখার টেবিল।',
+    swatchGradient: 'linear-gradient(135deg, #3A2214 0%, #24140B 60%, #160B06 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 18%, #3B2314 0%, #24140B 55%, #120904 100%)',
+    patternCss:
+      'repeating-linear-gradient(90deg, rgba(255,210,160,0.025) 0px, rgba(255,210,160,0.025) 2px, transparent 2px, transparent 14px), repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 48px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 18% 12%, rgba(235, 178, 98, 0.22) 0%, rgba(216, 146, 68, 0.06) 42%, transparent 72%)',
+    accentHex: '#8C5230',
+    isDarkScene: true,
+  },
+  {
+    id: 'rainy-veranda',
+    nameBn: 'বর্ষার জানালার ধার',
+    nameEn: 'Monsoon Teak Veranda',
+    shortLabel: 'Monsoon Window',
+    descriptionBn: 'বৃষ্টির বিকেলের মেঘলা আলো ও সেগুন কাঠের টেবিলের নীরব আবহ।',
+    swatchGradient: 'linear-gradient(135deg, #2C363B 0%, #1E262B 60%, #141A1E 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 10%, #2D3940 0%, #1C252A 58%, #101619 100%)',
+    patternCss:
+      'repeating-linear-gradient(108deg, rgba(190,220,235,0.03) 0px, rgba(190,220,235,0.03) 1px, transparent 1px, transparent 18px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 82% 14%, rgba(156, 198, 218, 0.18) 0%, transparent 65%)',
+    accentHex: '#4F6D7A',
+    isDarkScene: true,
+  },
+  {
+    id: 'candlelight-library',
+    nameBn: 'মোমবাতির নিশুতি পাঠাগার',
+    nameEn: 'Candlelight Library',
+    shortLabel: 'Candlelight',
+    descriptionBn: 'মধ্যরাতের নিস্তব্ধ পাঠাগারে মোমবাতির সোনালি আলোয় ডায়েরির পাতা।',
+    swatchGradient: 'radial-gradient(circle at 30% 30%, #593818 0%, #1E130B 65%, #0F0905 100%)',
+    backgroundCss: 'radial-gradient(circle at 50% 24%, #452912 0%, #1F1209 56%, #0D0704 100%)',
+    patternCss:
+      'repeating-linear-gradient(90deg, rgba(242,190,120,0.02) 0px, rgba(242,190,120,0.02) 3px, transparent 3px, transparent 22px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 22% 20%, rgba(255, 185, 82, 0.26) 0%, rgba(214, 128, 42, 0.08) 45%, transparent 72%)',
+    accentHex: '#C98A3E',
+    isDarkScene: true,
+  },
+  {
+    id: 'botanical-conservatory',
+    nameBn: 'সবুজ বাগান ও কাঠের টেবিল',
+    nameEn: 'Botanical Conservatory',
+    shortLabel: 'Botanical Desk',
+    descriptionBn: 'পাতার ফাঁক গলে আসা নরম রোদ ও জলপাই-কাঠের শান্ত পরিবেশ।',
+    swatchGradient: 'linear-gradient(135deg, #2D3B2E 0%, #1F2A20 65%, #141C15 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 15%, #2E3D2F 0%, #1D281E 60%, #111812 100%)',
+    patternCss:
+      'repeating-linear-gradient(45deg, rgba(180,215,170,0.025) 0px, rgba(180,215,170,0.025) 2px, transparent 2px, transparent 20px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 78% 16%, rgba(168, 214, 152, 0.18) 0%, transparent 65%)',
+    accentHex: '#587A56',
+    isDarkScene: true,
+  },
+  {
+    id: 'royal-velvet',
+    nameBn: 'রাজকীয় মখমল ও তামা',
+    nameEn: 'Crimson Velvet Salon',
+    shortLabel: 'Crimson Velvet',
+    descriptionBn: 'গাঢ় মেরুন মখমলের টেবিলক্লথ ও প্রাচীন সোনালি কারুকাজের আবহ।',
+    swatchGradient: 'linear-gradient(135deg, #421C22 0%, #281014 65%, #17080B 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 20%, #461B22 0%, #280E13 60%, #140609 100%)',
+    patternCss:
+      'radial-gradient(rgba(235, 190, 130, 0.045) 1px, transparent 1px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 25% 15%, rgba(226, 160, 108, 0.2) 0%, transparent 68%)',
+    accentHex: '#8E2F3C',
+    isDarkScene: true,
+  },
+  {
+    id: 'autumn-courtyard',
+    nameBn: 'শরতের রোদেলা উঠোন',
+    nameEn: 'Sunlit Linen & Sandstone',
+    shortLabel: 'Sunlit Linen',
+    descriptionBn: 'দিনের উজ্জ্বল আলোয় বোনা লিনেন ও বেলেপাথরের স্নিগ্ধ টেবিল।',
+    swatchGradient: 'linear-gradient(135deg, #E8DAC5 0%, #D5C0A3 65%, #BFA482 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 12%, #EFE3D0 0%, #DECBB0 62%, #C9B190 100%)',
+    patternCss:
+      'repeating-linear-gradient(0deg, rgba(95,68,42,0.03) 0px, rgba(95,68,42,0.03) 1px, transparent 1px, transparent 8px), repeating-linear-gradient(90deg, rgba(95,68,42,0.025) 0px, rgba(95,68,42,0.025) 1px, transparent 1px, transparent 8px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 80% 12%, rgba(255, 245, 220, 0.55) 0%, transparent 65%)',
+    accentHex: '#C8A273',
+    isDarkScene: false,
+  },
+  {
+    id: 'starlit-roof',
+    nameBn: 'তারার নিচে ছাদের কোণ',
+    nameEn: 'Starlit Midnight Terrace',
+    shortLabel: 'Starlit Night',
+    descriptionBn: 'গভীর নীল রাতের আকাশ ও তারার আলোয় একাকী লেখার প্রহর।',
+    swatchGradient: 'linear-gradient(135deg, #1B2236 0%, #111626 65%, #090C16 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 15%, #1E2740 0%, #121728 60%, #090C15 100%)',
+    patternCss:
+      'radial-gradient(rgba(235, 242, 255, 0.08) 1px, transparent 1px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 75% 15%, rgba(162, 188, 245, 0.18) 0%, transparent 65%)',
+    accentHex: '#435785',
+    isDarkScene: true,
+  },
+  {
+    id: 'minimal-sandstone',
+    nameBn: 'নীরব পাথুরে টেবিল',
+    nameEn: 'Quiet Travertine Stone',
+    shortLabel: 'Quiet Stone',
+    descriptionBn: 'ন্যূনতম অলংকরণে শান্ত ও একাগ্র পাঠের জন্য পাথুরে ডেস্ক।',
+    swatchGradient: 'linear-gradient(135deg, #DFD9CE 0%, #CBC3B5 65%, #B5AC9C 100%)',
+    backgroundCss: 'radial-gradient(ellipse at 50% 15%, #E5DFD5 0%, #D2C9BA 65%, #BFB5A4 100%)',
+    patternCss:
+      'radial-gradient(rgba(70, 60, 50, 0.04) 1px, transparent 1px)',
+    ambientGlowCss:
+      'radial-gradient(circle at 25% 15%, rgba(255, 252, 245, 0.45) 0%, transparent 65%)',
+    accentHex: '#A69B8A',
+    isDarkScene: false,
   },
 ];
 
@@ -191,6 +529,62 @@ export const JOURNAL_TEMPLATES: JournalTemplate[] = [
     defaultContent: `স্থান ও পরিবেশ:\nজানালার বাইরে ছুটে চলা সবুজ প্রান্তর আর দূরের কুয়াশাচ্ছন্ন দিগন্ত।\n\nযাত্রাপথের সেরা মুহূর্ত:\nঅচেনা মানুষের মুখের হাসি আর চায়ের কাপে জমে ওঠা বিকেলের আড্ডা।`,
     tags: ['ভ্রমণ', 'জীবনের খেরোখাতা'],
   },
+  {
+    id: 'tpl-botanical-nature',
+    nameBn: 'প্রকৃতি ও ঋতুবৈচিত্র্যের দিনলিপি (Botanical Folio)',
+    nameEn: 'Nature & Seasonal Observation',
+    descriptionBn: 'বর্ষার প্রথম কদম, শরতের কাশফুল বা প্রকৃতির সান্নিধ্যে লেখা পাতা।',
+    type: 'diary',
+    pageVariation: 'botanical-herbarium',
+    mood: 'Peaceful',
+    collectionId: 'col-nirobota',
+    defaultTitle: 'বৃষ্টিভেজা পাতার ঘ্রাণ',
+    defaultSubtitle: 'প্রকৃতির খেরোখাতা',
+    defaultContent: `জানালার পাশে দাঁড়াতেই ভেজা মাটির গন্ধে মনটা শান্ত হয়ে গেল।\n\nপ্রকৃতির কাছে গেলে বোঝা যায়—জীবনের সবচেয়ে সুন্দর মুহূর্তগুলো আসলে খুব সাধারণ ও নীরব।`,
+    tags: ['প্রকৃতি', 'নৈঃশব্দ্য'],
+  },
+  {
+    id: 'tpl-royal-manuscript',
+    nameBn: 'ধ্রুপদী গীতিকাব্য ও স্বর্ণপত্র (Illuminated Verse)',
+    nameEn: 'Classical Illuminated Poem',
+    descriptionBn: 'স্বর্ণাক্ষর অলংকৃত ফ্রেমে ধ্রুপদী কবিতা বা গানের পঙ্‌ক্তিমালা।',
+    type: 'poem',
+    pageVariation: 'royal-illuminated',
+    mood: 'Romantic',
+    collectionId: 'col-jibondorshon',
+    defaultTitle: 'স্বর্ণাক্ষরের গীতিকাব্য',
+    defaultSubtitle: 'ধ্রুপদী সংকলন',
+    defaultContent: `আলোয় ভরা প্রদীপখানি নিভৃতে জ্বলে রয়,\nস্মৃতির পাতায় ফুটে ওঠে চিরকালের জয়।\nযুগান্তরের পথ পেরিয়ে যে সুর বাজে প্রাণে,\nসেই তো আমার নীরব রাতের অমূল্য সঞ্চয়।`,
+    tags: ['কবিতা', 'ধ্রুপদী'],
+  },
+  {
+    id: 'tpl-khadi-memoir',
+    nameBn: 'হাতে-বানানো খাদি পাতার স্মৃতিকথা (Khadi Memoir)',
+    nameEn: 'Artisan Khadi Memoir',
+    descriptionBn: 'অমসৃণ খাদি কাগজের পাতায় পুরনো দিনের অকৃত্রিম স্মৃতিচারণ।',
+    type: 'prose',
+    pageVariation: 'deckle-handmade',
+    mood: 'Nostalgic',
+    collectionId: 'col-poribar',
+    defaultTitle: 'পুরনো ট্রাঙ্কের চিঠি ও স্মৃতি',
+    defaultSubtitle: 'খাদি কাগজের পাতা',
+    defaultContent: `আজ পুরনো কাঠের আলমারিটা খুলতেই হলুদ হয়ে যাওয়া কিছু কাগজের ভাঁজে হারিয়ে যাওয়া একটা সময়ের দেখা পেলাম।\n\nকাগজের স্পর্শে যেন ফুটে উঠল অনেক বছর আগের এক শান্ত দুপুরের ছবি।`,
+    tags: ['স্মৃতি', 'খেরোখাতা'],
+  },
+  {
+    id: 'tpl-chronicle-ledger',
+    nameBn: 'সময়রেখা ও কৃতজ্ঞতার খতিয়ান (Chronicle Ledger)',
+    nameEn: 'Daily Gratitude & Milestone Ledger',
+    descriptionBn: 'তারিখ ও প্রহর ধরে জীবনের বিশেষ ঘটনা ও প্রাপ্তির ধারাবাহিক লিপি।',
+    type: 'diary',
+    pageVariation: 'ledger-chronicle',
+    mood: 'Grateful',
+    collectionId: 'col-kherokhata',
+    defaultTitle: 'জীবনের মাইলফলক ও কৃতজ্ঞতা',
+    defaultSubtitle: 'আর্কাইভ খতিয়ান',
+    defaultContent: `সকাল — নতুন একটি কাজের শুভ সূচনা ও মনের ভেতর জমে থাকা উদ্দীপনা।\n\nদুপুর — প্রিয় মানুষের সাথে সংক্ষিপ্ত কিন্তু অর্থপূর্ণ কথোপকথন।\n\nরাত — সারাদিনের ক্লান্তি শেষে ডায়েরির পাতায় এই মুহূর্তটিকে চিরস্থায়ী করে রাখা।`,
+    tags: ['দিনলিপি', 'কৃতজ্ঞতা'],
+  },
 ];
 
 export const ALLOWED_PAGE_VARIATIONS: PageVariation[] = [
@@ -200,6 +594,10 @@ export const ALLOWED_PAGE_VARIATIONS: PageVariation[] = [
   'epistolary-letter',
   'dot-commonplace',
   'nocturnal-vellum',
+  'botanical-herbarium',
+  'royal-illuminated',
+  'deckle-handmade',
+  'ledger-chronicle',
 ];
 
 export function resolveEffectivePageVariation(
@@ -222,3 +620,19 @@ export function resolveEffectivePageVariation(
   if (entryType === 'prose') return 'epistolary-letter';
   return 'vintage-parchment';
 }
+
+export function getDeskBackground(id?: DeskBackgroundId): DeskBackgroundMeta {
+  if (!id) return DESK_BACKGROUNDS[0];
+  return DESK_BACKGROUNDS.find((b) => b.id === id) || DESK_BACKGROUNDS[0];
+}
+
+export function getWritingStylePreset(id?: WritingStyleId): WritingStyleMeta {
+  if (!id) return WRITING_STYLE_PRESETS[0];
+  return WRITING_STYLE_PRESETS.find((w) => w.id === id) || WRITING_STYLE_PRESETS[0];
+}
+
+export function getInkColorPreset(id?: InkColorId): InkColorMeta {
+  if (!id) return INK_COLOR_PRESETS[0];
+  return INK_COLOR_PRESETS.find((i) => i.id === id) || INK_COLOR_PRESETS[0];
+}
+

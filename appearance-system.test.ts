@@ -186,4 +186,41 @@ describe('VerseVault Book Themes, Templates & Customization System Tests', () =>
     const minLineHeight = 1.65;
     assert.ok(DEFAULT_CONFIG.typography.lineHeight >= minLineHeight);
   });
+
+  it('BOOK-STUDIO-001: All 10 Page Variations, 8 Desk Backgrounds, 6 Writing Styles, and 6 Inks resolve cleanly', async () => {
+    const {
+      PAGE_VARIATIONS,
+      DESK_BACKGROUNDS,
+      WRITING_STYLE_PRESETS,
+      INK_COLOR_PRESETS,
+      getDeskBackground,
+      getWritingStylePreset,
+      getInkColorPreset,
+      resolveEffectivePageVariation,
+    } = await import('./lib/journal-templates.ts');
+
+    assert.equal(PAGE_VARIATIONS.length, 10);
+    assert.equal(DESK_BACKGROUNDS.length, 8);
+    assert.equal(WRITING_STYLE_PRESETS.length, 6);
+    assert.equal(INK_COLOR_PRESETS.length, 6);
+
+    assert.equal(getDeskBackground('rainy-veranda').id, 'rainy-veranda');
+    assert.equal(getDeskBackground(undefined).id, 'mahogany-study');
+
+    assert.equal(getWritingStylePreset('fountain-calligraphy').dropCap, true);
+    assert.equal(getWritingStylePreset(undefined).id, 'classic-book');
+
+    assert.equal(getInkColorPreset('oxblood-crimson').id, 'oxblood-crimson');
+    assert.equal(getInkColorPreset(undefined).id, 'sepia-walnut');
+
+    assert.equal(
+      resolveEffectivePageVariation('diary', 'botanical-herbarium'),
+      'botanical-herbarium'
+    );
+    assert.equal(
+      resolveEffectivePageVariation('poem', 'royal-illuminated'),
+      'royal-illuminated'
+    );
+  });
 });
+

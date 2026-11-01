@@ -4,11 +4,15 @@ import React from 'react';
 import {
   AlignJustify,
   BookOpen,
+  Crown,
   Feather,
   Grid,
+  Leaf,
   Mail,
   Moon,
+  Scroll,
   Sparkles,
+  Table2,
 } from 'lucide-react';
 import type { PageVariation } from '../../types/entry';
 import { PAGE_VARIATIONS } from '../../lib/journal-templates';
@@ -27,6 +31,10 @@ const VARIATION_ICONS: Record<PageVariation, React.ComponentType<{ className?: s
   'epistolary-letter': Mail,
   'dot-commonplace': Grid,
   'nocturnal-vellum': Moon,
+  'botanical-herbarium': Leaf,
+  'royal-illuminated': Crown,
+  'deckle-handmade': Scroll,
+  'ledger-chronicle': Table2,
 };
 
 export function PageVariationSwitcher({

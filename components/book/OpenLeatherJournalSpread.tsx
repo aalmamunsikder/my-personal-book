@@ -61,16 +61,26 @@ import {
 } from '../../lib/entry-utils';
 import { triggerTextDownload } from '../../lib/export-utils';
 import {
+  DESK_BACKGROUNDS,
+  getDeskBackground,
+  getInkColorPreset,
+  getWritingStylePreset,
+  INK_COLOR_PRESETS,
   JOURNAL_TEMPLATES,
   JournalTemplate,
   resolveEffectivePageVariation,
+  WRITING_STYLE_PRESETS,
 } from '../../lib/journal-templates';
 import { useBookSound } from '../../lib/book-sound-engine';
 import type {
+  DeskBackgroundId,
   EntryMood,
   EntryStatus,
   EntryType,
+  InkColorId,
   PageVariation,
+  ReadingBookmark,
+  WritingStyleId,
 } from '../../types/entry';
 import {
   BotanicalSprigOrnament,
@@ -115,6 +125,12 @@ type LeftPageMode =
 type MobileActiveView = 'left-page' | 'right-page';
 
 const BANGLA_WEEKDAY_SHORT = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+
+const DESK_BG_STORAGE_KEY = 'versevault_desk_bg_v1';
+const DEFAULT_WRITING_STYLE_KEY = 'versevault_writing_style_v1';
+const DEFAULT_INK_COLOR_KEY = 'versevault_ink_color_v1';
+const READING_BOOKMARK_KEY = 'versevault_reading_place_v1';
+const LAST_SESSION_PLACE_KEY = 'versevault_last_session_v1';
 
 export function OpenLeatherJournalSpread() {
   const {
@@ -221,8 +237,42 @@ export function OpenLeatherJournalSpread() {
   const [calYear, setCalYear] = useState<number>(2025);
   const [calMonth, setCalMonth] = useState<number>(0);
 
+  // Writer's Desk Background, Writing Style & Fountain Pen Ink states
+  const [deskBackground, setDeskBackground] = useState<DeskBackgroundId>(() => {
+    if (typeof window === 'undefined') return 'mahogany-study';
+    const saved = window.localStorage.getItem(DESK_BG_STORAGE_KEY);
+    return (saved as DeskBackgroundId) || 'mahogany-study';
+  });
+  const [defaultWritingStyle, setDefaultWritingStyle] = useState<WritingStyleId>(() => {
+    if (typeof window === 'undefined') return 'classic-book';
+    const saved = window.localStorage.getItem(DEFAULT_WRITING_STYLE_KEY);
+    return (saved as WritingStyleId) || 'classic-book';
+  });
+  const [defaultInkColor, setDefaultInkColor] = useState<InkColorId>(() => {
+    if (typeof window === 'undefined') return 'sepia-walnut';
+    const saved = window.localStorage.getItem(DEFAULT_INK_COLOR_KEY);
+    return (saved as InkColorId) || 'sepia-walnut';
+  });
+
+  // Reading / Writing Bookmark ("Mark when leaving & start from there when opening again")
+  const [readingBookmark, setReadingBookmark] = useState<ReadingBookmark | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(READING_BOOKMARK_KEY);
+      return raw ? (JSON.parse(raw) as ReadingBookmark) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [scrollProgress, setScrollProgress] = useState<number>(0);
+  const [bookmarkToast, setBookmarkToast] = useState<string>('');
+  const [styleBarOpen, setStyleBarOpen] = useState<boolean>(false);
+
   const editorTitleRef = useRef<HTMLInputElement | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const manuscriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const hasRestoredInitialPlaceRef = useRef<boolean>(false);
+  const pendingScrollRestoreRef = useRef<number | null>(null);
 
   // Sync external activeSection changes
   const [prevActiveSection, setPrevActiveSection] = useState(activeSection);
@@ -786,7 +836,304 @@ export function OpenLeatherJournalSpread() {
   const isNocturnalPage =
     activePageVariation === 'nocturnal-vellum' || isDarkTheme;
 
-  // Compute physical surface styling for the 6 Page Variations on the Right Page (optimized for both Light & Dark Mode)
+  const activeDeskBg = useMemo(
+    () => getDeskBackground(deskBackground),
+    [deskBackground]
+  );
+
+  const activeWritingStyleId: WritingStyleId = useMemo(() => {
+    const override = selectedEntry?.appearanceOverride?.writingStyle as
+      | WritingStyleId
+      | undefined;
+    return override || defaultWritingStyle;
+  }, [selectedEntry, defaultWritingStyle]);
+
+  const activeInkColorId: InkColorId = useMemo(() => {
+    const override = selectedEntry?.appearanceOverride?.inkColor as
+      | InkColorId
+      | undefined;
+    return override || defaultInkColor;
+  }, [selectedEntry, defaultInkColor]);
+
+  const activeWritingStyle = useMemo(
+    () => getWritingStylePreset(activeWritingStyleId),
+    [activeWritingStyleId]
+  );
+
+  const activeInkPreset = useMemo(
+    () => getInkColorPreset(activeInkColorId),
+    [activeInkColorId]
+  );
+
+  const resolvedManuscriptInkColor = isNocturnalPage
+    ? activeInkPreset.darkColorHex
+    : activeInkPreset.lightColorHex;
+
+  const handleChangeDeskBackground = (bgId: DeskBackgroundId) => {
+    playBrassClick();
+    setDeskBackground(bgId);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DESK_BG_STORAGE_KEY, bgId);
+    }
+  };
+
+  const handleChangeWritingStyle = (styleId: WritingStyleId) => {
+    playBrassClick();
+    setDefaultWritingStyle(styleId);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DEFAULT_WRITING_STYLE_KEY, styleId);
+    }
+    if (selectedEntry && isAdmin) {
+      updateEntry(
+        selectedEntry.id,
+        {
+          appearanceOverride: {
+            ...(selectedEntry.appearanceOverride || {}),
+            writingStyle: styleId,
+            inkColor: activeInkColorId,
+          },
+        },
+        true
+      );
+    }
+  };
+
+  const handleChangeInkColor = (inkId: InkColorId) => {
+    playInkStamp();
+    setDefaultInkColor(inkId);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DEFAULT_INK_COLOR_KEY, inkId);
+    }
+    if (selectedEntry && isAdmin) {
+      updateEntry(
+        selectedEntry.id,
+        {
+          appearanceOverride: {
+            ...(selectedEntry.appearanceOverride || {}),
+            writingStyle: activeWritingStyleId,
+            inkColor: inkId,
+          },
+        },
+        true
+      );
+    }
+  };
+
+  // Mark current reading/writing place so user can start from here next time they open the book
+  const handleMarkReadingPlace = () => {
+    if (!selectedEntry) return;
+    playRibbonSlide();
+    const scrollEl = isEditingOnRightPage
+      ? editorTextareaRef.current
+      : manuscriptScrollRef.current;
+    const currentScrollTop = scrollEl ? Math.round(scrollEl.scrollTop) : 0;
+    const maxScroll = scrollEl
+      ? Math.max(1, scrollEl.scrollHeight - scrollEl.clientHeight)
+      : 1;
+    const pct = scrollEl
+      ? Math.min(100, Math.max(0, Math.round((currentScrollTop / maxScroll) * 100)))
+      : 0;
+    const cursorOffset =
+      isEditingOnRightPage && editorTextareaRef.current
+        ? editorTextareaRef.current.selectionStart || 0
+        : 0;
+
+    const cleanLines = selectedEntry.content
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const approxLineIdx =
+      cleanLines.length > 0
+        ? Math.min(
+            cleanLines.length - 1,
+            Math.floor((pct / 100) * cleanLines.length)
+          )
+        : 0;
+    const excerpt =
+      cleanLines[approxLineIdx]?.slice(0, 65) ||
+      getSingleLinePreview(selectedEntry.content, 65) ||
+      selectedEntry.title ||
+      'চিহ্নিত পাতা';
+
+    const bookmark: ReadingBookmark = {
+      entryId: selectedEntry.id,
+      entryTitle: selectedEntry.title || `Untitled ${selectedEntry.type}`,
+      entryDate: selectedEntry.entryDate,
+      scrollTop: currentScrollTop,
+      scrollProgress: pct,
+      cursorOffset,
+      excerpt,
+      updatedAtIso: new Date().toISOString(),
+      isEditing: isEditingOnRightPage,
+    };
+
+    setReadingBookmark(bookmark);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(READING_BOOKMARK_KEY, JSON.stringify(bookmark));
+      window.localStorage.setItem(LAST_SESSION_PLACE_KEY, JSON.stringify(bookmark));
+    }
+    setBookmarkToast(
+      `🔖 রেশমি ফিতা রাখা হয়েছে: “${bookmark.entryTitle}” (${toBanglaDigits(pct)}%)`
+    );
+    setTimeout(() => setBookmarkToast(''), 3400);
+  };
+
+  const handleClearReadingPlace = () => {
+    playBrassClick();
+    setReadingBookmark(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(READING_BOOKMARK_KEY);
+    }
+  };
+
+  const handleResumeReadingPlace = (targetBookmark?: ReadingBookmark | null) => {
+    const bm = targetBookmark || readingBookmark;
+    if (!bm) return;
+    const found = entries.find((e) => e.id === bm.entryId && !e.isTrashed);
+    if (!found) return;
+
+    playRibbonSlide();
+    if (selectedEntry?.id !== found.id) {
+      trigger3DPageFlip('next');
+      openEntryForReading(found.id);
+    }
+    if (bm.isEditing && isAdmin) {
+      setIsEditingOnRightPage(true);
+    } else {
+      setIsEditingOnRightPage(false);
+    }
+    setMobileView('right-page');
+    const desiredTop = bm.scrollTop || 0;
+    pendingScrollRestoreRef.current = desiredTop;
+
+    const applySavedScroll = () => {
+      const targetEl =
+        bm.isEditing && isAdmin
+          ? editorTextareaRef.current
+          : manuscriptScrollRef.current;
+      if (targetEl) {
+        targetEl.scrollTop = desiredTop;
+      }
+    };
+    setTimeout(applySavedScroll, 60);
+    setTimeout(() => {
+      applySavedScroll();
+      pendingScrollRestoreRef.current = null;
+    }, 200);
+  };
+
+  const attachManuscriptScrollRef = (node: HTMLDivElement | null) => {
+    manuscriptScrollRef.current = node;
+    if (
+      node &&
+      pendingScrollRestoreRef.current !== null &&
+      pendingScrollRestoreRef.current > 0
+    ) {
+      node.scrollTop = pendingScrollRestoreRef.current;
+    }
+  };
+
+  // Auto-restore marked reading place (or last session place) when opening the book
+  useEffect(() => {
+    if (hasRestoredInitialPlaceRef.current || entries.length === 0) return;
+    if (typeof window === 'undefined') return;
+
+    try {
+      const explicitRaw = window.localStorage.getItem(READING_BOOKMARK_KEY);
+      const sessionRaw = window.localStorage.getItem(LAST_SESSION_PLACE_KEY);
+      const target: ReadingBookmark | null = explicitRaw
+        ? JSON.parse(explicitRaw)
+        : sessionRaw
+        ? JSON.parse(sessionRaw)
+        : null;
+      if (!target || !target.entryId) {
+        hasRestoredInitialPlaceRef.current = true;
+        return;
+      }
+
+      const exists = entries.find((e) => e.id === target.entryId && !e.isTrashed);
+      if (!exists) return;
+
+      hasRestoredInitialPlaceRef.current = true;
+      openEntryForReading(exists.id);
+      const desiredTop = target.scrollTop || 0;
+      pendingScrollRestoreRef.current = desiredTop;
+
+      const applyInitialScroll = () => {
+        if (target.isEditing && isAdmin) {
+          setIsEditingOnRightPage(true);
+        }
+        const el =
+          target.isEditing && isAdmin
+            ? editorTextareaRef.current
+            : manuscriptScrollRef.current;
+        if (el) {
+          el.scrollTop = desiredTop;
+          const max = Math.max(1, el.scrollHeight - el.clientHeight);
+          const pct =
+            el.scrollHeight <= el.clientHeight + 4
+              ? 100
+              : Math.min(100, Math.max(0, Math.round((desiredTop / max) * 100)));
+          setScrollProgress(pct);
+        }
+      };
+
+      setTimeout(applyInitialScroll, 40);
+      setTimeout(applyInitialScroll, 140);
+      setTimeout(applyInitialScroll, 280);
+      setTimeout(() => {
+        applyInitialScroll();
+        pendingScrollRestoreRef.current = null;
+      }, 480);
+    } catch {
+      // Ignore malformed storage
+    }
+  }, [entries, isAdmin, openEntryForReading]);
+
+  // Track manuscript scroll progress and auto-save last session position
+  const handleManuscriptScroll = (
+    e: React.UIEvent<HTMLDivElement | HTMLTextAreaElement>
+  ) => {
+    const el = e.currentTarget;
+    if (
+      pendingScrollRestoreRef.current !== null &&
+      pendingScrollRestoreRef.current > 0 &&
+      el.scrollTop < pendingScrollRestoreRef.current
+    ) {
+      el.scrollTop = pendingScrollRestoreRef.current;
+    }
+    const top = Math.round(el.scrollTop);
+    const max = Math.max(1, el.scrollHeight - el.clientHeight);
+    const pct =
+      el.scrollHeight <= el.clientHeight + 4
+        ? 100
+        : Math.min(100, Math.max(0, Math.round((top / max) * 100)));
+    setScrollProgress(pct);
+
+    if (selectedEntry && typeof window !== 'undefined') {
+      try {
+        const sessionSnap: ReadingBookmark = {
+          entryId: selectedEntry.id,
+          entryTitle: selectedEntry.title || `Untitled ${selectedEntry.type}`,
+          entryDate: selectedEntry.entryDate,
+          scrollTop: top,
+          scrollProgress: pct,
+          cursorOffset: 0,
+          excerpt: getSingleLinePreview(selectedEntry.content, 55),
+          updatedAtIso: new Date().toISOString(),
+          isEditing: isEditingOnRightPage,
+        };
+        window.localStorage.setItem(
+          LAST_SESSION_PLACE_KEY,
+          JSON.stringify(sessionSnap)
+        );
+      } catch {
+        // Ignore quota errors
+      }
+    }
+  };
+
+  // Compute physical surface styling for all 10 Page Variations on the Right Page (optimized for both Light & Dark Mode)
   const rightPageSurfaceStyle = useMemo((): React.CSSProperties => {
     if (activePageVariation === 'nocturnal-vellum') {
       return {
@@ -811,8 +1158,52 @@ export function OpenLeatherJournalSpread() {
         backgroundSize: '20px 20px',
       };
     }
+    if (activePageVariation === 'botanical-herbarium') {
+      return {
+        background: isDarkTheme
+          ? 'radial-gradient(circle at 88% 12%, rgba(56, 78, 52, 0.32) 0%, rgba(28, 34, 26, 0.92) 70%)'
+          : 'radial-gradient(circle at 88% 12%, #E5EFE0 0%, #F4F7EF 58%, #EBF1E4 100%)',
+      };
+    }
+    if (activePageVariation === 'royal-illuminated') {
+      return {
+        background: isDarkTheme
+          ? 'radial-gradient(circle at 50% 15%, #2D2118 0%, #1E1610 75%)'
+          : 'radial-gradient(circle at 50% 12%, #FFFDF7 0%, #F9EFE0 68%, #F2E2C9 100%)',
+      };
+    }
+    if (activePageVariation === 'deckle-handmade') {
+      return {
+        backgroundColor: isDarkTheme ? '#25201A' : '#EFE2CE',
+        backgroundImage: isDarkTheme
+          ? 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(216,166,104,0.04) 3px, rgba(216,166,104,0.04) 4px), repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(216,166,104,0.03) 5px, rgba(216,166,104,0.03) 6px)'
+          : 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(110,78,46,0.045) 3px, rgba(110,78,46,0.045) 4px), repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(110,78,46,0.03) 5px, rgba(110,78,46,0.03) 6px)',
+      };
+    }
+    if (activePageVariation === 'ledger-chronicle') {
+      return {
+        backgroundColor: isDarkTheme ? '#211E1A' : '#F8F2E4',
+        backgroundImage: isDarkTheme
+          ? 'linear-gradient(90deg, transparent 52px, rgba(196, 109, 94, 0.32) 52px, rgba(196, 109, 94, 0.32) 53.5px, transparent 53.5px), repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(140, 175, 195, 0.14) 32px)'
+          : 'linear-gradient(90deg, transparent 52px, rgba(196, 90, 78, 0.38) 52px, rgba(196, 90, 78, 0.38) 53.5px, transparent 53.5px), repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(112, 148, 172, 0.24) 32px)',
+      };
+    }
     return {};
   }, [activePageVariation, isDarkTheme]);
+
+  const readingMetrics = useMemo(() => {
+    if (!selectedEntry) return { words: 0, lines: 0, readMinsBn: '১' };
+    const words = countWords(selectedEntry.content);
+    const lines = selectedEntry.content
+      ? selectedEntry.content.split('\n').filter((l) => l.trim().length > 0).length
+      : 0;
+    const mins = Math.max(1, Math.ceil(words / 130));
+    return {
+      words,
+      lines,
+      readMinsBn: toBanglaDigits(mins),
+    };
+  }, [selectedEntry]);
 
   // Navigation helper shared by Desktop Sidebar and Mobile Drawer
   const selectNavMode = (
@@ -860,19 +1251,36 @@ export function OpenLeatherJournalSpread() {
   // Closed Hand-Tooled Leather Book Cover View
   if (isBookClosed) {
     return (
-      <ClosedLeatherBookCover
-        onOpenBook={() => {
-          playBookOpen();
-          setIsBookClosed(false);
-          trigger3DPageFlip('next');
-        }}
-        totalEntries={activeEntries.length}
-        poemsCount={categoryStats[0].count}
-        collectionsCount={collections.length}
-        favoritesCount={activeEntries.filter((e) => e.isFavorite).length}
-        soundEnabled={soundEnabled}
-        onToggleSound={toggleSound}
-      />
+      <>
+        <div
+          data-testid="writers-desk-backdrop"
+          aria-hidden="true"
+          className="fixed inset-0 -z-10 pointer-events-none transition-all duration-700"
+          style={{ background: activeDeskBg.backgroundCss }}
+        >
+          <div
+            className="absolute inset-0 opacity-90"
+            style={{ backgroundImage: activeDeskBg.patternCss }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: activeDeskBg.ambientGlowCss }}
+          />
+        </div>
+        <ClosedLeatherBookCover
+          onOpenBook={() => {
+            playBookOpen();
+            setIsBookClosed(false);
+            trigger3DPageFlip('next');
+          }}
+          totalEntries={activeEntries.length}
+          poemsCount={categoryStats[0].count}
+          collectionsCount={collections.length}
+          favoritesCount={activeEntries.filter((e) => e.isFavorite).length}
+          soundEnabled={soundEnabled}
+          onToggleSound={toggleSound}
+        />
+      </>
     );
   }
 
@@ -881,6 +1289,128 @@ export function OpenLeatherJournalSpread() {
       aria-label="Open Leather Journal Workspace"
       className="relative w-full max-w-[1440px] mx-auto pb-16 lg:pb-4 px-1.5 sm:px-4"
     >
+      {/* ========================================================================
+          FULL-BLEED WRITER'S DESK ATMOSPHERIC BACKDROP (8 Tactile Surfaces)
+         ======================================================================== */}
+      <div
+        data-testid="writers-desk-backdrop"
+        data-desk-id={deskBackground}
+        aria-hidden="true"
+        className="fixed inset-0 -z-10 pointer-events-none transition-all duration-700 overflow-hidden"
+        style={{ background: activeDeskBg.backgroundCss }}
+      >
+        <div
+          className="absolute inset-0 opacity-95"
+          style={{ backgroundImage: activeDeskBg.patternCss }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: activeDeskBg.ambientGlowCss }}
+        />
+        {/* Subtle Desk Mat & Brass Inkwell Vignette on Wide Screens */}
+        <div className="hidden xl:block absolute inset-5 rounded-[28px] border border-[#DFB578]/15 shadow-[inset_0_0_90px_rgba(0,0,0,0.45)]" />
+      </div>
+
+      {/* Bookmark Saved Toast Notification */}
+      {bookmarkToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-16 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#2B1D12] text-[#F7EBD9] border border-[#D8A668]/70 shadow-2xl text-xs font-bangla"
+        >
+          <span>{bookmarkToast}</span>
+        </div>
+      )}
+
+      {/* ========================================================================
+          WRITER'S DESK ATMOSPHERE & SILK BOOKMARK RESUME BAR (Top of Desk)
+         ======================================================================== */}
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-[12px] bg-[#24160E]/88 backdrop-blur-md border border-[#704F36]/75 text-[#EAD8C0] shadow-[0_10px_28px_rgba(10,5,2,0.45)] text-xs">
+        {/* Left: Quick Writer's Desk Atmosphere Switcher */}
+        <div className="flex flex-wrap items-center gap-1.5 max-w-full py-0.5">
+          <span className="text-[11px] font-bangla text-[#D8A668] font-semibold shrink-0 flex items-center gap-1 pr-1">
+            <span>টেবিলের আবহ:</span>
+          </span>
+          {DESK_BACKGROUNDS.map((bg) => {
+            const isActive = deskBackground === bg.id;
+            return (
+              <button
+                key={bg.id}
+                type="button"
+                onClick={() => handleChangeDeskBackground(bg.id)}
+                data-testid={`desk-bg-pill-${bg.id}`}
+                title={`${bg.nameEn} — ${bg.descriptionBn}`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-bangla whitespace-nowrap transition-all cursor-pointer border ${
+                  isActive
+                    ? 'bg-gradient-to-b from-[#6B4830] to-[#4A301E] text-[#FFF8EE] border-[#DFB578] shadow-xs font-semibold'
+                    : 'bg-[#332015]/75 hover:bg-[#442C1D] text-[#D2BEA4] border-[#5C3F2B]/60'
+                }`}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/30"
+                  style={{ background: bg.accentHex }}
+                />
+                <span>{bg.nameBn}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right: "Mark When Leaving & Resume Where You Left Off" Silk Ribbon Control */}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          {readingBookmark && (
+            <div
+              data-testid="resume-bookmark-banner"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-gradient-to-r from-[#5C1D18] via-[#752620] to-[#561A15] border border-[#DFB578]/65 text-[#FCEFD9] text-[11px] font-bangla shadow-xs"
+            >
+              <Bookmark className="w-3.5 h-3.5 fill-[#DFB578] text-[#DFB578] shrink-0" />
+              <span className="truncate max-w-[165px] sm:max-w-[230px]">
+                শেষ যেখানে রেখেছিলেন: “{readingBookmark.entryTitle}” (
+                {toBanglaDigits(readingBookmark.scrollProgress)}%)
+              </span>
+              <button
+                type="button"
+                data-testid="resume-bookmark-btn"
+                onClick={() => handleResumeReadingPlace(readingBookmark)}
+                className="px-2 py-0.5 rounded-[4px] bg-[#DFB578] text-[#23140B] font-semibold hover:bg-[#ECC892] transition-colors cursor-pointer"
+              >
+                ফিরে যান →
+              </button>
+              <button
+                type="button"
+                onClick={handleClearReadingPlace}
+                title="রেশমি ফিতা সরান (Clear saved bookmark)"
+                aria-label="Clear saved reading bookmark"
+                className="text-[#E6C79C] hover:text-white pl-0.5 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
+          {selectedEntry && (
+            <button
+              type="button"
+              data-testid="mark-leaving-place-btn"
+              onClick={handleMarkReadingPlace}
+              title="পড়া বা লেখা এখানেই চিহ্নিত করে রাখুন যেন পরেরবার এখান থেকেই শুরু হয়"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-bangla border transition-all cursor-pointer ${
+                readingBookmark?.entryId === selectedEntry.id
+                  ? 'bg-[#4B3321] text-[#F7E5C9] border-[#D8A668]'
+                  : 'bg-[#362317] hover:bg-[#4B3120] text-[#EAD5BC] border-[#7E5A3C]/70'
+              }`}
+            >
+              <BookMarked className="w-3.5 h-3.5 text-[#D8A668]" />
+              <span>
+                {readingBookmark?.entryId === selectedEntry.id
+                  ? 'ফিতা হালনাগাদ করুন'
+                  : 'ফিতা রাখুন (Mark Place)'}
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Undo Trash Toast Notification */}
       {trashedUndoEntry && (
         <div
@@ -1339,11 +1869,12 @@ export function OpenLeatherJournalSpread() {
               <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                 <button
                   type="button"
+                  data-testid="open-book-studio-btn"
                   onClick={() => setTemplateModalOpen(true)}
                   className="py-1.5 px-2.5 rounded-[6px] bg-gradient-to-b from-[#4E3523] to-[#382416] hover:from-[#5D402B] hover:to-[#452D1D] text-[#F5E4CC] border border-[#966D4B]/60 text-[11px] font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3 text-[#D8A668] shrink-0" />
-                  <span>টেমপ্লেট (৭)</span>
+                  <span>সাজসজ্জা ও টেমপ্লেট</span>
                 </button>
                 <button
                   type="button"
@@ -1601,8 +2132,8 @@ export function OpenLeatherJournalSpread() {
               <div className="rounded-[10px] bg-[#E6D5BA] dark:bg-[#2E2820] p-[2px] sm:p-[4px] border border-[#C3A987] dark:border-[#443C30]">
                 {/* Settings & Backup Full View */}
                 {leftPageMode === 'settings' ? (
-                  <div className="bg-[var(--page)] rounded-[8px] p-4 sm:p-8 min-h-[690px] border border-[var(--line)]">
-                    <div className="mb-4 pb-3 border-b border-[var(--line)] flex items-center justify-between">
+                  <div className="bg-[var(--page)] rounded-[8px] p-4 sm:p-8 h-[690px] sm:h-[720px] max-h-[720px] flex flex-col overflow-hidden border border-[var(--line)]">
+                    <div className="mb-4 pb-3 border-b border-[var(--line)] flex items-center justify-between shrink-0">
                       <ParchmentPlateButton
                         onClick={() => selectNavMode('list', 'journal', 'all')}
                         size="sm"
@@ -1614,13 +2145,16 @@ export function OpenLeatherJournalSpread() {
                         VerseVault Literary Archive &amp; Backup
                       </span>
                     </div>
-                    <SettingsBackupView />
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                      <SettingsBackupView />
+                    </div>
                   </div>
                 ) : (
                   /* TWO-PAGE OPEN BOOK SPREAD (Desktop: 2 Pages Side-by-Side | Mobile: Active Single Page) */
                   <div
                     style={{ perspective: 2200 }}
-                    className="relative grid grid-cols-1 lg:grid-cols-12 rounded-[8px] overflow-hidden bg-gradient-to-r from-[#F4E9D8] via-[#EFE0C9] to-[#F6ECDC] dark:from-[#221F1B] dark:via-[#1C1916] dark:to-[#24201C] border border-[#C8B294] dark:border-[#3A342B] min-h-[690px] shadow-[inset_0_0_40px_rgba(120,88,52,0.09)]"
+                    data-testid="book-spread-container"
+                    className="relative grid grid-cols-1 lg:grid-cols-12 grid-rows-[minmax(0,1fr)] rounded-[8px] overflow-hidden bg-gradient-to-r from-[#F4E9D8] via-[#EFE0C9] to-[#F6ECDC] dark:from-[#221F1B] dark:via-[#1C1916] dark:to-[#24201C] border border-[#C8B294] dark:border-[#3A342B] h-[690px] sm:h-[720px] max-h-[720px] shadow-[inset_0_0_40px_rgba(120,88,52,0.09)]"
                   >
                     {/* 3D Animated Turning Parchment Leaf Overlay */}
                     <AnimatePresence>
@@ -1680,19 +2214,38 @@ export function OpenLeatherJournalSpread() {
                       label="পরবর্তী পাতা উল্টান (Turn to Next Page)"
                     />
 
-                    {/* Central Book Spine Shadow Crease & Silk Bookmark Ribbon (Desktop) */}
+                    {/* Central Book Spine Shadow Crease & Interactive Silk Bookmark Ribbon (Desktop) */}
                     {!zenFullSpreadEditor && (
                       <div
-                        aria-hidden="true"
                         className="hidden lg:flex pointer-events-none absolute inset-y-0 left-[41.666%] -translate-x-1/2 w-16 z-20 flex-col items-center justify-between"
                         style={{
                           background:
-                            'linear-gradient(90deg, rgba(60,38,20,0) 0%, rgba(60,38,20,0.08) 32%, rgba(28,15,6,0.34) 50%, rgba(60,38,20,0.09) 68%, rgba(60,38,20,0) 100%)',
+                            'linear-gradient(90deg, rgba(60,38,20,0) 0%, rgba(60,38,20,0.09) 30%, rgba(22,11,4,0.38) 50%, rgba(60,38,20,0.11) 70%, rgba(60,38,20,0) 100%)',
                         }}
                       >
-                        {/* Hanging Crimson-Gold Silk Bookmark Ribbon with Swallowtail Notch */}
-                        <motion.div
+                        {/* Hanging Crimson-Gold Silk Bookmark Ribbon with Swallowtail Notch (Click to Mark or Jump to Saved Place) */}
+                        <motion.button
+                          type="button"
                           key={selectedEntry?.id || 'ribbon'}
+                          onClick={() => {
+                            if (
+                              readingBookmark &&
+                              selectedEntry &&
+                              readingBookmark.entryId !== selectedEntry.id
+                            ) {
+                              handleResumeReadingPlace(readingBookmark);
+                            } else {
+                              handleMarkReadingPlace();
+                            }
+                          }}
+                          title={
+                            readingBookmark &&
+                            selectedEntry &&
+                            readingBookmark.entryId !== selectedEntry.id
+                              ? `শেষ যেখানে রেখেছিলেন (“${readingBookmark.entryTitle}”) সেখানে ফিরে যান`
+                              : 'এই পাতায় রেশমি ফিতা রাখুন (Mark Current Reading Place)'
+                          }
+                          aria-label="Silk bookmark ribbon — click to mark or resume reading place"
                           initial={{ rotate: -4 }}
                           animate={{ rotate: [0, 3, -1.5, 0] }}
                           transition={{ duration: 0.65, ease: 'easeOut' }}
@@ -1700,7 +2253,11 @@ export function OpenLeatherJournalSpread() {
                             transformOrigin: 'top center',
                             clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%)',
                           }}
-                          className="w-4 h-20 bg-gradient-to-b from-[#6E1F18] via-[#922C23] to-[#681C15] shadow-[0_6px_12px_rgba(25,10,5,0.45)] border-x border-[#DFB578]/45"
+                          className={`pointer-events-auto cursor-pointer w-5 ${
+                            readingBookmark?.entryId === selectedEntry?.id
+                              ? 'h-28 from-[#8E2219] via-[#B83227] to-[#7A1B14] border-[#FFD89B]'
+                              : 'h-20 from-[#6E1F18] via-[#922C23] to-[#681C15] border-[#DFB578]/45'
+                          } bg-gradient-to-b shadow-[0_6px_14px_rgba(25,10,5,0.55)] border-x transition-all duration-300 hover:h-28`}
                         />
                         {/* Authentic Kettle-Stitch Bookbinding Thread Marks */}
                         <div className="space-y-24 opacity-45">
@@ -1720,12 +2277,12 @@ export function OpenLeatherJournalSpread() {
                       <div
                         className={`${
                           mobileView === 'right-page' ? 'hidden lg:flex' : 'flex'
-                        } lg:col-span-5 p-4 sm:p-6 flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#D5C1A5]/80 dark:border-[#353028]`}
+                        } lg:col-span-5 relative h-full min-h-0 overflow-hidden p-4 sm:p-6 flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#D5C1A5]/80 dark:border-[#353028] shadow-[inset_-24px_0_36px_rgba(48,28,12,0.08)]`}
                       >
                         {/* LEFT MODE A: OVERVIEW HUB ("শুভ সন্ধ্যা 🌿 / আজ কী লিখবে?") */}
                         {leftPageMode === 'overview' && (
-                          <div className="flex flex-col justify-between h-full space-y-3.5">
-                            <div className="space-y-3.5">
+                          <div className="flex flex-col justify-between h-full min-h-0 space-y-3.5">
+                            <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-1">
                               {/* Authentic Misty Sunrise Watercolor Header Card */}
                               <div className="relative rounded-2xl overflow-hidden border border-[#CBB699] dark:border-[#3A342B] shadow-xs">
                                 <MistySunriseHeaderArtwork />
@@ -1820,7 +2377,7 @@ export function OpenLeatherJournalSpread() {
                             </div>
 
                             {/* Signature Botanical Quote Footer with Authentic Sprig Illustration */}
-                            <div className="relative pt-3 border-t border-[#D8C5AA]/80 dark:border-[#353028] text-center pr-10">
+                            <div className="relative pt-3 border-t border-[#D8C5AA]/80 dark:border-[#353028] text-center pr-10 shrink-0">
                               <blockquote className="text-sm font-bangla font-medium text-[var(--ink)] leading-relaxed">
                                 “কিছু কথা কখনো বলা হয় না,
                                 <br />
@@ -1833,7 +2390,7 @@ export function OpenLeatherJournalSpread() {
 
                         {/* LEFT MODE B: ILLUSTRATED BANGLA & ENGLISH CALENDAR */}
                         {leftPageMode === 'calendar' && (
-                          <div className="flex flex-col justify-between h-full space-y-4">
+                          <div className="flex flex-col justify-between h-full min-h-0 space-y-4 overflow-y-auto pr-1">
                             <div className="space-y-3.5">
                               {/* Top Calendar Bar */}
                               <div className="flex items-center justify-between pb-2 border-b border-[#D8C5AA] dark:border-[#353028]">
@@ -1970,7 +2527,7 @@ export function OpenLeatherJournalSpread() {
                             </div>
 
                             {/* Selected Date Entries List & "+ এই দিনে লিখুন" */}
-                            <div className="pt-3 border-t border-[#D8C5AA] dark:border-[#353028] space-y-2.5">
+                            <div className="pt-3 border-t border-[#D8C5AA] dark:border-[#353028] space-y-2.5 shrink-0">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold font-bangla text-[var(--ink)]">
                                   {formatBanglaFullDate(selectedCalendarDate, false)}
@@ -2058,9 +2615,9 @@ export function OpenLeatherJournalSpread() {
 
                         {/* LEFT MODE C: ILLUSTRATED 2x3 COLLECTIONS GRID (With Real Hand-Painted Art) */}
                         {leftPageMode === 'collections' && (
-                          <div className="flex flex-col justify-between h-full space-y-4">
-                            <div className="space-y-3.5">
-                              <div className="flex items-center justify-between pb-2 border-b border-[#D8C5AA] dark:border-[#353028]">
+                          <div className="flex flex-col justify-between h-full min-h-0 space-y-4">
+                            <div className="space-y-3.5 flex-1 min-h-0 flex flex-col overflow-hidden">
+                              <div className="flex items-center justify-between pb-2 border-b border-[#D8C5AA] dark:border-[#353028] shrink-0">
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
@@ -2086,7 +2643,7 @@ export function OpenLeatherJournalSpread() {
                               </div>
 
                               {/* 2-Column Hand-Painted Watercolor Collection Cards */}
-                              <div className="grid grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pr-1">
+                              <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-y-auto pr-1 content-start">
                                 {collectionsWithCounts.map((col, idx) => (
                                   <button
                                     key={col.id}
@@ -2125,7 +2682,7 @@ export function OpenLeatherJournalSpread() {
                               </div>
                             </div>
 
-                            <div className="pt-3 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex items-center justify-between text-xs text-[var(--ink-soft)] font-bangla">
+                            <div className="pt-3 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex items-center justify-between text-xs text-[var(--ink-soft)] font-bangla shrink-0">
                               <span>মোট {toBanglaDigits(collections.length)}টি সংকলন</span>
                               <button
                                 type="button"
@@ -2142,12 +2699,12 @@ export function OpenLeatherJournalSpread() {
                         {(leftPageMode === 'list' ||
                           leftPageMode === 'collection-entries' ||
                           leftPageMode === 'trash') && (
-                          <div className="flex flex-col justify-between h-full space-y-3.5">
-                            <div className="space-y-3">
+                          <div className="flex flex-col justify-between h-full min-h-0 space-y-3.5">
+                            <div className="space-y-3 flex-1 min-h-0 flex flex-col overflow-hidden">
                               {/* Top Action Row */}
                               {leftPageMode === 'collection-entries' &&
                               activeCollectionObj ? (
-                                <div className="space-y-2 pb-2 border-b border-[#D8C5AA] dark:border-[#353028]">
+                                <div className="space-y-2 pb-2 border-b border-[#D8C5AA] dark:border-[#353028] shrink-0">
                                   <div className="flex items-center justify-between">
                                     <button
                                       type="button"
@@ -2182,7 +2739,7 @@ export function OpenLeatherJournalSpread() {
                                   </div>
                                 </div>
                               ) : leftPageMode === 'trash' ? (
-                                <div className="flex items-center justify-between pb-2 border-b border-[#D8C5AA] dark:border-[#353028]">
+                                <div className="flex items-center justify-between pb-2 border-b border-[#D8C5AA] dark:border-[#353028] shrink-0">
                                   <div className="flex items-center gap-2">
                                     <Trash2 className="w-4 h-4 text-[var(--danger)]" />
                                     <h2 className="text-base font-literary font-semibold text-[var(--ink)]">
@@ -2212,7 +2769,7 @@ export function OpenLeatherJournalSpread() {
                                   )}
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center justify-between gap-2 shrink-0">
                                   <div className="flex items-center gap-2">
                                     <LeatherClaspButton
                                       variant="walnut"
@@ -2246,7 +2803,7 @@ export function OpenLeatherJournalSpread() {
                               )}
 
                               {/* Custom Archival Filter Dropdown ("All Entries v"), Sort & Inline Search */}
-                              <div className="flex items-center justify-between gap-2 pt-1 pb-2 border-b border-dashed border-[#CBB494] dark:border-[#3A3228]">
+                              <div className="flex items-center justify-between gap-2 pt-1 pb-2 border-b border-dashed border-[#CBB494] dark:border-[#3A3228] shrink-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <ArchivalSelect<EntryType | 'all'>
                                     ariaLabel="Filter journal entries by category"
@@ -2355,7 +2912,7 @@ export function OpenLeatherJournalSpread() {
                               </div>
 
                               {/* Scrollable Entry Index List: Custom Tipped-In Archival Manuscript Slips */}
-                              <div className="space-y-2 max-h-[490px] overflow-y-auto pr-1">
+                              <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
                                 {bookIndexEntries.length === 0 ? (
                                   <div className="py-12 text-center space-y-3 rounded-[8px] border border-dashed border-[#CBB494] dark:border-[#4A3E32] bg-[#FBF5E9]/50 dark:bg-[#241F1A]/70">
                                     <p className="text-sm text-[var(--ink-soft)] font-bangla">
@@ -2521,7 +3078,7 @@ export function OpenLeatherJournalSpread() {
                             </div>
 
                             {/* Left Page Subtle Footer Count & Mode Switcher */}
-                            <div className="pt-3 mt-2 border-t border-dashed border-[#CBB494] dark:border-[#353028] flex items-center justify-between text-[11px] text-[var(--ink-soft)]">
+                            <div className="pt-3 mt-2 border-t border-dashed border-[#CBB494] dark:border-[#353028] flex items-center justify-between text-[11px] text-[var(--ink-soft)] shrink-0">
                               <span className="font-bangla">
                                 মোট {toBanglaDigits(bookIndexEntries.length)}টি পাতা
                               </span>
@@ -2558,14 +3115,28 @@ export function OpenLeatherJournalSpread() {
                         RIGHT OPEN PARCHMENT PAGE (7 of 12 cols on desktop; visible on mobile when mobileView === 'right-page')
                        ================================================================== */}
                     <div
+                      data-testid="right-parchment-page"
                       className={`${
                         mobileView === 'left-page' ? 'hidden lg:flex' : 'flex'
                       } ${
                         zenFullSpreadEditor ? 'lg:col-span-12' : 'lg:col-span-7'
-                      } relative p-5 sm:p-8 lg:p-10 flex-col justify-between min-h-[690px] overflow-hidden transition-colors duration-300`}
+                      } relative p-5 sm:p-8 lg:p-10 flex-col justify-between h-full min-h-0 overflow-hidden transition-colors duration-300 shadow-[inset_28px_0_42px_rgba(45,26,10,0.09),inset_-8px_0_18px_rgba(45,26,10,0.05)]`}
                       style={rightPageSurfaceStyle}
                     >
-                      {/* Page Variation Frame Overlays */}
+                      {/* Top Gilded Reading Progress Hairline */}
+                      {selectedEntry && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute top-0 left-0 right-0 h-[3px] bg-[#D8C5AA]/30 dark:bg-[#3A3226]/40 z-20 overflow-hidden"
+                        >
+                          <div
+                            className="h-full bg-gradient-to-r from-[#8B2626] via-[#D8A668] to-[#754832] transition-all duration-200"
+                            style={{ width: `${Math.max(4, scrollProgress)}%` }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Page Variation Frame Overlays (All 10 Surfaces) */}
                       {activePageVariation === 'ruled-notebook' && (
                         <div
                           aria-hidden="true"
@@ -2582,6 +3153,33 @@ export function OpenLeatherJournalSpread() {
                         <div
                           aria-hidden="true"
                           className="pointer-events-none absolute inset-3 sm:inset-4 rounded-sm border border-[#A88967]/50 z-0"
+                        />
+                      )}
+                      {activePageVariation === 'botanical-herbarium' && (
+                        <>
+                          <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-3 sm:inset-4 rounded-md border border-[#7D9A74]/45 z-0"
+                          />
+                          <BotanicalSprigOrnament className="pointer-events-none w-16 h-16 absolute top-3 right-4 opacity-55 z-0" />
+                        </>
+                      )}
+                      {activePageVariation === 'royal-illuminated' && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-2.5 sm:inset-3.5 rounded-[10px] border-4 border-double border-[#C6923A]/65 shadow-[inset_0_0_0_2px_rgba(142,42,34,0.22)] z-0"
+                        />
+                      )}
+                      {activePageVariation === 'deckle-handmade' && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-2 sm:inset-3 rounded-[12px] border border-dashed border-[#A68963]/50 shadow-[inset_0_0_24px_rgba(92,64,36,0.12)] z-0"
+                        />
+                      )}
+                      {activePageVariation === 'ledger-chronicle' && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-y-0 right-12 w-[1px] bg-[#7094AC]/30 z-0"
                         />
                       )}
 
@@ -2611,10 +3209,10 @@ export function OpenLeatherJournalSpread() {
                         /* ==============================================================
                            INLINE PARCHMENT PAGE EDITOR (Writing & Editing Mode)
                            ============================================================== */
-                        <div className="space-y-4 z-10 flex-1 flex flex-col justify-between">
-                          <div className="space-y-3">
+                        <div className="space-y-3 z-10 flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
+                          <div className="space-y-2.5 flex-1 min-h-0 flex flex-col overflow-hidden">
                             {/* Mobile Back Button inside Editor */}
-                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60 dark:border-[#3F372C]/60">
+                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60 dark:border-[#3F372C]/60 shrink-0">
                               <ParchmentPlateButton
                                 size="xs"
                                 onClick={() => {
@@ -2628,7 +3226,7 @@ export function OpenLeatherJournalSpread() {
                             </div>
 
                             {/* Top Editor Bar */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-dashed border-[#CBB494] dark:border-[#353028]">
+                            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-dashed border-[#CBB494] dark:border-[#353028] shrink-0">
                               <div className="flex items-center gap-2 text-xs">
                                 <input
                                   type="date"
@@ -2703,19 +3301,75 @@ export function OpenLeatherJournalSpread() {
                               </div>
                             </div>
 
-                            {/* Interactive 6-Page-Variation Switcher Bar */}
-                            <div className="flex items-center justify-between gap-2">
-                              <PageVariationSwitcher
-                                value={activePageVariation}
-                                onChange={(nextVar) =>
-                                  updateEntry(
-                                    selectedEntry.id,
-                                    { pageVariation: nextVar },
-                                    true
-                                  )
-                                }
-                                compact
-                              />
+                            {/* Interactive 10-Page-Variation + Writing Style & Ink Bar */}
+                            <div className="relative shrink-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <PageVariationSwitcher
+                                    value={activePageVariation}
+                                    onChange={(nextVar) =>
+                                      updateEntry(
+                                        selectedEntry.id,
+                                        { pageVariation: nextVar },
+                                        true
+                                      )
+                                    }
+                                    compact
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setStyleBarOpen((v) => !v)}
+                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer"
+                                >
+                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
+                                  <span>হাতের লেখা ও কালি</span>
+                                </button>
+                              </div>
+
+                              {styleBarOpen && (
+                                <div className="absolute left-0 right-0 top-full mt-1.5 z-30 p-2.5 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    <span className="font-bangla text-[var(--ink-soft)] mr-1">
+                                      শৈলী:
+                                    </span>
+                                    {WRITING_STYLE_PRESETS.map((ws) => (
+                                      <button
+                                        key={ws.id}
+                                        type="button"
+                                        onClick={() => handleChangeWritingStyle(ws.id)}
+                                        className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
+                                          activeWritingStyleId === ws.id
+                                            ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
+                                            : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
+                                        }`}
+                                      >
+                                        {ws.nameBn}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bangla text-[var(--ink-soft)]">
+                                      কালি:
+                                    </span>
+                                    {INK_COLOR_PRESETS.map((ink) => (
+                                      <button
+                                        key={ink.id}
+                                        type="button"
+                                        onClick={() => handleChangeInkColor(ink.id)}
+                                        title={`${ink.nameBn} (${ink.nameEn})`}
+                                        aria-label={`Select ${ink.nameEn} ink`}
+                                        className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
+                                          activeInkColorId === ink.id
+                                            ? 'scale-125 ring-2 ring-[#D8A668] border-white'
+                                            : 'border-black/25 hover:scale-110'
+                                        }`}
+                                        style={{ backgroundColor: ink.swatchHex }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Title Input with Fountain-Pen Scratch Acoustics */}
@@ -2730,7 +3384,7 @@ export function OpenLeatherJournalSpread() {
                               onBlur={() => updateEntry(selectedEntry.id, {}, true)}
                               placeholder="শিরোনাম লিখুন / Give this page a title…"
                               aria-label="Entry title"
-                              className={`w-full bg-transparent text-2xl sm:text-3xl font-bold focus:outline-none font-bangla ${
+                              className={`w-full bg-transparent text-2xl sm:text-3xl font-bold focus:outline-none font-bangla shrink-0 ${
                                 isNocturnalPage
                                   ? 'text-[#F5E9D7] placeholder:text-[#9E8C78]'
                                   : 'text-[var(--ink)] placeholder:text-[var(--ink-soft)]/50'
@@ -2750,14 +3404,14 @@ export function OpenLeatherJournalSpread() {
                               onBlur={() => updateEntry(selectedEntry.id, {}, true)}
                               placeholder="উপশিরোনাম বা উৎসর্গ (ঐচ্ছিক) / Optional subtitle…"
                               aria-label="Entry subtitle"
-                              className={`w-full bg-transparent text-xs sm:text-sm italic focus:outline-none font-bangla ${
+                              className={`w-full bg-transparent text-xs sm:text-sm italic focus:outline-none font-bangla shrink-0 ${
                                 isNocturnalPage
                                   ? 'text-[#C8B299] placeholder:text-[#8A7968]'
                                   : 'text-[var(--ink-soft)] placeholder:text-[var(--ink-soft)]/45'
                               }`}
                             />
 
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center justify-between gap-2 shrink-0">
                               <VintageTitleFlourish />
 
                               {/* Poetic & Literary Quick-Insert Helpers */}
@@ -2789,8 +3443,8 @@ export function OpenLeatherJournalSpread() {
                             {/* Main Plain-Text Writing Area preserving exact Bangla/English newlines & stanza breaks */}
                             <textarea
                               ref={editorTextareaRef}
-                              rows={10}
                               value={selectedEntry.content}
+                              onScroll={handleManuscriptScroll}
                               onKeyDown={() => playPenScratch()}
                               onChange={(e) =>
                                 updateEntry(selectedEntry.id, {
@@ -2801,10 +3455,15 @@ export function OpenLeatherJournalSpread() {
                               placeholder="আপনার মনের কথা, কবিতা বা দিনলিপি এখানে লিখুন… / Begin wherever your thoughts take you…"
                               aria-label="Journal writing content"
                               data-script={fontScript}
-                              className={`w-full bg-transparent text-base sm:text-[17px] focus:outline-none resize-y journal-content leading-[1.95] ${
+                              style={{
+                                color: resolvedManuscriptInkColor,
+                              }}
+                              className={`w-full flex-1 min-h-[120px] bg-transparent ${activeWritingStyle.fontSizeClass} ${activeWritingStyle.lineHeightClass} ${activeWritingStyle.alignClass} ${activeWritingStyle.indentClass} ${
+                                activeWritingStyle.letterSpacingClass || ''
+                              } focus:outline-none resize-none overflow-y-auto pr-2 journal-content ${
                                 isNocturnalPage
-                                  ? 'text-[#F2E3CC] placeholder:text-[#8E7D6B]'
-                                  : 'text-[var(--ink)] placeholder:text-[var(--ink-soft)]/55'
+                                  ? 'placeholder:text-[#8E7D6B]'
+                                  : 'placeholder:text-[var(--ink-soft)]/55'
                               }`}
                             />
 
@@ -2820,13 +3479,13 @@ export function OpenLeatherJournalSpread() {
                                 }
                                 placeholder="— উৎস বা লেখকের নাম / Attribution…"
                                 aria-label="Quote attribution"
-                                className="w-full bg-transparent text-sm italic text-[var(--ink-soft)] border-b border-[#D8C5AA] dark:border-[#4A3E32] pb-1.5 focus:outline-none font-bangla"
+                                className="w-full bg-transparent text-sm italic text-[var(--ink-soft)] border-b border-[#D8C5AA] dark:border-[#4A3E32] pb-1.5 focus:outline-none font-bangla shrink-0"
                               />
                             )}
                           </div>
 
                           {/* Bottom Editor Metadata & Tag Controls (Custom Archival Book Plates) */}
-                          <div className="pt-3 border-t border-[#D8C5AA] dark:border-[#353028] space-y-3">
+                          <div className="pt-2.5 border-t border-[#D8C5AA] dark:border-[#353028] space-y-2.5 shrink-0">
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                               <div className="space-y-1">
                                 <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
@@ -3006,9 +3665,9 @@ export function OpenLeatherJournalSpread() {
                             <PlumBlossomMoonCorner />
                           )}
 
-                          <div className="space-y-3.5 z-10">
+                          <div className="space-y-3 z-10 flex-1 min-h-0 flex flex-col overflow-hidden">
                             {/* Mobile Back Header (`← Poems / Back to List`) */}
-                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60 dark:border-[#3F372C]/60">
+                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60 dark:border-[#3F372C]/60 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setMobileView('left-page')}
@@ -3035,7 +3694,7 @@ export function OpenLeatherJournalSpread() {
                             </div>
 
                             {/* Top Date & Action Icons Row */}
-                            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm shrink-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <time
                                   dateTime={selectedEntry.entryDate}
@@ -3240,173 +3899,257 @@ export function OpenLeatherJournalSpread() {
                               </div>
                             </div>
 
-                            {/* 1-Click Page Variation Switcher Bar */}
-                            <PageVariationSwitcher
-                              value={activePageVariation}
-                              onChange={(nextVar) =>
-                                updateEntry(
-                                  selectedEntry.id,
-                                  { pageVariation: nextVar },
-                                  true
-                                )
-                              }
-                              compact
-                            />
-
-                            {/* Title Row + Bookmark Ribbon on Right */}
-                            <div className="pt-1 flex items-start justify-between gap-4">
-                              <div>
-                                <h1
-                                  onDoubleClick={() => setIsEditingOnRightPage(true)}
-                                  title="Double-click to edit title"
-                                  className={`text-2xl sm:text-[32px] font-bold tracking-tight leading-snug journal-content cursor-text ${
-                                    isNocturnalPage
-                                      ? 'text-[#F7EBD9]'
-                                      : 'text-[#2B1E16] dark:text-[#EAE4D7]'
-                                  }`}
-                                  data-script={fontScript}
+                            {/* 1-Click Page Variation + Writing Style & Fountain Ink Bar */}
+                            <div className="relative shrink-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <PageVariationSwitcher
+                                    value={activePageVariation}
+                                    onChange={(nextVar) =>
+                                      updateEntry(
+                                        selectedEntry.id,
+                                        { pageVariation: nextVar },
+                                        true
+                                      )
+                                    }
+                                    compact
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  data-testid="toggle-writing-style-bar"
+                                  onClick={() => setStyleBarOpen((v) => !v)}
+                                  title="হাতের লেখার ধরন ও ফাউন্টেন পেনের কালি পরিবর্তন করুন"
+                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:bg-[#DEC6A4]"
                                 >
-                                  {selectedEntry.title ||
-                                    `Untitled ${selectedEntry.type}`}
-                                </h1>
-                                {selectedEntry.subtitle && (
-                                  <p
-                                    className={`text-sm italic mt-1 journal-content ${
-                                      isNocturnalPage
-                                        ? 'text-[#C8B299]'
-                                        : 'text-[var(--ink-soft)]'
-                                    }`}
-                                    data-script={fontScript}
-                                  >
-                                    {selectedEntry.subtitle}
-                                  </p>
-                                )}
-                                <VintageTitleFlourish />
+                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
+                                  <span>লেখার ধরন ও কালি</span>
+                                </button>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  playInkStamp();
-                                  toggleFavorite(selectedEntry.id);
-                                }}
-                                aria-label={
-                                  selectedEntry.isFavorite
-                                    ? 'Remove bookmark'
-                                    : 'Bookmark this page'
-                                }
-                                className="p-1.5 text-[#5E4937] dark:text-[#C8A882] hover:scale-110 transition-transform shrink-0 mt-1"
-                              >
-                                <Bookmark
-                                  className={`w-5 h-5 ${
-                                    selectedEntry.isFavorite
-                                      ? 'fill-[#8B3A32] text-[#8B3A32] dark:fill-[#C8A882]'
-                                      : ''
-                                  }`}
-                                />
-                              </button>
+                              {styleBarOpen && (
+                                <div
+                                  data-testid="writing-style-ink-bar"
+                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-2.5 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] flex flex-wrap items-center justify-between gap-2 text-[11px]"
+                                >
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    <span className="font-bangla text-[var(--ink-soft)] mr-1">
+                                      শৈলী:
+                                    </span>
+                                    {WRITING_STYLE_PRESETS.map((ws) => (
+                                      <button
+                                        key={ws.id}
+                                        type="button"
+                                        data-testid={`writing-style-pill-${ws.id}`}
+                                        onClick={() => handleChangeWritingStyle(ws.id)}
+                                        className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
+                                          activeWritingStyleId === ws.id
+                                            ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
+                                            : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
+                                        }`}
+                                      >
+                                        {ws.nameBn}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bangla text-[var(--ink-soft)]">
+                                      কালি:
+                                    </span>
+                                    {INK_COLOR_PRESETS.map((ink) => (
+                                      <button
+                                        key={ink.id}
+                                        type="button"
+                                        data-testid={`ink-color-pill-${ink.id}`}
+                                        onClick={() => handleChangeInkColor(ink.id)}
+                                        title={`${ink.nameBn} (${ink.nameEn})`}
+                                        aria-label={`Select ${ink.nameEn} ink`}
+                                        className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
+                                          activeInkColorId === ink.id
+                                            ? 'scale-125 ring-2 ring-[#D8A668] border-white'
+                                            : 'border-black/25 hover:scale-110'
+                                        }`}
+                                        style={{ backgroundColor: ink.swatchHex }}
+                                      />
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => setStyleBarOpen(false)}
+                                      aria-label="Close writing style bar"
+                                      className="ml-1 p-0.5 text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {copiedToast && (
-                              <p className="text-xs text-[#556B45] flex items-center gap-1">
+                              <p className="text-xs text-[#556B45] flex items-center gap-1 shrink-0">
                                 <Check className="w-3.5 h-3.5" />
                                 Copied exact original text to clipboard.
                               </p>
                             )}
 
-                            {/* Main Poem / Diary Content preserving every stanza & newline */}
-                            {selectedEntry.isLocked &&
-                            !isEntryUnlockedForViewer(selectedEntry) &&
-                            !isAdmin ? (
-                              <div className="my-6 sm:my-10 py-8 px-5 max-w-md mx-auto text-center rounded-[14px] bg-[#FAF3E6]/90 dark:bg-[#231C16]/90 border-2 border-[#8E6544]/70 shadow-[0_12px_28px_rgba(20,10,4,0.15)] space-y-4">
-                                <div className="w-14 h-14 mx-auto rounded-full bg-[#E8D7BE] dark:bg-[#32281F] border border-[#A8824C] flex items-center justify-center shadow-inner">
-                                  <Lock className="w-7 h-7 text-[#8C5A36] dark:text-[#E2B77B]" />
-                                </div>
-                                <div className="space-y-1">
-                                  <h3 className="text-lg font-bold font-bangla text-[var(--ink)]">
-                                    তালাবদ্ধ ব্যক্তিগত পাতা
-                                  </h3>
-                                  <p className="text-xs text-[var(--ink-soft)] font-bangla">
-                                    এই পাতার অন্তর্লীন কথাগুলো পড়ার জন্য গোপন পাসওয়ার্ড প্রয়োজন।
-                                  </p>
-                                  {selectedEntry.lockHint && (
-                                    <div className="inline-block mt-1 px-3 py-1 rounded-[6px] bg-[#EADECE] dark:bg-[#2F261E] border border-[#C5AA87] dark:border-[#4A3E32] text-xs font-bangla text-[#5A3F2A] dark:text-[#E2C79E]">
-                                      <span className="font-semibold">ইঙ্গিত (Hint):</span> {selectedEntry.lockHint}
-                                    </div>
+                            {/* Scrollable Manuscript Body Container — keeps page height fixed on long entries */}
+                            <div
+                              ref={attachManuscriptScrollRef}
+                              onScroll={handleManuscriptScroll}
+                              data-testid="right-page-manuscript-scroll"
+                              className="flex-1 min-h-0 overflow-y-auto pr-2 sm:pr-4 space-y-3"
+                            >
+                              {/* Title Row + Bookmark Ribbon on Right */}
+                              <div className="pt-1 flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                  <h1
+                                    onDoubleClick={() => setIsEditingOnRightPage(true)}
+                                    title="Double-click to edit title"
+                                    className={`text-2xl sm:text-[30px] font-bold tracking-tight leading-snug journal-content cursor-text ${
+                                      isNocturnalPage
+                                        ? 'text-[#F7EBD9]'
+                                        : 'text-[#2B1E16] dark:text-[#EAE4D7]'
+                                    }`}
+                                    data-script={fontScript}
+                                  >
+                                    {selectedEntry.title ||
+                                      `Untitled ${selectedEntry.type}`}
+                                  </h1>
+                                  {selectedEntry.subtitle && (
+                                    <p
+                                      className={`text-sm italic mt-1 journal-content ${
+                                        isNocturnalPage
+                                          ? 'text-[#C8B299]'
+                                          : 'text-[var(--ink-soft)]'
+                                      }`}
+                                      data-script={fontScript}
+                                    >
+                                      {selectedEntry.subtitle}
+                                    </p>
                                   )}
+                                  <VintageTitleFlourish />
                                 </div>
 
-                                <form onSubmit={handleUnlockSubmit} className="space-y-3 pt-2">
-                                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                                    <input
-                                      type="password"
-                                      value={unlockAttemptInput}
-                                      onChange={(e) => {
-                                        setUnlockAttemptInput(e.target.value);
-                                        setUnlockErrorMsg('');
-                                      }}
-                                      placeholder="পাসওয়ার্ড লিখুন…"
-                                      aria-label="Unlock password"
-                                      className="w-full sm:w-56 px-3 py-2 text-center text-sm bg-[#FFFDF8] dark:bg-[#18130E] border-2 border-[#BEA37E] rounded-[6px] text-[var(--ink)] focus:outline-none focus:border-[#7E5A3C]"
-                                      autoFocus
-                                    />
-                                    <LeatherClaspButton type="submit" compact>
-                                      <KeyRound className="w-3.5 h-3.5 text-[#DFB578]" />
-                                      <span>আনলক করুন</span>
-                                    </LeatherClaspButton>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    playInkStamp();
+                                    toggleFavorite(selectedEntry.id);
+                                  }}
+                                  aria-label={
+                                    selectedEntry.isFavorite
+                                      ? 'Remove bookmark'
+                                      : 'Bookmark this page'
+                                  }
+                                  className="p-1.5 text-[#5E4937] dark:text-[#C8A882] hover:scale-110 transition-transform shrink-0 mt-1"
+                                >
+                                  <Bookmark
+                                    className={`w-5 h-5 ${
+                                      selectedEntry.isFavorite
+                                        ? 'fill-[#8B3A32] text-[#8B3A32] dark:fill-[#C8A882]'
+                                        : ''
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                              {selectedEntry.isLocked &&
+                              !isEntryUnlockedForViewer(selectedEntry) &&
+                              !isAdmin ? (
+                                <div className="my-4 sm:my-6 py-6 px-5 max-w-md mx-auto text-center rounded-[14px] bg-[#FAF3E6]/90 dark:bg-[#231C16]/90 border-2 border-[#8E6544]/70 shadow-[0_12px_28px_rgba(20,10,4,0.15)] space-y-4">
+                                  <div className="w-14 h-14 mx-auto rounded-full bg-[#E8D7BE] dark:bg-[#32281F] border border-[#A8824C] flex items-center justify-center shadow-inner">
+                                    <Lock className="w-7 h-7 text-[#8C5A36] dark:text-[#E2B77B]" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <h3 className="text-lg font-bold font-bangla text-[var(--ink)]">
+                                      তালাবদ্ধ ব্যক্তিগত পাতা
+                                    </h3>
+                                    <p className="text-xs text-[var(--ink-soft)] font-bangla">
+                                      এই পাতার অন্তর্লীন কথাগুলো পড়ার জন্য গোপন পাসওয়ার্ড প্রয়োজন।
+                                    </p>
+                                    {selectedEntry.lockHint && (
+                                      <div className="inline-block mt-1 px-3 py-1 rounded-[6px] bg-[#EADECE] dark:bg-[#2F261E] border border-[#C5AA87] dark:border-[#4A3E32] text-xs font-bangla text-[#5A3F2A] dark:text-[#E2C79E]">
+                                        <span className="font-semibold">ইঙ্গিত (Hint):</span> {selectedEntry.lockHint}
+                                      </div>
+                                    )}
                                   </div>
 
-                                  {unlockErrorMsg && (
-                                    <p className="text-xs text-[var(--danger)] font-bangla font-medium">
-                                      {unlockErrorMsg}
-                                    </p>
-                                  )}
-                                </form>
+                                  <form onSubmit={handleUnlockSubmit} className="space-y-3 pt-2">
+                                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                                      <input
+                                        type="password"
+                                        value={unlockAttemptInput}
+                                        onChange={(e) => {
+                                          setUnlockAttemptInput(e.target.value);
+                                          setUnlockErrorMsg('');
+                                        }}
+                                        placeholder="পাসওয়ার্ড লিখুন…"
+                                        aria-label="Unlock password"
+                                        className="w-full sm:w-56 px-3 py-2 text-center text-sm bg-[#FFFDF8] dark:bg-[#18130E] border-2 border-[#BEA37E] rounded-[6px] text-[var(--ink)] focus:outline-none focus:border-[#7E5A3C]"
+                                        autoFocus
+                                      />
+                                      <LeatherClaspButton type="submit" compact>
+                                        <KeyRound className="w-3.5 h-3.5 text-[#DFB578]" />
+                                        <span>আনলক করুন</span>
+                                      </LeatherClaspButton>
+                                    </div>
 
-                                <div className="pt-3 border-t border-dashed border-[#CBB393] dark:border-[#3D342A] text-xs">
-                                  <button
-                                    type="button"
-                                    onClick={() => setAdminLoginModalOpen(true)}
-                                    className="text-[var(--ink-soft)] hover:text-[var(--accent)] underline font-bangla cursor-pointer"
+                                    {unlockErrorMsg && (
+                                      <p className="text-xs text-[var(--danger)] font-bangla font-medium">
+                                        {unlockErrorMsg}
+                                      </p>
+                                    )}
+                                  </form>
+
+                                  <div className="pt-3 border-t border-dashed border-[#CBB393] dark:border-[#3D342A] text-xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => setAdminLoginModalOpen(true)}
+                                      className="text-[var(--ink-soft)] hover:text-[var(--accent)] underline font-bangla cursor-pointer"
+                                    >
+                                      আপনি কি এই ডায়েরির মালিক? Google দিয়ে লগইন করুন
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {/* Main Poem / Diary Content preserving every stanza & newline */}
+                                  <div
+                                    onDoubleClick={() => {
+                                      if (isAdmin) {
+                                        setIsEditingOnRightPage(true);
+                                      } else {
+                                        setAdminLoginModalOpen(true);
+                                      }
+                                    }}
+                                    title={isAdmin ? 'Double-click anywhere on the page to edit' : undefined}
+                                    style={{
+                                      color: resolvedManuscriptInkColor,
+                                    }}
+                                    className={`pt-1 pr-2 sm:pr-12 ${activeWritingStyle.fontSizeClass} ${activeWritingStyle.lineHeightClass} ${activeWritingStyle.alignClass} ${activeWritingStyle.indentClass} ${
+                                      activeWritingStyle.letterSpacingClass || ''
+                                    } ${
+                                      activeWritingStyle.dropCap ? 'drop-cap-manuscript' : ''
+                                    } journal-content ${isAdmin ? 'cursor-text' : 'cursor-default'}`}
+                                    data-script={fontScript}
+                                    data-writing-style={activeWritingStyleId}
+                                    data-ink-color={activeInkColorId}
                                   >
-                                    আপনি কি এই ডায়েরির মালিক? Google দিয়ে লগইন করুন
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                {/* Main Poem / Diary Content preserving every stanza & newline */}
-                                <div
-                                  onDoubleClick={() => {
-                                    if (isAdmin) {
-                                      setIsEditingOnRightPage(true);
-                                    } else {
-                                      setAdminLoginModalOpen(true);
-                                    }
-                                  }}
-                                  title={isAdmin ? 'Double-click anywhere on the page to edit' : undefined}
-                                  className={`pt-1 pr-4 sm:pr-24 text-base sm:text-[18px] journal-content leading-[1.95] ${isAdmin ? 'cursor-text' : 'cursor-default'} ${
-                                    isNocturnalPage
-                                      ? 'text-[#F2E3CC]'
-                                      : 'text-[#2B1E16] dark:text-[#EAE4D7]'
-                                  }`}
-                                  data-script={fontScript}
-                                >
-                                  {selectedEntry.content}
-                                </div>
+                                    {selectedEntry.content}
+                                  </div>
 
-                                {selectedEntry.type === 'quote' &&
-                                  selectedEntry.attribution && (
-                                    <p className="pt-2 text-sm italic text-[#5E4937] dark:text-[#B89F82] font-bangla">
-                                      — {selectedEntry.attribution}
-                                    </p>
-                                  )}
-                              </>
-                            )}
+                                  {selectedEntry.type === 'quote' &&
+                                    selectedEntry.attribution && (
+                                      <p className="pt-2 text-sm italic text-[#5E4937] dark:text-[#B89F82] font-bangla">
+                                        — {selectedEntry.attribution}
+                                      </p>
+                                    )}
+                                </>
+                              )}
+                            </div>
                           </div>
 
                           {/* Bottom Hashtags, Heart, Authentic River Boat Art & Page-Turner Footer */}
-                          <div className="pt-6 mt-4 space-y-3 z-10">
+                          <div className="pt-3 mt-2 space-y-2.5 z-10 shrink-0">
                             <div className="flex items-center justify-between gap-4 pr-2 sm:pr-24">
                               <div className="flex flex-wrap items-center gap-2 font-bangla">
                                 {selectedEntry.tags.map((tag) => (
@@ -3494,27 +4237,32 @@ export function OpenLeatherJournalSpread() {
                               </div>
                             )}
 
-                            {/* Book Page-Turner Bar (Prev Page / Page X of Y / Next Page) */}
-                            <div className="pt-3 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex items-center justify-between text-xs text-[var(--ink-soft)] pr-2 sm:pr-20">
+                            {/* Book Page-Turner Bar (Prev Page / Page X of Y + Reading Time & Mark Place / Next Page) */}
+                            <div className="pt-3 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-soft)] pr-2 sm:pr-20">
                               <button
                                 type="button"
                                 disabled={currentEntryPageIndex <= 0}
                                 onClick={() => handleTurnPage('prev')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
                               >
                                 <ChevronLeft className="w-3.5 h-3.5" />
                                 <span>পূর্ববর্তী পাতা</span>
                               </button>
 
-                              <span className="font-bangla text-[11px] px-2.5 py-0.5 rounded-[4px] bg-[#E8D7BE]/65 dark:bg-[#2A231B] border border-[#CBB393]/60 dark:border-[#453B30]/60 text-[#4A3525] dark:text-[#D8C3A5]">
-                                পাতা{' '}
-                                {toBanglaDigits(
-                                  currentEntryPageIndex >= 0
-                                    ? currentEntryPageIndex + 1
-                                    : 1
-                                )}{' '}
-                                / {toBanglaDigits(Math.max(1, bookIndexEntries.length))}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bangla text-[11px] px-2.5 py-0.5 rounded-[4px] bg-[#E8D7BE]/65 dark:bg-[#2A231B] border border-[#CBB393]/60 dark:border-[#453B30]/60 text-[#4A3525] dark:text-[#D8C3A5]">
+                                  পাতা{' '}
+                                  {toBanglaDigits(
+                                    currentEntryPageIndex >= 0
+                                      ? currentEntryPageIndex + 1
+                                      : 1
+                                  )}{' '}
+                                  / {toBanglaDigits(Math.max(1, bookIndexEntries.length))}
+                                </span>
+                                <span className="hidden sm:inline-block font-bangla text-[11px] text-[var(--ink-soft)]">
+                                  · {toBanglaDigits(readingMetrics.lines)} পঙক্তি · ~{readingMetrics.readMinsBn} মিনিট পাঠ
+                                </span>
+                              </div>
 
                               <button
                                 type="button"
@@ -3523,7 +4271,7 @@ export function OpenLeatherJournalSpread() {
                                   currentEntryPageIndex >= bookIndexEntries.length - 1
                                 }
                                 onClick={() => handleTurnPage('next')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
                               >
                                 <span>পরবর্তী পাতা</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -3626,14 +4374,18 @@ export function OpenLeatherJournalSpread() {
         </button>
       </nav>
 
-      {/* Template & Page Variation Picker Modal */}
+      {/* Template, Page Variation, Desk Background & Writing Style Picker Modal */}
       <TemplatePickerModal
         open={templateModalOpen}
         onClose={() => setTemplateModalOpen(false)}
         onSelectTemplate={handleApplyTemplate}
-        onSelectBlankVariation={(variation) =>
-          handleStartNewEntry({ pageVariation: variation })
-        }
+        onSelectBlankVariation={handleSelectBlankVariation}
+        deskBackground={deskBackground}
+        onChangeDeskBackground={handleChangeDeskBackground}
+        writingStyle={activeWritingStyleId}
+        onChangeWritingStyle={handleChangeWritingStyle}
+        inkColor={activeInkColorId}
+        onChangeInkColor={handleChangeInkColor}
       />
 
       {/* Custom Confirmation Dialog for Destructive Actions */}
