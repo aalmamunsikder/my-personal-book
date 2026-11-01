@@ -53,7 +53,7 @@ export function MemoryReturnCard({ entries, onSelectEntry }: MemoryReturnCardPro
             }}
             aria-label="Show another memory"
             title="অন্য একটি স্মৃতি দেখুন"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#E5D3B8]/80 dark:bg-[#362E25] border border-[#C4AC89] dark:border-[#4B3F33] hover:bg-[#DBC4A2] font-bangla text-[10.5px] cursor-pointer"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#E5D3B8]/80 dark:bg-[#362E25] border border-[#C4AC89] dark:border-[#4B3F33] hover:bg-[#DBC4A2] dark:hover:bg-[#4A3F33] font-bangla text-[10.5px] cursor-pointer"
           >
             <RefreshCw className="w-2.5 h-2.5" />
             <span>পাল্টান</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { BookmarkPlus, Check, FilePlus2, Layers, Sparkles, Trash2, X } from 'lucide-react';
+import { BookmarkPlus, Check, FilePlus2, Layers, Trash2 } from 'lucide-react';
 import {
   JOURNAL_TEMPLATES,
   JournalTemplate,
@@ -9,8 +9,8 @@ import {
   PageVariationMeta,
 } from '../../lib/journal-templates';
 import type { EntryType, JournalEntry, PageVariation } from '../../types/entry';
+import { BookDialogFrame } from '../common/BookDialogFrame';
 import {
-  BrassCornerOrnament,
   LeatherClaspButton,
   ParchmentPlateButton,
 } from '../ui/VerseVaultUI';
@@ -180,48 +180,28 @@ export function TemplatePickerModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="template-picker-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs"
+    <BookDialogFrame
+      open={open}
+      title="পাণ্ডুলিপি ছাঁচ ও পাতার নকশা (Archival Templates & Page Folio)"
+      ariaLabelledBy="template-picker-modal-title"
+      onClose={() => {
+        bookSound.playBrassClickSound();
+        onClose();
+      }}
+      closeLabel="Close templates dialog"
+      widthClassName="max-w-3xl"
+      footer={
+        <ParchmentPlateButton onClick={onClose}>
+          বন্ধ করুন (Close)
+        </ParchmentPlateButton>
+      }
     >
-      <div className="relative bg-[#F6ECDC] dark:bg-[#1E1914] border-2 border-[#8B6343] rounded-[12px] max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-[0_28px_70px_rgba(10,5,2,0.8),inset_0_0_0_2px_rgba(200,157,102,0.22)]">
-        {/* Embossed Leather Header */}
-        <div className="relative px-5 py-4 bg-gradient-to-r from-[#342216] via-[#2A1B11] to-[#20130B] text-[#F5E9D7] flex items-center justify-between border-b-2 border-[#7E5B3D]">
-          <BrassCornerOrnament position="tl" size="sm" />
-          <BrassCornerOrnament position="tr" size="sm" />
-          <div className="flex items-center gap-3 pl-2">
-            <div className="w-9 h-9 rounded-[6px] bg-[#4B3221] border border-[#8E694A] flex items-center justify-center shadow-inner shrink-0">
-              <Sparkles className="w-4 h-4 text-[#DFB578]" />
-            </div>
-            <div>
-              <h2
-                id="template-picker-modal-title"
-                className="text-base sm:text-lg font-bangla font-bold tracking-wide text-[#FAF0E1]"
-              >
-                পাণ্ডুলিপি ছাঁচ ও পাতার নকশা (Archival Templates &amp; Page Folio)
-              </h2>
-              <p className="text-xs text-[#D2B99B] font-bangla">
-                নতুন পাতা শুরু করুন অথবা বর্তমান পাতায় পছন্দের কাগজের নকশা ও সাহিত্যিক কাঠামো প্রয়োগ করুন
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              bookSound.playBrassClickSound();
-              onClose();
-            }}
-            aria-label="Close templates dialog"
-            className="p-1.5 rounded-[5px] bg-[#462F1F] hover:bg-[#5B3D28] border border-[#7E5B3D] text-[#F5E9D7] cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <p className="text-xs font-bangla text-[var(--ink-soft)] leading-relaxed">
+          নতুন পাতা শুরু করুন অথবা বর্তমান পাতায় পছন্দের কাগজের নকশা ও সাহিত্যিক কাঠামো প্রয়োগ করুন
+        </p>
 
         {/* Target Action Mode Bar: Create New Page vs Apply to Current Open Page */}
-        <div className="px-5 py-2.5 bg-[#EADBC4] dark:bg-[#272019] border-b border-[#C8AF8C] dark:border-[#3E3328] flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-4 px-3 py-2.5 rounded-[6px] bg-[#EADBC4] dark:bg-[#272019] border border-[#C8AF8C] dark:border-[#3E3328] flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bangla font-semibold text-[#4E3725] dark:text-[#D8C2A6] mr-1">
               প্রয়োগের মাধ্যম:
@@ -264,7 +244,7 @@ export function TemplatePickerModal({
             <button
               type="button"
               onClick={handleSaveCurrentAsTemplate}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-xs font-bangla bg-[#FBF4E7] dark:bg-[#312820] hover:bg-[#EFE0C6] text-[#5A3E28] dark:text-[#E5C8A3] border border-[#BEA37E] dark:border-[#524334] cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-xs font-bangla bg-[#FBF4E7] dark:bg-[#312820] hover:bg-[#EFE0C6] dark:hover:bg-[#3A3226] text-[#5A3E28] dark:text-[#E5C8A3] border border-[#BEA37E] dark:border-[#524334] cursor-pointer transition-colors"
             >
               <BookmarkPlus className="w-3.5 h-3.5 text-[#8C5E35]" />
               <span>বর্তমান পাতাটি টেমপ্লেট হিসেবে সংরক্ষণ করুন</span>
@@ -273,14 +253,14 @@ export function TemplatePickerModal({
         </div>
 
         {savedNotice && (
-          <div className="px-5 py-2 bg-[#4A6339] text-[#F7F3EB] text-xs font-bangla flex items-center gap-2">
+          <div className="mt-3 px-3 py-2 rounded-[6px] bg-[#4A6339] text-[#F7F3EB] text-xs font-bangla flex items-center gap-2">
             <Check className="w-3.5 h-3.5" />
             <span>{savedNotice}</span>
           </div>
         )}
 
-        {/* Scrollable Content */}
-        <div className="p-5 overflow-y-auto space-y-6">
+        {/* Template & variation grids (the shared frame supplies the scroll) */}
+        <div className="mt-5 space-y-6">
           {/* Section 1: 6 Blank Paper & Page Variations with Visual Swatches */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
@@ -429,14 +409,7 @@ export function TemplatePickerModal({
               ))}
             </div>
           </div>
-
-          <div className="flex justify-end pt-1">
-            <ParchmentPlateButton onClick={onClose}>
-              বন্ধ করুন (Close)
-            </ParchmentPlateButton>
-          </div>
         </div>
-      </div>
-    </div>
+    </BookDialogFrame>
   );
 }

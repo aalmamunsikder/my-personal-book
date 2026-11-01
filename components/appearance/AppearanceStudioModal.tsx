@@ -21,7 +21,6 @@ import {
   Star,
   Trash2,
   Type,
-  X,
 } from 'lucide-react';
 import type {
   AppearanceConfig,
@@ -51,6 +50,7 @@ import {
 } from '../../lib/appearance-storage';
 import { suggestAccessibleInk, validateContrast } from '../../lib/contrast-utils';
 import { TemplateDispatcher } from '../templates/TemplateDispatcher';
+import { BookDialogFrame } from '../common/BookDialogFrame';
 import { CollectionCoverCard } from './CollectionCoverCard';
 import type { JournalCollection, JournalEntry } from '../../types/entry';
 
@@ -394,60 +394,41 @@ export function AppearanceStudioModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="appearance-studio-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-    >
-      <div
-        className="w-full max-w-7xl h-[92vh] flex flex-col rounded-xl overflow-hidden border border-[var(--border)] shadow-2xl bg-[var(--app-bg)] text-[var(--ink)]"
-        data-theme={activeConfig.appThemeId}
-      >
-        {/* Studio Top Header */}
-        <header className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--surface)]">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shadow-inner">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 id="appearance-studio-title" className="text-lg font-serif font-semibold text-[var(--ink)]">
-                VerseVault Appearance Studio
-              </h2>
-              <p className="text-xs text-[var(--ink-secondary)]">
-                Curate your personal book themes, page templates, papers, and typography
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {applyNotification && (
-              <span className="hidden md:inline-flex items-center gap-1 text-xs text-[var(--olive)] font-medium animate-in fade-in">
-                <Check className="w-3.5 h-3.5" />
-                {applyNotification}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleApplyAsDefault}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--accent)] text-white hover:opacity-90 shadow-sm transition-all"
-            >
+    <BookDialogFrame
+      open={open}
+      eyebrow="Studio"
+      title="VerseVault Appearance Studio"
+      ariaLabelledBy="appearance-studio-title"
+      onClose={onClose}
+      closeLabel="Close Appearance Studio"
+      widthClassName="max-w-7xl"
+      footer={
+        <>
+          {applyNotification && (
+            <span className="hidden md:inline-flex items-center gap-1 text-xs text-[var(--olive)] font-medium animate-in fade-in">
               <Check className="w-3.5 h-3.5" />
-              Apply as My Default
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close Appearance Studio"
-              className="p-1.5 rounded-md text-[var(--ink-secondary)] hover:text-[var(--ink)] hover:bg-[var(--surface-secondary)] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
+              {applyNotification}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleApplyAsDefault}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--accent)] text-white hover:opacity-90 shadow-sm transition-all"
+          >
+            <Check className="w-3.5 h-3.5" />
+            Apply as My Default
+          </button>
+        </>
+      }
+    >
+      <div data-theme={activeConfig.appThemeId} className="text-[var(--ink)]">
+        {/* Studio subtitle (the frame owns the title and the close affordance) */}
+        <p className="text-xs text-[var(--ink-secondary)]">
+          Curate your personal book themes, page templates, papers, and typography
+        </p>
 
         {/* Mobile Tab Switcher */}
-        <div className="md:hidden flex border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="md:hidden flex border-b border-[var(--border)] bg-[var(--surface)] mt-3 rounded-t-[6px]">
           <button
             type="button"
             onClick={() => setMobileTab('preview')}
@@ -472,8 +453,9 @@ export function AppearanceStudioModal({
           </button>
         </div>
 
-        {/* Studio Body: Three-column layout on Desktop */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Studio Body: Three-column layout on Desktop. Height matches the shared frame's body
+            (62vh minus its py-4 and the subtitle/mobile tab strip) so only the three columns scroll. */}
+        <div className="flex h-[calc(62vh-7rem)] md:h-[calc(62vh-4rem)]">
           {/* Column 1: Left Categories Navigation */}
           <nav
             aria-label="Appearance categories"
@@ -1340,6 +1322,6 @@ export function AppearanceStudioModal({
           </aside>
         </div>
       </div>
-    </div>
+    </BookDialogFrame>
   );
 }

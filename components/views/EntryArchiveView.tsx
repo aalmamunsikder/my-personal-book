@@ -21,6 +21,7 @@ import {
   groupEntriesByMonth,
 } from '../../lib/entry-utils';
 import type { EntryMood, EntryType, JournalEntry } from '../../types/entry';
+import { BookDialogFrame } from '../common/BookDialogFrame';
 import { EntryRowItem } from '../common/EntryRowItem';
 
 export function EntryArchiveView() {
@@ -543,27 +544,15 @@ export function EntryArchiveView() {
 
       {/* Second Confirmation Modal for Permanent Deletion in Trash */}
       {entryToConfirmDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-permanent-delete-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-        >
-          <div className="bg-[var(--page)] border border-[var(--line)] rounded-lg max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-2 text-[var(--danger)]">
-              <Trash2 className="w-5 h-5" />
-              <h3 id="confirm-permanent-delete-title" className="text-base font-semibold">
-                Permanently delete this page?
-              </h3>
-            </div>
-            <p className="text-xs sm:text-sm text-[var(--ink-soft)] leading-relaxed">
-              You are about to permanently erase{' '}
-              <strong className="text-[var(--ink)] font-bangla">
-                {entryToConfirmDelete.title || `Untitled ${entryToConfirmDelete.type}`}
-              </strong>
-              . This action cannot be undone.
-            </p>
-            <div className="flex items-center justify-end gap-3 pt-2">
+        <BookDialogFrame
+          open
+          ariaLabelledBy="confirm-permanent-delete-title"
+          eyebrow="Confirm"
+          title="Permanently delete this page?"
+          onClose={() => setEntryToConfirmDelete(null)}
+          closeLabel="Close permanent delete dialog"
+          footer={
+            <>
               <button
                 type="button"
                 onClick={() => setEntryToConfirmDelete(null)}
@@ -581,9 +570,20 @@ export function EntryArchiveView() {
               >
                 Delete Permanently
               </button>
-            </div>
+            </>
+          }
+        >
+          <div className="flex items-start gap-2.5 text-[var(--danger)]">
+            <Trash2 className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="text-xs sm:text-sm text-[var(--ink-soft)] leading-relaxed">
+              You are about to permanently erase{' '}
+              <strong className="text-[var(--ink)] font-bangla">
+                {entryToConfirmDelete.title || `Untitled ${entryToConfirmDelete.type}`}
+              </strong>
+              . This action cannot be undone.
+            </p>
           </div>
-        </div>
+        </BookDialogFrame>
       )}
     </div>
   );

@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {
   Search,
-  X,
   BookOpen,
   Calendar,
   ArrowRight,
@@ -15,6 +14,7 @@ import {
 import { requestAiAssist } from '../../lib/ai-client';
 import type { AiRequestPayload, AiResponsePayload, ArchiveMatchSource } from '../../types/ai';
 import type { JournalCollection, JournalEntry } from '../../types/entry';
+import { BookDialogFrame } from '../common/BookDialogFrame';
 
 interface AskMyArchiveModalProps {
   isOpen: boolean;
@@ -93,36 +93,23 @@ export function AskMyArchiveModal({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ask-archive-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+    <BookDialogFrame
+      open={isOpen}
+      title="Ask My Archive"
+      ariaLabelledBy="ask-archive-title"
+      onClose={onClose}
+      closeLabel="Close dialog"
+      widthClassName="max-w-2xl"
     >
-      <div className="relative w-full max-w-2xl rounded-2xl bg-[#F7F2E7] dark:bg-[#1C1612] border-2 border-[#8B6343]/40 dark:border-[#593C28] p-6 shadow-2xl text-[var(--ink)] space-y-4 max-h-[90vh] flex flex-col">
-        {/* Top Header */}
-        <div className="flex items-center justify-between border-b border-[#8B6343]/20 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#8B6343]/15 border border-[#8B6343]/30 flex items-center justify-center text-[#8B6343] dark:text-[#DFB578]">
-              <Search className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 id="ask-archive-title" className="text-base font-literary font-semibold text-[var(--ink)]">
-                Ask My Archive
-              </h3>
-              <p className="text-xs text-[var(--ink-soft)] font-bangla">
-                আপনার অতীতের স্মৃতিকথা ও কবিতার অর্থগত সন্ধান
-              </p>
-            </div>
+      <div className="space-y-4">
+        {/* Identity lockup: the frame header has no slot for the icon or the Bangla tagline. */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-[#8B6343]/15 border border-[#8B6343]/30 flex items-center justify-center text-[#8B6343] dark:text-[#DFB578]">
+            <Search className="w-4 h-4" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[#8B6343]/10"
-            aria-label="Close dialog"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <p className="text-xs text-[var(--ink-soft)] font-bangla">
+            আপনার অতীতের স্মৃতিকথা ও কবিতার অর্থগত সন্ধান
+          </p>
         </div>
 
         {/* Search Query Form */}
@@ -170,8 +157,8 @@ export function AskMyArchiveModal({
           </div>
         </form>
 
-        {/* Results Area */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+        {/* Results Area: the frame body already scrolls, so no local max-height/overflow here. */}
+        <div className="space-y-4 pr-1 text-xs">
           {loading && (
             <div className="p-8 text-center space-y-3 bg-[#EFE8D8]/50 dark:bg-[#251D17]/50 rounded-2xl border border-[#8B6343]/20 animate-pulse">
               <div className="w-9 h-9 rounded-full bg-[#8B6343]/20 mx-auto flex items-center justify-center text-[#8B6343] animate-spin">
@@ -263,6 +250,6 @@ export function AskMyArchiveModal({
           )}
         </div>
       </div>
-    </div>
+    </BookDialogFrame>
   );
 }

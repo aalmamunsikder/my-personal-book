@@ -85,6 +85,7 @@ import {
   VintageTitleFlourish,
 } from '../common/JournalArtwork';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { BookDialogFrame, BOOK_DIALOG_ROOT_ID } from '../common/BookDialogFrame';
 import { SaveStateIndicator } from '../common/SaveStateIndicator';
 import { ContinueWritingCard } from '../journal/ContinueWritingCard';
 import { MemoryReturnCard } from '../journal/MemoryReturnCard';
@@ -1261,6 +1262,9 @@ export function OpenLeatherJournalSpread() {
         {/* 5 Raised 3D Stitched Spine Cord Hubs along the Left Leather Hinge */}
         <SpineCordHubs />
 
+        {/* Portal target for every dialog: they are laid into the spread, not over the desk. */}
+        <div id={BOOK_DIALOG_ROOT_ID} />
+
         {/* Inner Gold-Brown Stitched Leather Seam */}
         <div className="rounded-[16px] border border-dashed border-[#A67B54]/60 p-1 sm:p-2 flex flex-col lg:flex-row gap-0">
           {/* ====================================================================
@@ -1590,7 +1594,7 @@ export function OpenLeatherJournalSpread() {
           {/* ====================================================================
               3D STACKED PARCHMENT BOOK BLOCK (Multi-Layer Page Edges + Spine Ribbon)
              ==================================================================== */}
-          <div className="flex-1 min-w-0 relative rounded-[15px] bg-[#BEA380] p-[3px] sm:p-[6px] shadow-[inset_0_0_0_1px_rgba(65,42,22,0.55),0_12px_28px_rgba(12,6,2,0.45)]">
+          <div className="flex-1 min-w-0 relative rounded-[15px] bg-[#BEA380] dark:bg-[#3A3226] p-[3px] sm:p-[6px] shadow-[inset_0_0_0_1px_rgba(65,42,22,0.55),0_12px_28px_rgba(12,6,2,0.45)]">
             {/* Second Stacked Page Layer (Simulated gilt deckled edges) */}
             <div className="rounded-[12px] bg-[#D6BFA0] dark:bg-[#3A3226] p-[3px] sm:p-[5px] border border-[#AE926F] dark:border-[#4C4436] shadow-inner">
               {/* Third Stacked Page Layer */}
@@ -1642,7 +1646,7 @@ export function OpenLeatherJournalSpread() {
                             transformStyle: 'preserve-3d',
                           }}
                           aria-hidden="true"
-                          className="hidden lg:block pointer-events-none absolute inset-y-0 left-[41.666%] right-0 z-40 rounded-r-[8px] bg-gradient-to-r from-[#DFCCB0] via-[#F7EFE2] to-[#EAD9BF] border-y border-r border-[#BDA380] shadow-[-18px_0_38px_rgba(32,18,8,0.34),12px_0_28px_rgba(32,18,8,0.22)]"
+                          className="hidden lg:block pointer-events-none absolute inset-y-0 left-[41.666%] right-0 z-40 rounded-r-[8px] bg-gradient-to-r from-[#DFCCB0] via-[#F7EFE2] to-[#EAD9BF] dark:from-[#3A3226] dark:via-[#2E2820] dark:to-[#372F26] border-y border-r border-[#BDA380] dark:border-[#57493A] shadow-[-18px_0_38px_rgba(32,18,8,0.34),12px_0_28px_rgba(32,18,8,0.22)]"
                         >
                           {/* Subtle simulated ink lines on turning page leaf */}
                           <div className="p-10 space-y-4 opacity-25">
@@ -1768,7 +1772,7 @@ export function OpenLeatherJournalSpread() {
                                         setTypeDropdown(stat.type);
                                         setLeftPageMode('list');
                                       }}
-                                      className="bg-[#F7EFE2] dark:bg-[#2C2620] hover:bg-[#E8D7BF] border border-[#D6C2A7] dark:border-[#423A30] rounded-xl py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 transition-all shadow-2xs group"
+                                      className="bg-[#F7EFE2] dark:bg-[#2C2620] hover:bg-[#E8D7BF] dark:hover:bg-[#3A3226] border border-[#D6C2A7] dark:border-[#423A30] rounded-xl py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 transition-all shadow-2xs group"
                                     >
                                       <Icon className="w-4 h-4 text-[#6B4E37] dark:text-[#C8A882] group-hover:scale-110 transition-transform" />
                                       <span className="text-[11px] font-medium text-[var(--ink-soft)]">
@@ -1795,7 +1799,7 @@ export function OpenLeatherJournalSpread() {
                                 <button
                                   type="button"
                                   onClick={() => setTemplateModalOpen(true)}
-                                  className="py-2.5 px-3 rounded-xl bg-[#E5D2B5] dark:bg-[#322B23] hover:bg-[#DBC29E] text-[var(--ink)] text-xs font-bangla font-medium flex items-center justify-center gap-1.5 border border-[#C8B193] dark:border-[#4F4336] transition-colors"
+                                  className="py-2.5 px-3 rounded-xl bg-[#E5D2B5] dark:bg-[#322B23] hover:bg-[#DBC29E] dark:hover:bg-[#3E3529] text-[var(--ink)] text-xs font-bangla font-medium flex items-center justify-center gap-1.5 border border-[#C8B193] dark:border-[#4F4336] transition-colors"
                                 >
                                   <Sparkles className="w-3.5 h-3.5 text-[#6E4F3A] dark:text-[#C8A882]" />
                                   <span>টেমপ্লেট</span>
@@ -1950,8 +1954,8 @@ export function OpenLeatherJournalSpread() {
                                           isSelectedDate
                                             ? 'bg-[#4E3624] text-[#FDF8F0] font-bold shadow-xs'
                                             : entryCountOnDate > 0
-                                            ? 'text-[var(--ink)] font-semibold bg-[#E5D3B8]/60 dark:bg-[#332C23] group-hover:bg-[#DBC3A0]'
-                                            : 'text-[var(--ink-soft)] group-hover:bg-[#E5D4BC]/50'
+                                            ? 'text-[var(--ink)] font-semibold bg-[#E5D3B8]/60 dark:bg-[#332C23] group-hover:bg-[#DBC3A0] dark:group-hover:bg-[#3F3629]'
+                                            : 'text-[var(--ink-soft)] group-hover:bg-[#E5D4BC]/50 dark:group-hover:bg-[#332C23]/70'
                                         }`}
                                       >
                                         {cell.day}
@@ -1984,7 +1988,7 @@ export function OpenLeatherJournalSpread() {
                               </div>
 
                               {selectedDayEntries.length === 0 ? (
-                                <div className="p-4 rounded-xl bg-[#F7EFE2]/70 dark:bg-[#2C2620] border border-dashed border-[#CBB699] text-center space-y-1.5">
+                                <div className="p-4 rounded-xl bg-[#F7EFE2]/70 dark:bg-[#2C2620] border border-dashed border-[#CBB699] dark:border-[#4A3E32] text-center space-y-1.5">
                                   <p className="text-xs font-bangla text-[var(--ink-soft)]">
                                     এই তারিখে এখনো কোনো পাতা লেখা হয়নি।
                                   </p>
@@ -2021,7 +2025,7 @@ export function OpenLeatherJournalSpread() {
                                         className={`w-full text-left p-3 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                                           isSelected
                                             ? 'bg-[#E5D2B5] dark:bg-[#322B23] border-[#C4AA87]'
-                                            : 'bg-[#F8F1E5] dark:bg-[#2C2620] border-[#D6C2A7] hover:bg-[#EFE2CE]'
+                                            : 'bg-[#F8F1E5] dark:bg-[#2C2620] border-[#D6C2A7] hover:bg-[#EFE2CE] dark:hover:bg-[#383128]'
                                         }`}
                                       >
                                         <div className="min-w-0">
@@ -2353,7 +2357,7 @@ export function OpenLeatherJournalSpread() {
                               {/* Scrollable Entry Index List: Custom Tipped-In Archival Manuscript Slips */}
                               <div className="space-y-2 max-h-[490px] overflow-y-auto pr-1">
                                 {bookIndexEntries.length === 0 ? (
-                                  <div className="py-12 text-center space-y-3 rounded-[8px] border border-dashed border-[#CBB494] bg-[#FBF5E9]/50">
+                                  <div className="py-12 text-center space-y-3 rounded-[8px] border border-dashed border-[#CBB494] dark:border-[#4A3E32] bg-[#FBF5E9]/50 dark:bg-[#241F1A]/70">
                                     <p className="text-sm text-[var(--ink-soft)] font-bangla">
                                       {leftPageMode === 'trash'
                                         ? 'ট্র্যাশ বক্স খালি।'
@@ -2610,7 +2614,7 @@ export function OpenLeatherJournalSpread() {
                         <div className="space-y-4 z-10 flex-1 flex flex-col justify-between">
                           <div className="space-y-3">
                             {/* Mobile Back Button inside Editor */}
-                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60">
+                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60 dark:border-[#3F372C]/60">
                               <ParchmentPlateButton
                                 size="xs"
                                 onClick={() => {
@@ -2816,7 +2820,7 @@ export function OpenLeatherJournalSpread() {
                                 }
                                 placeholder="— উৎস বা লেখকের নাম / Attribution…"
                                 aria-label="Quote attribution"
-                                className="w-full bg-transparent text-sm italic text-[var(--ink-soft)] border-b border-[#D8C5AA] pb-1.5 focus:outline-none font-bangla"
+                                className="w-full bg-transparent text-sm italic text-[var(--ink-soft)] border-b border-[#D8C5AA] dark:border-[#4A3E32] pb-1.5 focus:outline-none font-bangla"
                               />
                             )}
                           </div>
@@ -2880,7 +2884,7 @@ export function OpenLeatherJournalSpread() {
                                     onClick={() => setNewCollectionModalOpen(true)}
                                     title="Create new collection"
                                     aria-label="Create new collection"
-                                    className="p-1.5 rounded-[5px] bg-[#E5D3B8] dark:bg-[#332C23] border border-[#BEA37E] text-[#2B1E16] dark:text-[#EAE4D7] shrink-0 hover:bg-[#DAC2A0]"
+                                    className="p-1.5 rounded-[5px] bg-[#E5D3B8] dark:bg-[#332C23] border border-[#BEA37E] text-[#2B1E16] dark:text-[#EAE4D7] shrink-0 hover:bg-[#DAC2A0] dark:hover:bg-[#42392C]"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                   </button>
@@ -2944,7 +2948,7 @@ export function OpenLeatherJournalSpread() {
                                 {selectedEntry.tags.map((tag) => (
                                   <span
                                     key={tag}
-                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[5px] bg-[#E5D3BA] dark:bg-[#332C24] border border-[#C5AB89] text-xs text-[#2B1E16] dark:text-[#EAE4D7] font-bangla"
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[5px] bg-[#E5D3BA] dark:bg-[#332C24] border border-[#C5AB89] dark:border-[#4A3E32] text-xs text-[#2B1E16] dark:text-[#EAE4D7] font-bangla"
                                   >
                                     #{tag}
                                     <button
@@ -3004,7 +3008,7 @@ export function OpenLeatherJournalSpread() {
 
                           <div className="space-y-3.5 z-10">
                             {/* Mobile Back Header (`← Poems / Back to List`) */}
-                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60">
+                            <div className="flex lg:hidden items-center justify-between pb-2 border-b border-[#D8C5AA]/60 dark:border-[#3F372C]/60">
                               <button
                                 type="button"
                                 onClick={() => setMobileView('left-page')}
@@ -3058,7 +3062,7 @@ export function OpenLeatherJournalSpread() {
                                       setLeftPageMode('collection-entries');
                                       setMobileView('left-page');
                                     }}
-                                    className="px-2.5 py-0.5 rounded-[5px] bg-[#E5D3B8]/90 dark:bg-[#322B23] border border-[#C4AA87] text-[11px] font-bangla text-[#5A412C] dark:text-[#D8C3A5] hover:underline"
+                                    className="px-2.5 py-0.5 rounded-[5px] bg-[#E5D3B8]/90 dark:bg-[#322B23] border border-[#C4AA87] dark:border-[#4A3E32] text-[11px] font-bangla text-[#5A412C] dark:text-[#D8C3A5] hover:underline"
                                   >
                                     {selectedCollection.name}
                                   </button>
@@ -3096,7 +3100,7 @@ export function OpenLeatherJournalSpread() {
                                     type="button"
                                     onClick={() => lockEntryAgain(selectedEntry.id)}
                                     title="পুনরায় তালাবদ্ধ করুন (Re-lock this page)"
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] border border-[#B8976C] text-[11px] font-bangla text-[#8B3A32] dark:text-[#D8A668] hover:bg-[#E8D9C5] cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] border border-[#B8976C] text-[11px] font-bangla text-[#8B3A32] dark:text-[#D8A668] hover:bg-[#E8D9C5] dark:hover:bg-[#3A3226] cursor-pointer"
                                   >
                                     <Lock className="w-3 h-3" />
                                     <span>লক করুন</span>
@@ -3129,7 +3133,7 @@ export function OpenLeatherJournalSpread() {
                                   }
                                   aria-label="Move entry to trash"
                                   title="Move to trash"
-                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] hover:bg-[#E5D3B8]/70 transition-colors text-[#4A3728] dark:text-[#D8C3A5]"
+                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] dark:hover:border-[#5A4A38] hover:bg-[#E5D3B8]/70 dark:hover:bg-[#3A3226]/80 transition-colors text-[#4A3728] dark:text-[#D8C3A5]"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -3138,7 +3142,7 @@ export function OpenLeatherJournalSpread() {
                                   type="button"
                                   onClick={() => setMoreMenuOpen((v) => !v)}
                                   aria-label="More entry options"
-                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] hover:bg-[#E5D3B8]/70 transition-colors text-[#4A3728] dark:text-[#D8C3A5]"
+                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] dark:hover:border-[#5A4A38] hover:bg-[#E5D3B8]/70 dark:hover:bg-[#3A3226]/80 transition-colors text-[#4A3728] dark:text-[#D8C3A5]"
                                 >
                                   <MoreHorizontal className="w-4 h-4" />
                                 </button>
@@ -3326,7 +3330,7 @@ export function OpenLeatherJournalSpread() {
                                     এই পাতার অন্তর্লীন কথাগুলো পড়ার জন্য গোপন পাসওয়ার্ড প্রয়োজন।
                                   </p>
                                   {selectedEntry.lockHint && (
-                                    <div className="inline-block mt-1 px-3 py-1 rounded-[6px] bg-[#EADECE] dark:bg-[#2F261E] border border-[#C5AA87] text-xs font-bangla text-[#5A3F2A] dark:text-[#E2C79E]">
+                                    <div className="inline-block mt-1 px-3 py-1 rounded-[6px] bg-[#EADECE] dark:bg-[#2F261E] border border-[#C5AA87] dark:border-[#4A3E32] text-xs font-bangla text-[#5A3F2A] dark:text-[#E2C79E]">
                                       <span className="font-semibold">ইঙ্গিত (Hint):</span> {selectedEntry.lockHint}
                                     </div>
                                   )}
@@ -3420,7 +3424,7 @@ export function OpenLeatherJournalSpread() {
                                     className={`px-3 py-0.5 rounded-[5px] text-xs font-medium transition-all whitespace-nowrap shrink-0 border ${
                                       activeTagFilter === tag
                                         ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
-                                        : 'bg-[#E5D3BA]/90 dark:bg-[#332C23] text-[#4A3525] dark:text-[#D8C3A5] border-[#C5AB89] dark:border-[#4A3E32] hover:bg-[#D8C09E]'
+                                        : 'bg-[#E5D3BA]/90 dark:bg-[#332C23] text-[#4A3525] dark:text-[#D8C3A5] border-[#C5AB89] dark:border-[#4A3E32] hover:bg-[#D8C09E] dark:hover:bg-[#443A2C]'
                                     }`}
                                   >
                                     #{tag}
@@ -3439,7 +3443,7 @@ export function OpenLeatherJournalSpread() {
                                       onBlur={() => setInlineTagAdderOpen(false)}
                                       placeholder="#ট্যাগ…"
                                       aria-label="New tag name"
-                                      className="w-24 px-2.5 py-0.5 rounded-[5px] bg-[#FAF3E8] dark:bg-[#2B2620] border border-[#CBB699] text-xs text-[#2B1E16] dark:text-[#EAE4D7] focus:outline-none font-bangla"
+                                      className="w-24 px-2.5 py-0.5 rounded-[5px] bg-[#FAF3E8] dark:bg-[#2B2620] border border-[#CBB699] dark:border-[#4A3E32] text-xs text-[#2B1E16] dark:text-[#EAE4D7] focus:outline-none font-bangla"
                                       autoFocus
                                     />
                                   </form>
@@ -3496,13 +3500,13 @@ export function OpenLeatherJournalSpread() {
                                 type="button"
                                 disabled={currentEntryPageIndex <= 0}
                                 onClick={() => handleTurnPage('prev')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] hover:bg-[#EADBC5]/60 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all"
                               >
                                 <ChevronLeft className="w-3.5 h-3.5" />
                                 <span>পূর্ববর্তী পাতা</span>
                               </button>
 
-                              <span className="font-bangla text-[11px] px-2.5 py-0.5 rounded-[4px] bg-[#E8D7BE]/65 dark:bg-[#2A231B] border border-[#CBB393]/60 text-[#4A3525] dark:text-[#D8C3A5]">
+                              <span className="font-bangla text-[11px] px-2.5 py-0.5 rounded-[4px] bg-[#E8D7BE]/65 dark:bg-[#2A231B] border border-[#CBB393]/60 dark:border-[#453B30]/60 text-[#4A3525] dark:text-[#D8C3A5]">
                                 পাতা{' '}
                                 {toBanglaDigits(
                                   currentEntryPageIndex >= 0
@@ -3519,7 +3523,7 @@ export function OpenLeatherJournalSpread() {
                                   currentEntryPageIndex >= bookIndexEntries.length - 1
                                 }
                                 onClick={() => handleTurnPage('next')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] hover:bg-[#EADBC5]/60 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all"
                               >
                                 <span>পরবর্তী পাতা</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -3644,278 +3648,201 @@ export function OpenLeatherJournalSpread() {
       />
 
       {/* Custom VerseVault Create Collection Modal */}
-      {newCollectionModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-collection-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs"
-        >
-          <form
-            onSubmit={handleCreateNewCollection}
-            className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE1CA] dark:from-[#262019] dark:to-[#1E1913] border-2 border-[#7E5B3D] rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-[0_24px_60px_rgba(0,0,0,0.65)]"
-          >
-            <BrassCornerOrnament position="tl" size="sm" />
-            <BrassCornerOrnament position="tr" size="sm" />
-            <BrassCornerOrnament position="bl" size="sm" />
-            <BrassCornerOrnament position="br" size="sm" />
+      <BookDialogFrame
+        open={newCollectionModalOpen}
+        ariaLabelledBy="create-collection-modal-title"
+        eyebrow="Collections"
+        title="নতুন সংকলন তৈরি করুন (New Collection)"
+        onClose={() => setNewCollectionModalOpen(false)}
+        closeLabel="Close new collection dialog"
+        footer={
+          <>
+            <ParchmentPlateButton onClick={() => setNewCollectionModalOpen(false)}>
+              বাতিল (Cancel)
+            </ParchmentPlateButton>
+            <LeatherClaspButton type="submit" form="create-collection-form" compact>
+              <span>সংকলন তৈরি করুন</span>
+            </LeatherClaspButton>
+          </>
+        }
+      >
+        <form id="create-collection-form" onSubmit={handleCreateNewCollection} className="space-y-3">
+          <label className="block space-y-1">
+            <span className="text-xs font-bangla text-[var(--ink-soft)]">
+              সংকলনের নাম (Name)
+            </span>
+            <input
+              type="text"
+              value={newColName}
+              onChange={(e) => setNewColName(e.target.value)}
+              placeholder="যেমন: নিঃসঙ্গতার দিনলিপি…"
+              aria-label="Collection name"
+              className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
+              autoFocus
+            />
+          </label>
 
-            <div className="flex items-center justify-between border-b border-[#D5BE9E] dark:border-[#3A3026] pb-2.5">
-              <h3
-                id="create-collection-modal-title"
-                className="text-lg font-bangla font-bold text-[var(--ink)]"
-              >
-                নতুন সংকলন তৈরি করুন (New Collection)
-              </h3>
-              <button
-                type="button"
-                onClick={() => setNewCollectionModalOpen(false)}
-                className="p-1 rounded-[5px] text-[var(--ink-soft)] hover:text-[var(--ink)]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+          <label className="block space-y-1">
+            <span className="text-xs font-bangla text-[var(--ink-soft)]">
+              সংক্ষিপ্ত বিবরণ (Description)
+            </span>
+            <textarea
+              rows={2}
+              value={newColDesc}
+              onChange={(e) => setNewColDesc(e.target.value)}
+              placeholder="এই সংকলনের বিষয়বস্তু…"
+              aria-label="Collection description"
+              className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
+            />
+          </label>
 
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs font-bangla text-[var(--ink-soft)]">
-                  সংকলনের নাম (Name)
-                </span>
-                <input
-                  type="text"
-                  value={newColName}
-                  onChange={(e) => setNewColName(e.target.value)}
-                  placeholder="যেমন: নিঃসঙ্গতার দিনলিপি…"
-                  aria-label="Collection name"
-                  className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
-                  autoFocus
-                />
-              </label>
-
-              <label className="block space-y-1">
-                <span className="text-xs font-bangla text-[var(--ink-soft)]">
-                  সংক্ষিপ্ত বিবরণ (Description)
-                </span>
-                <textarea
-                  rows={2}
-                  value={newColDesc}
-                  onChange={(e) => setNewColDesc(e.target.value)}
-                  placeholder="এই সংকলনের বিষয়বস্তু…"
-                  aria-label="Collection description"
-                  className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
-                />
-              </label>
-
-              <div className="block space-y-1">
-                <span className="text-xs font-bangla text-[var(--ink-soft)] block">
-                  প্রচ্ছদ চিত্র (Cover Illustration Style)
-                </span>
-                <ArchivalSelect
-                  value={newColAccent}
-                  onChange={(val) => setNewColAccent(val)}
-                  ariaLabel="Cover Illustration Style"
-                  className="w-full"
-                  options={[
-                    {
-                      value: 'walnut',
-                      label: 'Open Book & Dried Blossoms (দাম্পত্য)',
-                    },
-                    {
-                      value: 'slate',
-                      label: 'Misty Mountain Ridges (পরিবার)',
-                    },
-                    {
-                      value: 'ochre',
-                      label: 'Solitary Sunset Tree (জীবনদর্শন)',
-                    },
-                    {
-                      value: 'terracotta',
-                      label: 'Rainy Evening Lantern (অভিমান)',
-                    },
-                    {
-                      value: 'olive',
-                      label: 'Moonlit Night Lake (নৈঃশব্দ্য)',
-                    },
-                    {
-                      value: 'autumn',
-                      label: 'Autumn Botanical Branch (খেরোখাতা)',
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <ParchmentPlateButton
-                onClick={() => setNewCollectionModalOpen(false)}
-              >
-                বাতিল (Cancel)
-              </ParchmentPlateButton>
-              <LeatherClaspButton type="submit" compact>
-                <span>সংকলন তৈরি করুন</span>
-              </LeatherClaspButton>
-            </div>
-          </form>
-        </div>
-      )}
+          <div className="block space-y-1">
+            <span className="text-xs font-bangla text-[var(--ink-soft)] block">
+              প্রচ্ছদ চিত্র (Cover Illustration Style)
+            </span>
+            <ArchivalSelect
+              value={newColAccent}
+              onChange={(val) => setNewColAccent(val)}
+              ariaLabel="Cover Illustration Style"
+              className="w-full"
+              options={[
+                {
+                  value: 'walnut',
+                  label: 'Open Book & Dried Blossoms (দাম্পত্য)',
+                },
+                {
+                  value: 'slate',
+                  label: 'Misty Mountain Ridges (পরিবার)',
+                },
+                {
+                  value: 'ochre',
+                  label: 'Solitary Sunset Tree (জীবনদর্শন)',
+                },
+                {
+                  value: 'terracotta',
+                  label: 'Rainy Evening Lantern (অভিমান)',
+                },
+                {
+                  value: 'olive',
+                  label: 'Moonlit Night Lake (নৈঃশব্দ্য)',
+                },
+                {
+                  value: 'autumn',
+                  label: 'Autumn Botanical Branch (খেরোখাতা)',
+                },
+              ]}
+            />
+          </div>
+        </form>
+      </BookDialogFrame>
 
       {/* Admin Login Modal — gated on the signed-in owner account */}
-      {adminLoginModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="admin-login-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
-        >
-          <div className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE1CA] dark:from-[#262019] dark:to-[#1E1913] border-2 border-[#7E5B3D] rounded-[14px] max-w-md w-full p-6 sm:p-7 space-y-4 shadow-[0_24px_60px_rgba(0,0,0,0.7)]">
-            <BrassCornerOrnament position="tl" size="sm" />
-            <BrassCornerOrnament position="tr" size="sm" />
-            <BrassCornerOrnament position="bl" size="sm" />
-            <BrassCornerOrnament position="br" size="sm" />
-
-            <div className="flex items-center justify-between border-b border-[#D5BE9E] dark:border-[#3A3026] pb-2.5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#8C5A36] dark:text-[#D8A668]" />
-                <h3
-                  id="admin-login-modal-title"
-                  className="text-lg font-bangla font-bold text-[var(--ink)]"
-                >
-                  অ্যাডমিন প্রবেশ (Author Sign In)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  clearAuthError();
-                  setAdminLoginModalOpen(false);
-                }}
-                className="p-1 rounded-[5px] text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <BookDialogFrame
+        open={adminLoginModalOpen}
+        ariaLabelledBy="admin-login-modal-title"
+        eyebrow="Sign in"
+        title="অ্যাডমিন প্রবেশ (Author Sign In)"
+        onClose={() => {
+          clearAuthError();
+          setAdminLoginModalOpen(false);
+        }}
+        closeLabel="Close sign in dialog"
+        footer={
+          <ParchmentPlateButton
+            onClick={() => {
+              clearAuthError();
+              setAdminLoginModalOpen(false);
+            }}
+          >
+            পাঠক হিসেবে পড়ুন (Cancel / Read)
+          </ParchmentPlateButton>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-[#8C5A36] dark:text-[#D8A668]" />
             <p className="text-xs text-[var(--ink-soft)] font-bangla leading-relaxed">
               এটি একটি ব্যক্তিগত ডায়েরি। লেখা যোগ, সম্পাদনা বা পাসওয়ার্ড লক সেট করতে মালিকের Google অ্যাকাউন্ট দিয়ে সাইন-ইন করুন।
             </p>
-
-            {authError && (
-              <div className="p-3 rounded-[6px] bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-xs text-[var(--danger)] font-bangla">
-                {authError}
-              </div>
-            )}
-
-            <div className="space-y-3 pt-1">
-              <LeatherClaspButton
-                onClick={() => void signInOwner()}
-                variant="walnut"
-                size="md"
-                className="w-full"
-              >
-                <LogIn className="w-4 h-4 text-[#DFB578]" />
-                <span>Google দিয়ে সাইন-ইন</span>
-              </LeatherClaspButton>
-
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <ParchmentPlateButton
-                onClick={() => {
-                  clearAuthError();
-                  setAdminLoginModalOpen(false);
-                }}
-              >
-                পাঠক হিসেবে পড়ুন (Cancel / Read)
-              </ParchmentPlateButton>
-            </div>
           </div>
+
+          {authError && (
+            <div className="p-3 rounded-[6px] bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-xs text-[var(--danger)] font-bangla">
+              {authError}
+            </div>
+          )}
+
+          <LeatherClaspButton
+            onClick={() => void signInOwner()}
+            variant="walnut"
+            size="md"
+            className="w-full"
+          >
+            <LogIn className="w-4 h-4 text-[#DFB578]" />
+            <span>Google দিয়ে সাইন-ইন</span>
+          </LeatherClaspButton>
         </div>
-      )}
+      </BookDialogFrame>
 
       {/* Entry Password Lock Configuration Modal */}
-      {entryLockModalOpen && selectedEntry && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="entry-lock-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
-        >
-          <form
-            onSubmit={handleSaveEntryPasswordLock}
-            className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE1CA] dark:from-[#262019] dark:to-[#1E1913] border-2 border-[#7E5B3D] rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-[0_24px_60px_rgba(0,0,0,0.7)]"
-          >
-            <BrassCornerOrnament position="tl" size="sm" />
-            <BrassCornerOrnament position="tr" size="sm" />
-            <BrassCornerOrnament position="bl" size="sm" />
-            <BrassCornerOrnament position="br" size="sm" />
-
-            <div className="flex items-center justify-between border-b border-[#D5BE9E] dark:border-[#3A3026] pb-2.5">
-              <div className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-[#8C5A36] dark:text-[#D8A668]" />
-                <h3
-                  id="entry-lock-modal-title"
-                  className="text-lg font-bangla font-bold text-[var(--ink)]"
-                >
-                  পাতার পাসওয়ার্ড সুরক্ষা (Password Lock)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEntryLockModalOpen(false)}
-                className="p-1 rounded-[5px] text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <BookDialogFrame
+        open={entryLockModalOpen && !!selectedEntry}
+        ariaLabelledBy="entry-lock-modal-title"
+        eyebrow="Security"
+        title="পাতার পাসওয়ার্ড সুরক্ষা (Password Lock)"
+        onClose={() => setEntryLockModalOpen(false)}
+        closeLabel="Close password lock dialog"
+        footer={
+          <>
+            <ParchmentPlateButton onClick={() => setEntryLockModalOpen(false)}>
+              বাতিল (Cancel)
+            </ParchmentPlateButton>
+            <LeatherClaspButton type="submit" form="entry-lock-form" compact>
+              <span>{entryLockPasswordDraft.trim() ? 'লক সেভ করুন' : 'উন্মুক্ত (Unlock) করুন'}</span>
+            </LeatherClaspButton>
+          </>
+        }
+      >
+        <form id="entry-lock-form" onSubmit={handleSaveEntryPasswordLock} className="space-y-4">
+          <div className="flex items-start gap-2.5">
+            <Lock className="w-5 h-5 shrink-0 mt-0.5 text-[#8C5A36] dark:text-[#D8A668]" />
             <p className="text-xs text-[var(--ink-soft)] font-bangla leading-relaxed">
               পাসওয়ার্ড সেট করলে এই পাতা খুলতে আপনাকেও পাসওয়ার্ড দিতে হবে। ফিল্ড খালি রেখে সেভ করলে লক সরে যাবে। পাসওয়ার্ড সংরক্ষিত হয় না — শুধুমাত্র একটি derived hash ও salt Firestore-এ যায়।
             </p>
+          </div>
 
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs font-bangla text-[var(--ink-soft)]">
-                  গোপন পাসওয়ার্ড (Password — খালি রাখলে আনলক হবে)
-                </span>
-                <input
-                  type="password"
-                  value={entryLockPasswordDraft}
-                  onChange={(e) => setEntryLockPasswordDraft(e.target.value)}
-                  placeholder="যেমন: 1234 বা কোনো গোপন শব্দ…"
-                  aria-label="Entry password"
-                  className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
-                  autoFocus
-                />
-              </label>
+          <div className="space-y-3">
+            <label className="block space-y-1">
+              <span className="text-xs font-bangla text-[var(--ink-soft)]">
+                গোপন পাসওয়ার্ড (Password — খালি রাখলে আনলক হবে)
+              </span>
+              <input
+                type="password"
+                value={entryLockPasswordDraft}
+                onChange={(e) => setEntryLockPasswordDraft(e.target.value)}
+                placeholder="যেমন: 1234 বা কোনো গোপন শব্দ…"
+                aria-label="Entry password"
+                className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
+                autoFocus
+              />
+            </label>
 
-              <label className="block space-y-1">
-                <span className="text-xs font-bangla text-[var(--ink-soft)]">
-                  পাসওয়ার্ডের ইঙ্গিত (Optional Hint for Readers)
-                </span>
-                <input
-                  type="text"
-                  value={entryLockHintDraft}
-                  onChange={(e) => setEntryLockHintDraft(e.target.value)}
-                  placeholder="যেমন: প্রথম পাতার তারিখ"
-                  aria-label="Password hint"
-                  className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
-                />
-              </label>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <ParchmentPlateButton
-                onClick={() => setEntryLockModalOpen(false)}
-              >
-                বাতিল (Cancel)
-              </ParchmentPlateButton>
-              <LeatherClaspButton type="submit" compact>
-                <span>{entryLockPasswordDraft.trim() ? 'লক সেভ করুন' : 'উন্মুক্ত (Unlock) করুন'}</span>
-              </LeatherClaspButton>
-            </div>
-          </form>
-        </div>
-      )}
+            <label className="block space-y-1">
+              <span className="text-xs font-bangla text-[var(--ink-soft)]">
+                পাসওয়ার্ডের ইঙ্গিত (Optional Hint for Readers)
+              </span>
+              <input
+                type="text"
+                value={entryLockHintDraft}
+                onChange={(e) => setEntryLockHintDraft(e.target.value)}
+                placeholder="যেমন: প্রথম পাতার তারিখ"
+                aria-label="Password hint"
+                className="w-full px-3 py-2 text-sm bg-[#FFFDF8] dark:bg-[#181410] border border-[#BEA37E] dark:border-[#4A3D2F] rounded-[6px] text-[var(--ink)] font-bangla focus:outline-none"
+              />
+            </label>
+          </div>
+        </form>
+      </BookDialogFrame>
 
       {/* Ask My Archive Modal */}
       <AskMyArchiveModal

@@ -14,6 +14,7 @@ import {
 import { useJournal } from '../../context/JournalContext';
 import { COLLECTION_ACCENTS } from '../../lib/entry-utils';
 import type { JournalCollection } from '../../types/entry';
+import { BookDialogFrame } from '../common/BookDialogFrame';
 
 export function CollectionsView() {
   const {
@@ -208,108 +209,98 @@ export function CollectionsView() {
       </div>
 
       {/* Create / Edit Collection Modal */}
-      {dialogMode !== 'closed' && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="collection-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-        >
-          <form
-            onSubmit={handleSaveCollection}
-            className="bg-[var(--page)] border border-[var(--line)] rounded-lg max-w-md w-full p-6 space-y-4"
-          >
-            <h2 id="collection-modal-title" className="text-lg font-literary font-medium text-[var(--ink)]">
-              {dialogMode === 'create' ? 'Create New Collection' : 'Edit Collection'}
-            </h2>
-
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="collection-name-input" className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-                  Collection Name (Bangla or English)
-                </label>
-                <input
-                  id="collection-name-input"
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => {
-                    setNameInput(e.target.value);
-                    if (formError) setFormError('');
-                  }}
-                  placeholder="e.g., নৈঃশব্দ্যের দিনলিপি or Unsent Words"
-                  className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla focus:outline-none focus:border-[var(--accent)]"
-                />
-                {formError && <p className="text-xs text-[var(--danger)] mt-1">{formError}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="collection-desc-input" className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-                  Description (Optional)
-                </label>
-                <textarea
-                  id="collection-desc-input"
-                  rows={3}
-                  value={descInput}
-                  onChange={(e) => setDescInput(e.target.value)}
-                  placeholder="What kind of writing belongs in this notebook?"
-                  className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla focus:outline-none focus:border-[var(--accent)]"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="collection-accent-select" className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
-                  Notebook Accent Tone
-                </label>
-                <select
-                  id="collection-accent-select"
-                  value={accentInput}
-                  onChange={(e) => setAccentInput(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)]"
-                >
-                  {COLLECTION_ACCENTS.map((acc) => (
-                    <option key={acc.value} value={acc.value}>
-                      {acc.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <BookDialogFrame
+        open={dialogMode !== 'closed'}
+        ariaLabelledBy="collection-modal-title"
+        eyebrow="Collections"
+        title={dialogMode === 'create' ? 'Create New Collection' : 'Edit Collection'}
+        onClose={() => setDialogMode('closed')}
+        closeLabel="Close collection dialog"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setDialogMode('closed')}
+              className="px-4 py-2 text-xs font-medium bg-[var(--page-muted)] text-[var(--ink)] rounded-md hover:bg-[var(--line)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="collection-form"
+              className="px-4 py-2 text-xs font-medium bg-[var(--accent)] text-[#FFFCF5] rounded-md hover:opacity-95 transition-opacity"
+            >
+              {dialogMode === 'create' ? 'Create Collection' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        <form id="collection-form" onSubmit={handleSaveCollection}>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="collection-name-input" className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+                Collection Name (Bangla or English)
+              </label>
+              <input
+                id="collection-name-input"
+                type="text"
+                value={nameInput}
+                onChange={(e) => {
+                  setNameInput(e.target.value);
+                  if (formError) setFormError('');
+                }}
+                placeholder="e.g., নৈঃশব্দ্যের দিনলিপি or Unsent Words"
+                className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla focus:outline-none focus:border-[var(--accent)]"
+              />
+              {formError && <p className="text-xs text-[var(--danger)] mt-1">{formError}</p>}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setDialogMode('closed')}
-                className="px-4 py-2 text-xs font-medium bg-[var(--page-muted)] text-[var(--ink)] rounded-md hover:bg-[var(--line)] transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-medium bg-[var(--accent)] text-[#FFFCF5] rounded-md hover:opacity-95 transition-opacity"
-              >
-                {dialogMode === 'create' ? 'Create Collection' : 'Save Changes'}
-              </button>
+            <div>
+              <label htmlFor="collection-desc-input" className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+                Description (Optional)
+              </label>
+              <textarea
+                id="collection-desc-input"
+                rows={3}
+                value={descInput}
+                onChange={(e) => setDescInput(e.target.value)}
+                placeholder="What kind of writing belongs in this notebook?"
+                className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla focus:outline-none focus:border-[var(--accent)]"
+              />
             </div>
-          </form>
-        </div>
-      )}
+
+            <div>
+              <label htmlFor="collection-accent-select" className="block text-xs font-medium text-[var(--ink-soft)] mb-1">
+                Notebook Accent Tone
+              </label>
+              <select
+                id="collection-accent-select"
+                value={accentInput}
+                onChange={(e) => setAccentInput(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)]"
+              >
+                {COLLECTION_ACCENTS.map((acc) => (
+                  <option key={acc.value} value={acc.value}>
+                    {acc.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </form>
+      </BookDialogFrame>
 
       {/* Safe Delete Collection Confirmation Dialog */}
       {colToDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-col-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-        >
-          <div className="bg-[var(--page)] border border-[var(--line)] rounded-lg max-w-md w-full p-6 space-y-4">
-            <h3 id="delete-col-title" className="text-base font-semibold text-[var(--ink)]">
-              Remove collection &ldquo;{colToDelete.name}&rdquo;?
-            </h3>
-            <p className="text-xs sm:text-sm text-[var(--ink-soft)] leading-relaxed">
-              Deleting this collection will <strong>not</strong> delete any of the diary entries, poems, or quotes inside it. All writing will remain safely in your journal.
-            </p>
-            <div className="flex items-center justify-end gap-3 pt-2">
+        <BookDialogFrame
+          open
+          ariaLabelledBy="delete-col-title"
+          eyebrow="Confirm"
+          title={`Remove collection “${colToDelete.name}”?`}
+          onClose={() => setColToDelete(null)}
+          closeLabel="Close delete collection dialog"
+          footer={
+            <>
               <button
                 type="button"
                 onClick={() => setColToDelete(null)}
@@ -327,9 +318,13 @@ export function CollectionsView() {
               >
                 Remove Collection Only
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <p className="text-xs sm:text-sm text-[var(--ink-soft)] leading-relaxed">
+            Deleting this collection will <strong>not</strong> delete any of the diary entries, poems, or quotes inside it. All writing will remain safely in your journal.
+          </p>
+        </BookDialogFrame>
       )}
     </div>
   );

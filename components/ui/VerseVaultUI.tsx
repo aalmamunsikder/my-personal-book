@@ -295,7 +295,7 @@ export function ParchmentPlateButton({
       className={`relative inline-flex items-center justify-center gap-1.5 border font-bangla transition-all cursor-pointer select-none ${
         active
           ? 'bg-gradient-to-b from-[#5B3F2B] to-[#432D1E] text-[#FAF1E2] border-[#8C6747] shadow-[inset_0_1px_0_rgba(255,235,205,0.25),0_2px_4px_rgba(35,20,10,0.2)] font-medium'
-          : 'bg-gradient-to-b from-[#FBF5E9] to-[#EBDEC7] dark:from-[#2E2720] dark:to-[#241E18] text-[#4C3625] dark:text-[#D7C3AA] border-[#C6AE8C] dark:border-[#493E32] hover:bg-[#E7D5B8] hover:border-[#A4825C] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_1px_2px_rgba(45,28,15,0.08)]'
+          : 'bg-gradient-to-b from-[#FBF5E9] to-[#EBDEC7] dark:from-[#2E2720] dark:to-[#241E18] text-[#4C3625] dark:text-[#D7C3AA] border-[#C6AE8C] dark:border-[#493E32] hover:bg-[#E7D5B8] dark:hover:bg-[#3A3226] hover:border-[#A4825C] dark:hover:border-[#6B5540] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_1px_2px_rgba(45,28,15,0.08)]'
       } ${sizing} ${className}`}
       {...props}
     >

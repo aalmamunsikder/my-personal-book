@@ -45,11 +45,11 @@ export function ContinueWritingCard({ entries, onResumeDraft }: ContinueWritingC
                 bookSound.playPageTurnSound('next');
                 onResumeDraft(draft.id);
               }}
-              className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-[5px] bg-[#F4E9D8]/85 dark:bg-[#312A22] hover:bg-[#EAD8BD] border border-[#D4BF9F]/80 dark:border-[#453B30] transition-all group cursor-pointer"
+              className="w-full text-left flex items-center justify-between gap-2 p-2 rounded-[5px] bg-[#F4E9D8]/85 dark:bg-[#312A22] hover:bg-[#EAD8BD] dark:hover:bg-[#3A3226] border border-[#D4BF9F]/80 dark:border-[#453B30] transition-all group cursor-pointer"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] border border-[#C6AE8C] bg-[#E5D3B8] dark:bg-[#433A2F] text-[var(--ink)] tabular-nums">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-[3px] border border-[#C6AE8C] dark:border-[#57493A] bg-[#E5D3B8] dark:bg-[#433A2F] text-[var(--ink)] tabular-nums">
                     {badge.day} {badge.month}
                   </span>
                   <h4 className="text-xs font-bold font-bangla text-[var(--ink)] truncate">

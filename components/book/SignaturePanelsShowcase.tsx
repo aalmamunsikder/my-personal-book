@@ -29,6 +29,7 @@ import {
   PoemRiverBoatFooterArtwork,
   VintageTitleFlourish,
 } from '../common/JournalArtwork';
+import { BookDialogFrame } from '../common/BookDialogFrame';
 
 const BANGLA_WEEKDAY_SHORT = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
 
@@ -217,7 +218,7 @@ export function SignaturePanelsShowcase() {
                     createNewEntry({ type: stat.type });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="bg-[#F7EFE2] dark:bg-[#2C2620] hover:bg-[#E8D7BF] border border-[#D6C2A7] dark:border-[#423A30] rounded-xl py-3 px-1.5 flex flex-col items-center justify-center gap-1 transition-colors shadow-xs"
+                  className="bg-[#F7EFE2] dark:bg-[#2C2620] hover:bg-[#E8D7BF] dark:hover:bg-[#3A3226] border border-[#D6C2A7] dark:border-[#423A30] rounded-xl py-3 px-1.5 flex flex-col items-center justify-center gap-1 transition-colors shadow-xs"
                 >
                   <Icon className="w-4 h-4 text-[#6B4E37] dark:text-[#C8A882]" />
                   <span className="text-[11px] font-medium text-[var(--ink-soft)]">
@@ -310,7 +311,7 @@ export function SignaturePanelsShowcase() {
                   }
                 }}
                 aria-label="Previous calendar month"
-                className="p-1 rounded hover:bg-[#E4D3BA] text-[var(--ink-soft)]"
+                className="p-1 rounded hover:bg-[#E4D3BA] dark:hover:bg-[#3A3226] text-[var(--ink-soft)]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -328,7 +329,7 @@ export function SignaturePanelsShowcase() {
                   }
                 }}
                 aria-label="Next calendar month"
-                className="p-1 rounded hover:bg-[#E4D3BA] text-[var(--ink-soft)]"
+                className="p-1 rounded hover:bg-[#E4D3BA] dark:hover:bg-[#3A3226] text-[var(--ink-soft)]"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -453,7 +454,7 @@ export function SignaturePanelsShowcase() {
                 type="button"
                 onClick={() => setNewCollectionModalOpen(true)}
                 aria-label="Create new collection"
-                className="p-1 rounded hover:bg-[#E4D3BA] text-[var(--ink)]"
+                className="p-1 rounded hover:bg-[#E4D3BA] dark:hover:bg-[#3A3226] text-[var(--ink)]"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -593,57 +594,54 @@ export function SignaturePanelsShowcase() {
       </div>
 
       {/* Quick Create Collection Modal */}
-      {newCollectionModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="quick-col-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-        >
-          <form
-            onSubmit={handleQuickCreateCollection}
-            className="bg-[var(--page)] border border-[var(--line)] rounded-xl max-w-md w-full p-6 space-y-4"
-          >
-            <h3 id="quick-col-modal-title" className="text-lg font-bangla font-bold text-[var(--ink)]">
-              নতুন সংকলন তৈরি করুন (New Collection)
-            </h3>
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newColName}
-                onChange={(e) => setNewColName(e.target.value)}
-                placeholder="সংকলনের নাম (যেমন: বিচিত্র ভাবনা)…"
-                aria-label="Collection name"
-                className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla"
-                autoFocus
-              />
-              <textarea
-                rows={2}
-                value={newColDesc}
-                onChange={(e) => setNewColDesc(e.target.value)}
-                placeholder="সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)…"
-                aria-label="Collection description"
-                className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setNewCollectionModalOpen(false)}
-                className="px-4 py-2 text-xs rounded-md bg-[var(--page-muted)] text-[var(--ink)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-medium rounded-md bg-[#6E4F3A] text-[#FDF8F0]"
-              >
-                Create Collection
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <BookDialogFrame
+        open={newCollectionModalOpen}
+        ariaLabelledBy="quick-col-modal-title"
+        eyebrow="Collections"
+        title="নতুন সংকলন তৈরি করুন (New Collection)"
+        onClose={() => setNewCollectionModalOpen(false)}
+        closeLabel="Close new collection dialog"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setNewCollectionModalOpen(false)}
+              className="px-4 py-2 text-xs rounded-md bg-[var(--page-muted)] text-[var(--ink)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="quick-new-collection-form"
+              className="px-4 py-2 text-xs font-medium rounded-md bg-[#6E4F3A] text-[#FDF8F0]"
+            >
+              Create Collection
+            </button>
+          </>
+        }
+      >
+        <form id="quick-new-collection-form" onSubmit={handleQuickCreateCollection}>
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={newColName}
+              onChange={(e) => setNewColName(e.target.value)}
+              placeholder="সংকলনের নাম (যেমন: বিচিত্র ভাবনা)…"
+              aria-label="Collection name"
+              className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla"
+              autoFocus
+            />
+            <textarea
+              rows={2}
+              value={newColDesc}
+              onChange={(e) => setNewColDesc(e.target.value)}
+              placeholder="সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)…"
+              aria-label="Collection description"
+              className="w-full px-3 py-2 text-sm bg-[var(--paper)] border border-[var(--line)] rounded-md text-[var(--ink)] font-bangla"
+            />
+          </div>
+        </form>
+      </BookDialogFrame>
     </section>
   );
 }
