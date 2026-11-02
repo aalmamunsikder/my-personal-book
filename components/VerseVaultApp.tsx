@@ -23,7 +23,7 @@ function JournalWorkspaceRouter() {
   }
 
   return (
-    <div className="min-h-screen relative z-10 bg-transparent text-[var(--ink)] transition-colors duration-300 selection:bg-[#C8A882]/35 flex flex-col justify-center">
+    <div className="min-h-screen relative z-10 bg-[var(--paper)] text-[var(--ink)] transition-colors duration-300 selection:bg-[#C8A882]/35 flex flex-col justify-center">
       <main className="w-full max-w-[1440px] mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6">
         <OpenLeatherJournalSpread />
       </main>

@@ -204,6 +204,11 @@ describe('VerseVault Book Themes, Templates & Customization System Tests', () =>
     assert.equal(WRITING_STYLE_PRESETS.length, 6);
     assert.equal(INK_COLOR_PRESETS.length, 6);
 
+    for (const bg of DESK_BACKGROUNDS) {
+      assert.ok(bg.pageSpreadLightCss.includes('linear-gradient'));
+      assert.ok(bg.pageSpreadDarkCss.includes('linear-gradient'));
+    }
+
     assert.equal(getDeskBackground('rainy-veranda').id, 'rainy-veranda');
     assert.equal(getDeskBackground(undefined).id, 'mahogany-study');
 

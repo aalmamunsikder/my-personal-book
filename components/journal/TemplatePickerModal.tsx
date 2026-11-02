@@ -258,7 +258,7 @@ export function TemplatePickerModal({
   return (
     <BookDialogFrame
       open={open}
-      title="পাণ্ডুলিপি ছাঁচ, পাতার নকশা ও লেখার টেবিল (Book Studio & Page Folio)"
+      title="পাণ্ডুলিপি ছাঁচ, পাতার নকশা ও বইয়ের আবহ (Book Studio & Page Folio)"
       ariaLabelledBy="template-picker-modal-title"
       onClose={() => {
         bookSound.playBrassClickSound();
@@ -273,17 +273,17 @@ export function TemplatePickerModal({
       }
     >
         <p className="text-xs font-bangla text-[var(--ink-soft)] leading-relaxed">
-          পছন্দের লেখার টেবিলের আবহ (Desk Background), কাগজের ধরন (১০টি পাতা), হাতের লেখার ছাঁদ, ঝর্ণাকলমের কালি ও সাহিত্যিক টেমপ্লেট বেছে নিন।
+          পছন্দের বইয়ের ভেতরের আবহ ও বাঁধাইয়ের রঙ (৮টি থিম), কাগজের ধরন (১০টি পাতা), হাতের লেখার ছাঁদ, ঝর্ণাকলমের কালি ও সাহিত্যিক টেমপ্লেট বেছে নিন।
         </p>
 
-        {/* Section 0: Writer's Desk Atmosphere, Writing Style & Fountain Ink */}
+        {/* Section 0: Book Interior & Binding Theme, Writing Style & Fountain Ink */}
         {(onChangeDeskBackground || onChangeWritingStyle || onChangeInkColor) && (
           <div className="mt-4 p-3.5 rounded-[8px] bg-gradient-to-b from-[#F6EBD8] to-[#EAD8BD] dark:from-[#261F19] dark:to-[#1E1813] border border-[#C6AE8C] dark:border-[#463B2F] space-y-4">
             {onChangeDeskBackground && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B]">
-                    ✦ লেখার টেবিলের আবহ (Writer’s Desk Background — ৮টি পরিবেশ)
+                    ✦ বইয়ের ভেতরের আবহ ও থিম (Book Interior &amp; Binding Theme — ৮টি আবহ)
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

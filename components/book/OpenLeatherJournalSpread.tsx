@@ -186,8 +186,8 @@ export function OpenLeatherJournalSpread() {
     playBrassClick,
   } = useBookSound();
 
-  // Closed Leather Cover state & 3D Page Turn Animation state
-  const [isBookClosed, setIsBookClosed] = useState<boolean>(false);
+  // Closed Leather Cover state (starts closed on the front leather cover) & 3D Page Turn Animation state
+  const [isBookClosed, setIsBookClosed] = useState<boolean>(true);
   const [pageTurnAnim, setPageTurnAnim] = useState<{
     key: number;
     direction: 'next' | 'prev';
@@ -267,6 +267,7 @@ export function OpenLeatherJournalSpread() {
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [bookmarkToast, setBookmarkToast] = useState<string>('');
   const [styleBarOpen, setStyleBarOpen] = useState<boolean>(false);
+  const [editorDetailsOpen, setEditorDetailsOpen] = useState<boolean>(false);
 
   const editorTitleRef = useRef<HTMLInputElement | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1248,39 +1249,33 @@ export function OpenLeatherJournalSpread() {
     }
   };
 
-  // Closed Hand-Tooled Leather Book Cover View
+  // Closed Hand-Tooled Leather Book Cover View (100% self-contained on the cover)
   if (isBookClosed) {
     return (
-      <>
-        <div
-          data-testid="writers-desk-backdrop"
-          aria-hidden="true"
-          className="fixed inset-0 -z-10 pointer-events-none transition-all duration-700"
-          style={{ background: activeDeskBg.backgroundCss }}
-        >
-          <div
-            className="absolute inset-0 opacity-90"
-            style={{ backgroundImage: activeDeskBg.patternCss }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{ background: activeDeskBg.ambientGlowCss }}
-          />
-        </div>
-        <ClosedLeatherBookCover
-          onOpenBook={() => {
+      <ClosedLeatherBookCover
+        onOpenBook={() => {
+          playBookOpen();
+          setIsBookClosed(false);
+          trigger3DPageFlip('next');
+        }}
+        readingBookmark={readingBookmark}
+        onResumeBookmark={() => {
+          if (readingBookmark) {
             playBookOpen();
             setIsBookClosed(false);
-            trigger3DPageFlip('next');
-          }}
-          totalEntries={activeEntries.length}
-          poemsCount={categoryStats[0].count}
-          collectionsCount={collections.length}
-          favoritesCount={activeEntries.filter((e) => e.isFavorite).length}
-          soundEnabled={soundEnabled}
-          onToggleSound={toggleSound}
-        />
-      </>
+            handleResumeReadingPlace(readingBookmark);
+          }
+        }}
+        bookThemeNameBn={activeDeskBg.nameBn}
+        coverBackgroundCss={activeDeskBg.backgroundCss}
+        coverBorderHex={activeDeskBg.accentHex}
+        totalEntries={activeEntries.length}
+        poemsCount={categoryStats[0].count}
+        collectionsCount={collections.length}
+        favoritesCount={activeEntries.filter((e) => e.isFavorite).length}
+        soundEnabled={soundEnabled}
+        onToggleSound={toggleSound}
+      />
     );
   }
 
@@ -1290,266 +1285,141 @@ export function OpenLeatherJournalSpread() {
       className="relative w-full max-w-[1440px] mx-auto pb-16 lg:pb-4 px-1.5 sm:px-4"
     >
       {/* ========================================================================
-          FULL-BLEED WRITER'S DESK ATMOSPHERIC BACKDROP (8 Tactile Surfaces)
+          OUTER STITCHED LEATHER BOOK COVER (With Brass Corners, Spine Hubs & Book Theme)
+          Everything in the application — including all theme colors — lives strictly inside this physical book binding.
          ======================================================================== */}
-      <div
+      <motion.div
         data-testid="writers-desk-backdrop"
         data-desk-id={deskBackground}
-        aria-hidden="true"
-        className="fixed inset-0 -z-10 pointer-events-none transition-all duration-700 overflow-hidden"
-        style={{ background: activeDeskBg.backgroundCss }}
+        initial={{ opacity: 0.92, scale: 0.99 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        style={{
+          background: activeDeskBg.backgroundCss,
+          borderColor: activeDeskBg.accentHex,
+        }}
+        className="relative rounded-[22px] p-2 sm:p-3.5 lg:p-4 shadow-[0_32px_80px_rgba(12,6,2,0.72),inset_0_1px_1px_rgba(255,225,190,0.22)] border-2 overflow-hidden transition-all duration-500"
       >
-        <div
-          className="absolute inset-0 opacity-95"
-          style={{ backgroundImage: activeDeskBg.patternCss }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{ background: activeDeskBg.ambientGlowCss }}
-        />
-        {/* Subtle Desk Mat & Brass Inkwell Vignette on Wide Screens */}
-        <div className="hidden xl:block absolute inset-5 rounded-[28px] border border-[#DFB578]/15 shadow-[inset_0_0_90px_rgba(0,0,0,0.45)]" />
-      </div>
+        {/* 4 Antique Brass Corner Filigree Protectors on Outer Leather Binding */}
+        <BrassCornerOrnament position="tl" className="w-7 h-7 top-2 left-2" />
+        <BrassCornerOrnament position="tr" className="w-7 h-7 top-2 right-2" />
+        <BrassCornerOrnament position="bl" className="w-7 h-7 bottom-2 left-2" />
+        <BrassCornerOrnament position="br" className="w-7 h-7 bottom-2 right-2" />
 
-      {/* Bookmark Saved Toast Notification */}
-      {bookmarkToast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-16 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#2B1D12] text-[#F7EBD9] border border-[#D8A668]/70 shadow-2xl text-xs font-bangla"
-        >
-          <span>{bookmarkToast}</span>
-        </div>
-      )}
+        {/* 5 Raised 3D Stitched Spine Cord Hubs along the Left Leather Hinge */}
+        <SpineCordHubs />
 
-      {/* ========================================================================
-          WRITER'S DESK ATMOSPHERE & SILK BOOKMARK RESUME BAR (Top of Desk)
-         ======================================================================== */}
-      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-[12px] bg-[#24160E]/88 backdrop-blur-md border border-[#704F36]/75 text-[#EAD8C0] shadow-[0_10px_28px_rgba(10,5,2,0.45)] text-xs">
-        {/* Left: Quick Writer's Desk Atmosphere Switcher */}
-        <div className="flex flex-wrap items-center gap-1.5 max-w-full py-0.5">
-          <span className="text-[11px] font-bangla text-[#D8A668] font-semibold shrink-0 flex items-center gap-1 pr-1">
-            <span>টেবিলের আবহ:</span>
-          </span>
-          {DESK_BACKGROUNDS.map((bg) => {
-            const isActive = deskBackground === bg.id;
-            return (
-              <button
-                key={bg.id}
-                type="button"
-                onClick={() => handleChangeDeskBackground(bg.id)}
-                data-testid={`desk-bg-pill-${bg.id}`}
-                title={`${bg.nameEn} — ${bg.descriptionBn}`}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-bangla whitespace-nowrap transition-all cursor-pointer border ${
-                  isActive
-                    ? 'bg-gradient-to-b from-[#6B4830] to-[#4A301E] text-[#FFF8EE] border-[#DFB578] shadow-xs font-semibold'
-                    : 'bg-[#332015]/75 hover:bg-[#442C1D] text-[#D2BEA4] border-[#5C3F2B]/60'
-                }`}
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/30"
-                  style={{ background: bg.accentHex }}
-                />
-                <span>{bg.nameBn}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Portal target for every dialog: they are laid into the spread, not over the desk. */}
+        <div id={BOOK_DIALOG_ROOT_ID} />
 
-        {/* Right: "Mark When Leaving & Resume Where You Left Off" Silk Ribbon Control */}
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          {readingBookmark && (
-            <div
-              data-testid="resume-bookmark-banner"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-gradient-to-r from-[#5C1D18] via-[#752620] to-[#561A15] border border-[#DFB578]/65 text-[#FCEFD9] text-[11px] font-bangla shadow-xs"
-            >
-              <Bookmark className="w-3.5 h-3.5 fill-[#DFB578] text-[#DFB578] shrink-0" />
-              <span className="truncate max-w-[165px] sm:max-w-[230px]">
-                শেষ যেখানে রেখেছিলেন: “{readingBookmark.entryTitle}” (
-                {toBanglaDigits(readingBookmark.scrollProgress)}%)
-              </span>
-              <button
-                type="button"
-                data-testid="resume-bookmark-btn"
-                onClick={() => handleResumeReadingPlace(readingBookmark)}
-                className="px-2 py-0.5 rounded-[4px] bg-[#DFB578] text-[#23140B] font-semibold hover:bg-[#ECC892] transition-colors cursor-pointer"
-              >
-                ফিরে যান →
-              </button>
-              <button
-                type="button"
-                onClick={handleClearReadingPlace}
-                title="রেশমি ফিতা সরান (Clear saved bookmark)"
-                aria-label="Clear saved reading bookmark"
-                className="text-[#E6C79C] hover:text-white pl-0.5 cursor-pointer"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-
-          {selectedEntry && (
+        {/* ========================================================================
+            MOBILE TOP BAR (< lg): Custom Stitched Leather & Brass Header Inside Book
+           ======================================================================== */}
+        <div className="flex lg:hidden items-center justify-between px-3 py-2 mb-2 rounded-[10px] bg-gradient-to-r from-[#2D1D13] via-[#24160E] to-[#2D1D13] text-[#F5E9D7] border border-[#6E4E35] shadow-md">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              data-testid="mark-leaving-place-btn"
-              onClick={handleMarkReadingPlace}
-              title="পড়া বা লেখা এখানেই চিহ্নিত করে রাখুন যেন পরেরবার এখান থেকেই শুরু হয়"
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-bangla border transition-all cursor-pointer ${
-                readingBookmark?.entryId === selectedEntry.id
-                  ? 'bg-[#4B3321] text-[#F7E5C9] border-[#D8A668]'
-                  : 'bg-[#362317] hover:bg-[#4B3120] text-[#EAD5BC] border-[#7E5A3C]/70'
-              }`}
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="Open journal navigation menu"
+              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/50"
             >
-              <BookMarked className="w-3.5 h-3.5 text-[#D8A668]" />
-              <span>
-                {readingBookmark?.entryId === selectedEntry.id
-                  ? 'ফিতা হালনাগাদ করুন'
-                  : 'ফিতা রাখুন (Mark Place)'}
+              <Menu className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => selectNavMode('overview', 'journal', 'all')}
+              className="flex items-center gap-2 text-left"
+            >
+              <span className="text-base font-literary font-semibold tracking-tight text-[#F5E9D7]">
+                VerseVault
               </span>
             </button>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* Undo Trash Toast Notification */}
-      {trashedUndoEntry && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-16 lg:bottom-6 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#2B1D12] text-[#F7EBD9] border border-[#8B6343] shadow-2xl text-xs font-bangla"
-        >
-          <span>“{trashedUndoEntry.title}” ট্র্যাশে সরানো হয়েছে।</span>
-          <button
-            type="button"
-            onClick={() => {
-              restoreFromTrash(trashedUndoEntry.id);
-              openEntryForReading(trashedUndoEntry.id);
-              setTrashedUndoEntry(null);
-            }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#D8A668] text-[#1F140C] font-semibold hover:opacity-90"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Undo
-          </button>
-          <button
-            type="button"
-            onClick={() => setTrashedUndoEntry(null)}
-            aria-label="Dismiss notification"
-            className="text-[#B89F82] hover:text-white"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* ========================================================================
-          MOBILE TOP BAR (< lg): Custom Stitched Leather & Brass Header
-         ======================================================================== */}
-      <div className="flex lg:hidden items-center justify-between px-3 py-2 mb-2 rounded-[10px] bg-gradient-to-r from-[#2D1D13] via-[#24160E] to-[#2D1D13] text-[#F5E9D7] border-2 border-[#6E4E35] shadow-md">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setMobileDrawerOpen(true)}
-            aria-label="Open journal navigation menu"
-            className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/50"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => selectNavMode('overview', 'journal', 'all')}
-            className="flex items-center gap-2 text-left"
-          >
-            <span className="text-base font-literary font-semibold tracking-tight text-[#F5E9D7]">
-              VerseVault
-            </span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={soundEnabled ? 'Mute book sounds' : 'Enable book sounds'}
-            title={soundEnabled ? 'Sound FX On' : 'Sound FX Muted'}
-            className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-3.5 h-3.5" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 opacity-60" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              playBookClose();
-              setIsBookClosed(true);
-            }}
-            aria-label="Close leather book cover"
-            className="px-2 py-1 rounded-[5px] bg-[#3D281A] text-[#E6CFAF] text-[11px] font-bangla border border-[#8B6343]/40 flex items-center gap-1"
-          >
-            <BookMarked className="w-3 h-3 text-[#D8A668]" />
-            <span>প্রচ্ছদ</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleStartNewEntry()}
-            className="px-2.5 py-1 rounded-[5px] bg-gradient-to-b from-[#745138] to-[#563A26] text-[#FDF8F0] text-xs font-bangla font-medium border border-[#9E7755] flex items-center gap-1 shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>লিখুন</span>
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              updateSettings({
-                theme: settings.theme === 'dark' ? 'light' : 'dark',
-              })
-            }
-            aria-label="Toggle theme"
-            className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
-          >
-            {settings.theme === 'dark' ? (
-              <Sun className="w-3.5 h-3.5" />
-            ) : (
-              <Moon className="w-3.5 h-3.5" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (isAdmin) {
-                signOutOwner();
-              } else {
-                setAdminLoginModalOpen(true);
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={soundEnabled ? 'Mute book sounds' : 'Enable book sounds'}
+              title={soundEnabled ? 'Sound FX On' : 'Sound FX Muted'}
+              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-3.5 h-3.5" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 opacity-60" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playBookClose();
+                setIsBookClosed(true);
+              }}
+              aria-label="Close leather book cover"
+              className="px-2 py-1 rounded-[5px] bg-[#3D281A] text-[#E6CFAF] text-[11px] font-bangla border border-[#8B6343]/40 flex items-center gap-1"
+            >
+              <BookMarked className="w-3 h-3 text-[#D8A668]" />
+              <span>প্রচ্ছদ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStartNewEntry()}
+              className="px-2.5 py-1 rounded-[5px] bg-gradient-to-b from-[#745138] to-[#563A26] text-[#FDF8F0] text-xs font-bangla font-medium border border-[#9E7755] flex items-center gap-1 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>লিখুন</span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                updateSettings({
+                  theme: settings.theme === 'dark' ? 'light' : 'dark',
+                })
               }
-            }}
-            aria-label={isAdmin ? 'Sign out admin' : 'Admin login'}
-            title={isAdmin ? `${user?.email ?? 'মালিক'} (ক্লিক করে লগআউট)` : 'মালিক লগইন'}
-            className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
-          >
-            {isAdmin ? (
-              <ShieldCheck className="w-3.5 h-3.5 text-[#7EB865]" />
-            ) : (
-              <KeyRound className="w-3.5 h-3.5 text-[#D8A668]" />
-            )}
-          </button>
+              aria-label="Toggle theme"
+              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
+            >
+              {settings.theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5" />
+              ) : (
+                <Moon className="w-3.5 h-3.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isAdmin) {
+                  signOutOwner();
+                } else {
+                  setAdminLoginModalOpen(true);
+                }
+              }}
+              aria-label={isAdmin ? 'Sign out admin' : 'Admin login'}
+              title={isAdmin ? `${user?.email ?? 'মালিক'} (ক্লিক করে লগআউট)` : 'মালিক লগইন'}
+              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
+            >
+              {isAdmin ? (
+                <ShieldCheck className="w-3.5 h-3.5 text-[#7EB865]" />
+              ) : (
+                <KeyRound className="w-3.5 h-3.5 text-[#D8A668]" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* ========================================================================
-          MOBILE SLIDE-OVER LEATHER NAVIGATION DRAWER (< lg)
-         ======================================================================== */}
-      {mobileDrawerOpen && (
+        {/* ========================================================================
+            MOBILE SLIDE-OVER LEATHER NAVIGATION DRAWER (< lg, Inside Book Cover)
+           ======================================================================== */}
+        {mobileDrawerOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Mobile Navigation Drawer"
-          className="fixed inset-0 z-50 lg:hidden flex"
+          className="absolute inset-0 z-50 lg:hidden flex rounded-[18px] overflow-hidden"
         >
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
             onClick={() => setMobileDrawerOpen(false)}
           />
           <div className="relative z-10 w-72 max-w-[82vw] h-full bg-gradient-to-b from-[#2E1E14] via-[#23150D] to-[#1A100A] border-r-2 border-[#6E4E35] p-4 flex flex-col justify-between text-[#E8D8C3] overflow-y-auto">
@@ -1772,28 +1642,7 @@ export function OpenLeatherJournalSpread() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ========================================================================
-          OUTER STITCHED DARK ESPRESSO LEATHER BOOK COVER (With Brass Corners & Spine Hubs)
-         ======================================================================== */}
-      <motion.div
-        initial={{ opacity: 0.92, scale: 0.99 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="relative rounded-[22px] bg-gradient-to-b from-[#2E1E14] via-[#22140C] to-[#180E08] p-2 sm:p-3.5 lg:p-4 shadow-[0_32px_80px_rgba(12,6,2,0.72),inset_0_1px_1px_rgba(255,225,190,0.22)] border-2 border-[#593C28]"
-      >
-        {/* 4 Antique Brass Corner Filigree Protectors on Outer Leather Binding */}
-        <BrassCornerOrnament position="tl" className="w-7 h-7 top-2 left-2" />
-        <BrassCornerOrnament position="tr" className="w-7 h-7 top-2 right-2" />
-        <BrassCornerOrnament position="bl" className="w-7 h-7 bottom-2 left-2" />
-        <BrassCornerOrnament position="br" className="w-7 h-7 bottom-2 right-2" />
-
-        {/* 5 Raised 3D Stitched Spine Cord Hubs along the Left Leather Hinge */}
-        <SpineCordHubs />
-
-        {/* Portal target for every dialog: they are laid into the spread, not over the desk. */}
-        <div id={BOOK_DIALOG_ROOT_ID} />
+        )}
 
         {/* Inner Gold-Brown Stitched Leather Seam */}
         <div className="rounded-[16px] border border-dashed border-[#A67B54]/60 p-1 sm:p-2 flex flex-col lg:flex-row gap-0">
@@ -1890,23 +1739,54 @@ export function OpenLeatherJournalSpread() {
                 </button>
               </div>
 
-              {/* Leather Navigation Items */}
+              {/* Stitched Leather Book Theme Medallions (Inside Left Book Flap) */}
+              <div className="px-2.5 py-1.5 rounded-[8px] bg-[#1A0F09]/55 border border-[#DFB578]/30 space-y-1">
+                <div className="flex items-center justify-between text-[10.5px] font-bangla text-[#D8A668]">
+                  <span>বইয়ের আবহ:</span>
+                  <span className="text-[#E8D5BC] truncate max-w-[115px]">
+                    {activeDeskBg.nameBn}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-1 pt-0.5">
+                  {DESK_BACKGROUNDS.map((bg) => {
+                    const isActive = deskBackground === bg.id;
+                    return (
+                      <button
+                        key={bg.id}
+                        type="button"
+                        onClick={() => handleChangeDeskBackground(bg.id)}
+                        data-testid={`desk-bg-pill-${bg.id}`}
+                        title={`${bg.nameBn} (${bg.nameEn})`}
+                        aria-label={`Select ${bg.nameEn} desk atmosphere`}
+                        className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
+                          isActive
+                            ? 'scale-125 ring-2 ring-[#DFB578] border-white'
+                            : 'border-white/30 hover:scale-110 opacity-85 hover:opacity-100'
+                        }`}
+                        style={{ background: bg.accentHex }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Primary Literary Navigation & Compact Secondary Tools */}
               <nav aria-label="Diary Navigation" className="flex flex-col gap-0.5">
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'journal', 'all')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
                     leftPageMode === 'list' &&
                     typeDropdown === 'all' &&
                     activeSection !== 'favorites' &&
                     activeSection !== 'archive'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
+                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <BookOpen className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Diary</span>
+                  <span className="flex items-center gap-2.5">
+                    <BookOpen className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                    <span>Diary (সব পাতা)</span>
                   </span>
                   <span className="text-[11px] font-bangla text-[#B89F82]">
                     {toBanglaDigits(activeEntries.length)}
@@ -1916,14 +1796,14 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('overview', 'journal', 'all')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
                     leftPageMode === 'overview'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
+                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Sparkles className="w-4 h-4 text-[#D8A668] shrink-0" />
+                  <span className="flex items-center gap-2.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
                     <span className="font-bangla">শুভ সন্ধ্যা (Hub)</span>
                   </span>
                 </button>
@@ -1931,15 +1811,15 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'poems', 'poem')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
                     leftPageMode === 'list' && typeDropdown === 'poem'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
+                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Feather className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Poems</span>
+                  <span className="flex items-center gap-2.5">
+                    <Feather className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                    <span>Poems (কবিতা)</span>
                   </span>
                   <span className="text-[11px] font-bangla text-[#B89F82]">
                     {categoryStats[0].countBn}
@@ -1949,15 +1829,15 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'quotes', 'quote')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
                     leftPageMode === 'list' && typeDropdown === 'quote'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
+                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Quote className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Quotes</span>
+                  <span className="flex items-center gap-2.5">
+                    <Quote className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                    <span>Quotes (উদ্ধৃতি)</span>
                   </span>
                   <span className="text-[11px] font-bangla text-[#B89F82]">
                     {categoryStats[1].countBn}
@@ -1967,14 +1847,14 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'fragments', 'fragment')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
                     leftPageMode === 'list' && typeDropdown === 'fragment'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
+                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Layers className="w-4 h-4 text-[#D8A668] shrink-0" />
+                  <span className="flex items-center gap-2.5">
+                    <Layers className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
                     <span>Fragments</span>
                   </span>
                   <span className="text-[11px] font-bangla text-[#B89F82]">
@@ -1985,14 +1865,14 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('collections', 'collections', 'all')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
                     leftPageMode === 'collections' || leftPageMode === 'collection-entries'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
+                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Folder className="w-4 h-4 text-[#D8A668] shrink-0" />
+                  <span className="flex items-center gap-2.5">
+                    <Folder className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
                     <span>Collections</span>
                   </span>
                   <span className="text-[11px] font-bangla text-[#B89F82]">
@@ -2000,67 +1880,62 @@ export function OpenLeatherJournalSpread() {
                   </span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => selectNavMode('calendar', 'calendar', 'all')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
-                    leftPageMode === 'calendar'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <CalendarIcon className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Calendar</span>
-                  </span>
-                </button>
+                {/* Compact 2x2 Grid for Secondary Tools (Calendar, Favorites, Archive, Ask Archive) */}
+                <div className="grid grid-cols-2 gap-1 pt-2 mt-1.5 border-t border-[#4E3422]/50">
+                  <button
+                    type="button"
+                    onClick={() => selectNavMode('calendar', 'calendar', 'all')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer ${
+                      leftPageMode === 'calendar'
+                        ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                        : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                    }`}
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                    <span className="truncate">Calendar</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => selectNavMode('list', 'favorites', 'all')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
-                    leftPageMode === 'list' && activeSection === 'favorites'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Heart className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Favorites</span>
-                  </span>
-                  <span className="text-[11px] font-bangla text-[#B89F82]">
-                    {toBanglaDigits(activeEntries.filter((e) => e.isFavorite).length)}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => selectNavMode('list', 'favorites', 'all')}
+                    className={`flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer ${
+                      leftPageMode === 'list' && activeSection === 'favorites'
+                        ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                        : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Heart className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                      <span className="truncate">Favorites</span>
+                    </span>
+                    <span className="text-[10px] font-bangla text-[#B89F82]">
+                      {toBanglaDigits(activeEntries.filter((e) => e.isFavorite).length)}
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => selectNavMode('list', 'archive', 'all')}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm transition-all cursor-pointer ${
-                    leftPageMode === 'list' && activeSection === 'archive'
-                      ? 'bg-gradient-to-r from-[#5A3E2A] to-[#412B1C] text-[#FFF8EE] font-medium shadow-[inset_0_1px_0_rgba(255,230,195,0.2)] border border-[#9E7551]/55'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent'
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Archive className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Archive</span>
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => selectNavMode('list', 'archive', 'all')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer ${
+                      leftPageMode === 'list' && activeSection === 'archive'
+                        ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
+                        : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                    }`}
+                  >
+                    <Archive className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                    <span className="truncate">Archive</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setAskArchiveModalOpen(true)}
-                  className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-[8px] text-sm text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/70 border border-transparent transition-all cursor-pointer"
-                >
-                  <span className="flex items-center gap-3">
-                    <Sparkles className="w-4 h-4 text-[#D8A668] shrink-0" />
-                    <span>Ask My Archive</span>
-                  </span>
-                  <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#8B6343]/30 text-[#E8CFAF]">
-                    AI
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setAskArchiveModalOpen(true)}
+                    title="Ask My Archive"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
+                    <span className="truncate">Ask Archive</span>
+                  </button>
+                </div>
               </nav>
             </div>
 
@@ -2152,10 +2027,68 @@ export function OpenLeatherJournalSpread() {
                 ) : (
                   /* TWO-PAGE OPEN BOOK SPREAD (Desktop: 2 Pages Side-by-Side | Mobile: Active Single Page) */
                   <div
-                    style={{ perspective: 2200 }}
+                    style={{
+                      perspective: 2200,
+                      background: isDarkTheme
+                        ? activeDeskBg.pageSpreadDarkCss
+                        : activeDeskBg.pageSpreadLightCss,
+                    }}
                     data-testid="book-spread-container"
-                    className="relative grid grid-cols-1 lg:grid-cols-12 grid-rows-[minmax(0,1fr)] rounded-[8px] overflow-hidden bg-gradient-to-r from-[#F4E9D8] via-[#EFE0C9] to-[#F6ECDC] dark:from-[#221F1B] dark:via-[#1C1916] dark:to-[#24201C] border border-[#C8B294] dark:border-[#3A342B] h-[690px] sm:h-[720px] max-h-[720px] shadow-[inset_0_0_40px_rgba(120,88,52,0.09)]"
+                    data-book-theme={deskBackground}
+                    className="relative grid grid-cols-1 lg:grid-cols-12 grid-rows-[minmax(0,1fr)] rounded-[8px] overflow-hidden border border-[#C8B294] dark:border-[#3A342B] h-[690px] sm:h-[720px] max-h-[720px] shadow-[inset_0_0_40px_rgba(120,88,52,0.09)] transition-all duration-500"
                   >
+                    {/* In-Book Atmospheric Paper Pattern & Candle/Ambient Glow Layers (Strictly Inside the Open Spread) */}
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-0 opacity-90 transition-all duration-500"
+                      style={{ backgroundImage: activeDeskBg.patternCss }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-0 transition-all duration-500"
+                      style={{ background: activeDeskBg.ambientGlowCss }}
+                    />
+
+                    {/* In-Book Bookmark & Undo Notifications (Strictly Inside the Open Spread) */}
+                    {bookmarkToast && (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#2B1D12]/95 text-[#F7EBD9] border border-[#D8A668]/80 shadow-xl text-xs font-bangla whitespace-nowrap"
+                      >
+                        <span>{bookmarkToast}</span>
+                      </div>
+                    )}
+                    {trashedUndoEntry && (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="absolute bottom-3 right-4 z-40 flex items-center gap-2.5 px-3.5 py-2 rounded-lg bg-[#2B1D12]/95 text-[#F7EBD9] border border-[#8B6343] shadow-xl text-xs font-bangla"
+                      >
+                        <span>“{trashedUndoEntry.title}” ট্র্যাশে সরানো হয়েছে।</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            restoreFromTrash(trashedUndoEntry.id);
+                            openEntryForReading(trashedUndoEntry.id);
+                            setTrashedUndoEntry(null);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#D8A668] text-[#1F140C] font-semibold hover:opacity-90"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Undo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTrashedUndoEntry(null)}
+                          aria-label="Dismiss notification"
+                          className="text-[#B89F82] hover:text-white"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* 3D Animated Turning Parchment Leaf Overlay */}
                     <AnimatePresence>
                       {pageTurnAnim && (
@@ -2279,6 +2212,43 @@ export function OpenLeatherJournalSpread() {
                           mobileView === 'right-page' ? 'hidden lg:flex' : 'flex'
                         } lg:col-span-5 relative h-full min-h-0 overflow-hidden p-4 sm:p-6 flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#D5C1A5]/80 dark:border-[#353028] shadow-[inset_-24px_0_36px_rgba(48,28,12,0.08)]`}
                       >
+                        {/* Tucked Silk Bookmark Slip Inside Left Parchment Page */}
+                        {readingBookmark && (
+                          <div
+                            data-testid="resume-bookmark-banner"
+                            className="mb-2.5 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-[7px] bg-gradient-to-r from-[#6E1F19] via-[#832820] to-[#5D1A15] border border-[#DFB578]/70 text-[#FCEFD9] text-[11px] font-bangla shadow-xs shrink-0"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Bookmark className="w-3.5 h-3.5 fill-[#DFB578] text-[#DFB578] shrink-0" />
+                              <span className="truncate">
+                                শেষ যেখানে রেখেছিলেন: “{readingBookmark.entryTitle}”
+                                {(readingBookmark.scrollProgress ?? 0) > 0
+                                  ? ` (${toBanglaDigits(readingBookmark.scrollProgress)}%)`
+                                  : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                data-testid="resume-bookmark-btn"
+                                onClick={() => handleResumeReadingPlace(readingBookmark)}
+                                className="px-2 py-0.5 rounded-[4px] bg-[#DFB578] text-[#23140B] font-semibold hover:bg-[#ECC892] transition-colors cursor-pointer whitespace-nowrap"
+                              >
+                                ফিরে যান →
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleClearReadingPlace}
+                                title="রেশমি ফিতা সরান (Clear saved bookmark)"
+                                aria-label="Clear saved reading bookmark"
+                                className="text-[#E6C79C] hover:text-white p-0.5 cursor-pointer"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* LEFT MODE A: OVERVIEW HUB ("শুভ সন্ধ্যা 🌿 / আজ কী লিখবে?") */}
                         {leftPageMode === 'overview' && (
                           <div className="flex flex-col justify-between h-full min-h-0 space-y-3.5">
@@ -3225,8 +3195,8 @@ export function OpenLeatherJournalSpread() {
                               </ParchmentPlateButton>
                             </div>
 
-                            {/* Top Editor Bar */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-dashed border-[#CBB494] dark:border-[#353028] shrink-0">
+                            {/* Single Clean Top Editor Bar (with Unified Page/Style/Ink Popover) */}
+                            <div className="relative flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-dashed border-[#CBB494] dark:border-[#353028] shrink-0">
                               <div className="flex items-center gap-2 text-xs">
                                 <input
                                   type="date"
@@ -3239,20 +3209,20 @@ export function OpenLeatherJournalSpread() {
                                     )
                                   }
                                   aria-label="Entry Date"
-                                  className="bg-[#FAF3E6] dark:bg-[#2C2620] px-2.5 py-1 rounded-[5px] border border-[#C4AC89] dark:border-[#423A30] font-medium text-[var(--ink)] focus:outline-none tabular-nums shadow-inner"
+                                  className="bg-[#FAF3E6] dark:bg-[#2C2620] px-2 py-0.5 rounded-[5px] border border-[#C4AC89] dark:border-[#423A30] font-medium text-[var(--ink)] focus:outline-none tabular-nums shadow-inner"
                                 />
                                 <span
-                                  className={`font-bangla text-xs ${
+                                  className={`hidden sm:inline font-bangla text-xs ${
                                     isNocturnalPage
                                       ? 'text-[#D8C3A5]'
-                                      : 'text-[var(--ink)]'
+                                      : 'text-[var(--ink-soft)]'
                                   }`}
                                 >
                                   {formatBanglaFullDate(selectedEntry.entryDate, true)}
                                 </span>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
                                 <SaveStateIndicator
                                   saveState={saveState}
                                   className="text-[var(--ink-soft)]"
@@ -3260,13 +3230,24 @@ export function OpenLeatherJournalSpread() {
                                   onRetry={() => retryFailedSave(selectedEntry.id)}
                                 />
 
+                                <button
+                                  type="button"
+                                  data-testid="toggle-writing-style-bar"
+                                  onClick={() => setStyleBarOpen((v) => !v)}
+                                  title="পাতার কাগজ, হাতের লেখা ও কালি পরিবর্তন করুন"
+                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:bg-[#DEC6A4]"
+                                >
+                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
+                                  <span>পাতা ও কালি</span>
+                                </button>
+
                                 <ParchmentPlateButton
                                   size="xs"
-                                  onClick={() => setTemplateModalOpen(true)}
-                                  title="Open Templates & Page Variations"
+                                  onClick={handleMarkReadingPlace}
+                                  title="পড়া বা লেখা এখানেই চিহ্নিত করে রাখুন (Mark Place)"
                                 >
-                                  <Sparkles className="w-3 h-3 text-[#8C5A36]" />
-                                  <span>টেমপ্লেট</span>
+                                  <BookMarked className="w-3 h-3 text-[#8B2626] dark:text-[#D8A668]" />
+                                  <span>ফিতা রাখুন</span>
                                 </ParchmentPlateButton>
 
                                 <ParchmentPlateButton
@@ -3296,15 +3277,31 @@ export function OpenLeatherJournalSpread() {
                                     setZenFullSpreadEditor(false);
                                   }}
                                 >
-                                  <span>✓ পড়া মোডে ফিরুন (Done)</span>
+                                  <span>✓ সম্পন্ন (Done)</span>
                                 </LeatherClaspButton>
                               </div>
-                            </div>
 
-                            {/* Interactive 10-Page-Variation + Writing Style & Ink Bar */}
-                            <div className="relative shrink-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex-1 min-w-0">
+                              {/* Unified Floating Page Surface, Writing Style & Ink Popover */}
+                              {styleBarOpen && (
+                                <div
+                                  data-testid="writing-style-ink-bar"
+                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-3 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] space-y-2.5 text-[11px]"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-bangla font-semibold text-[var(--ink)]">
+                                      পাতার কাগজ (১০টি রূপ):
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setStyleBarOpen(false);
+                                        setTemplateModalOpen(true);
+                                      }}
+                                      className="text-[11px] font-bangla text-[var(--accent)] hover:underline cursor-pointer"
+                                    >
+                                      সব টেমপ্লেট ও আবহ স্টুডিও →
+                                    </button>
+                                  </div>
                                   <PageVariationSwitcher
                                     value={activePageVariation}
                                     onChange={(nextVar) =>
@@ -3316,57 +3313,56 @@ export function OpenLeatherJournalSpread() {
                                     }
                                     compact
                                   />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setStyleBarOpen((v) => !v)}
-                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer"
-                                >
-                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
-                                  <span>হাতের লেখা ও কালি</span>
-                                </button>
-                              </div>
-
-                              {styleBarOpen && (
-                                <div className="absolute left-0 right-0 top-full mt-1.5 z-30 p-2.5 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    <span className="font-bangla text-[var(--ink-soft)] mr-1">
-                                      শৈলী:
-                                    </span>
-                                    {WRITING_STYLE_PRESETS.map((ws) => (
+                                  <div className="pt-2 border-t border-dashed border-[#D5C0A1] dark:border-[#3A3025] flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-1">
+                                      <span className="font-bangla text-[var(--ink-soft)] mr-1">
+                                        হাতের লেখা:
+                                      </span>
+                                      {WRITING_STYLE_PRESETS.map((ws) => (
+                                        <button
+                                          key={ws.id}
+                                          type="button"
+                                          data-testid={`writing-style-pill-${ws.id}`}
+                                          onClick={() => handleChangeWritingStyle(ws.id)}
+                                          className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
+                                            activeWritingStyleId === ws.id
+                                              ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
+                                              : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
+                                          }`}
+                                        >
+                                          {ws.nameBn}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bangla text-[var(--ink-soft)]">
+                                        কালি:
+                                      </span>
+                                      {INK_COLOR_PRESETS.map((ink) => (
+                                        <button
+                                          key={ink.id}
+                                          type="button"
+                                          data-testid={`ink-color-pill-${ink.id}`}
+                                          onClick={() => handleChangeInkColor(ink.id)}
+                                          title={`${ink.nameBn} (${ink.nameEn})`}
+                                          aria-label={`Select ${ink.nameEn} ink`}
+                                          className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
+                                            activeInkColorId === ink.id
+                                              ? 'scale-125 ring-2 ring-[#D8A668] border-white'
+                                              : 'border-black/25 hover:scale-110'
+                                          }`}
+                                          style={{ backgroundColor: ink.swatchHex }}
+                                        />
+                                      ))}
                                       <button
-                                        key={ws.id}
                                         type="button"
-                                        onClick={() => handleChangeWritingStyle(ws.id)}
-                                        className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
-                                          activeWritingStyleId === ws.id
-                                            ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
-                                            : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
-                                        }`}
+                                        onClick={() => setStyleBarOpen(false)}
+                                        aria-label="Close writing style bar"
+                                        className="ml-1 p-0.5 text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
                                       >
-                                        {ws.nameBn}
+                                        <X className="w-3.5 h-3.5" />
                                       </button>
-                                    ))}
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bangla text-[var(--ink-soft)]">
-                                      কালি:
-                                    </span>
-                                    {INK_COLOR_PRESETS.map((ink) => (
-                                      <button
-                                        key={ink.id}
-                                        type="button"
-                                        onClick={() => handleChangeInkColor(ink.id)}
-                                        title={`${ink.nameBn} (${ink.nameEn})`}
-                                        aria-label={`Select ${ink.nameEn} ink`}
-                                        className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
-                                          activeInkColorId === ink.id
-                                            ? 'scale-125 ring-2 ring-[#D8A668] border-white'
-                                            : 'border-black/25 hover:scale-110'
-                                        }`}
-                                        style={{ backgroundColor: ink.swatchHex }}
-                                      />
-                                    ))}
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -3411,33 +3407,8 @@ export function OpenLeatherJournalSpread() {
                               }`}
                             />
 
-                            <div className="flex items-center justify-between gap-2 shrink-0">
+                            <div className="shrink-0">
                               <VintageTitleFlourish />
-
-                              {/* Poetic & Literary Quick-Insert Helpers */}
-                              <div className="flex items-center gap-1 text-xs">
-                                <ParchmentPlateButton
-                                  size="xs"
-                                  onClick={() => insertTextAtCursor('। ')}
-                                  title="Insert Bangla Dari (।)"
-                                >
-                                  ।
-                                </ParchmentPlateButton>
-                                <ParchmentPlateButton
-                                  size="xs"
-                                  onClick={() => insertTextAtCursor(' — ')}
-                                  title="Insert Em-Dash (—)"
-                                >
-                                  —
-                                </ParchmentPlateButton>
-                                <ParchmentPlateButton
-                                  size="xs"
-                                  onClick={() => insertTextAtCursor('\n\n❖\n\n')}
-                                  title="Insert Stanza Divider (❖)"
-                                >
-                                  ❖ স্তবক
-                                </ParchmentPlateButton>
-                              </div>
                             </div>
 
                             {/* Main Plain-Text Writing Area preserving exact Bangla/English newlines & stanza breaks */}
@@ -3458,7 +3429,7 @@ export function OpenLeatherJournalSpread() {
                               style={{
                                 color: resolvedManuscriptInkColor,
                               }}
-                              className={`w-full flex-1 min-h-[120px] bg-transparent ${activeWritingStyle.fontSizeClass} ${activeWritingStyle.lineHeightClass} ${activeWritingStyle.alignClass} ${activeWritingStyle.indentClass} ${
+                              className={`w-full flex-1 min-h-[160px] bg-transparent ${activeWritingStyle.fontSizeClass} ${activeWritingStyle.lineHeightClass} ${activeWritingStyle.alignClass} ${activeWritingStyle.indentClass} ${
                                 activeWritingStyle.letterSpacingClass || ''
                               } focus:outline-none resize-none overflow-y-auto pr-2 journal-content ${
                                 isNocturnalPage
@@ -3484,162 +3455,217 @@ export function OpenLeatherJournalSpread() {
                             )}
                           </div>
 
-                          {/* Bottom Editor Metadata & Tag Controls (Custom Archival Book Plates) */}
-                          <div className="pt-2.5 border-t border-[#D8C5AA] dark:border-[#353028] space-y-2.5 shrink-0">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                              <div className="space-y-1">
-                                <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
-                                  Category (ধরন)
-                                </span>
-                                <ArchivalSelect
-                                  value={selectedEntry.type}
-                                  onChange={(val) =>
-                                    updateEntry(
-                                      selectedEntry.id,
-                                      { type: val as EntryType },
-                                      true
-                                    )
-                                  }
-                                  ariaLabel="Category (ধরন)"
-                                  compact
-                                  className="w-full"
-                                  options={[
-                                    { value: 'diary', label: 'Diary (দিনলিপি)' },
-                                    { value: 'poem', label: 'Poem (কবিতা)' },
-                                    { value: 'quote', label: 'Quote (উদ্ধৃতি)' },
-                                    { value: 'fragment', label: 'Fragment (টুকরো ভাবনা)' },
-                                    { value: 'prose', label: 'Prose (গদ্য)' },
-                                  ]}
-                                />
-                              </div>
-
-                              <div className="space-y-1">
-                                <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
-                                  Collection (সংকলন)
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <ArchivalSelect
-                                    value={selectedEntry.collectionId}
-                                    onChange={(val) =>
-                                      updateEntry(
-                                        selectedEntry.id,
-                                        { collectionId: val },
-                                        true
-                                      )
-                                    }
-                                    ariaLabel="Collection (সংকলন)"
-                                    compact
-                                    className="w-full flex-1 min-w-0"
-                                    options={[
-                                      { value: '', label: 'সংকলন নেই' },
-                                      ...collections.map((c) => ({
-                                        value: c.id,
-                                        label: c.name,
-                                      })),
-                                    ]}
-                                  />
+                          {/* Clean Single-Line Editor Bottom Bar with Collapsible Metadata/Tag Drawer */}
+                          <div className="relative pt-2 border-t border-[#D8C5AA] dark:border-[#353028] shrink-0">
+                            {editorDetailsOpen && (
+                              <div className="absolute left-0 right-0 bottom-full mb-2 z-30 p-3.5 rounded-[10px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_34px_rgba(20,10,4,0.38)] space-y-3">
+                                <div className="flex items-center justify-between text-xs font-bangla">
+                                  <span className="font-semibold text-[var(--ink)]">
+                                    পাতার ধরন, সংকলন, অনুভব ও ট্যাগ
+                                  </span>
                                   <button
                                     type="button"
-                                    onClick={() => setNewCollectionModalOpen(true)}
-                                    title="Create new collection"
-                                    aria-label="Create new collection"
-                                    className="p-1.5 rounded-[5px] bg-[#E5D3B8] dark:bg-[#332C23] border border-[#BEA37E] text-[#2B1E16] dark:text-[#EAE4D7] shrink-0 hover:bg-[#DAC2A0] dark:hover:bg-[#42392C]"
+                                    onClick={() => setEditorDetailsOpen(false)}
+                                    aria-label="Close page details"
+                                    className="text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
                                   >
-                                    <Plus className="w-3.5 h-3.5" />
+                                    <X className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
-                              </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                  <div className="space-y-1">
+                                    <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
+                                      Category (ধরন)
+                                    </span>
+                                    <ArchivalSelect
+                                      value={selectedEntry.type}
+                                      onChange={(val) =>
+                                        updateEntry(
+                                          selectedEntry.id,
+                                          { type: val as EntryType },
+                                          true
+                                        )
+                                      }
+                                      ariaLabel="Category (ধরন)"
+                                      compact
+                                      className="w-full"
+                                      options={[
+                                        { value: 'diary', label: 'Diary (দিনলিপি)' },
+                                        { value: 'poem', label: 'Poem (কবিতা)' },
+                                        { value: 'quote', label: 'Quote (উদ্ধৃতি)' },
+                                        { value: 'fragment', label: 'Fragment (টুকরো ভাবনা)' },
+                                        { value: 'prose', label: 'Prose (গদ্য)' },
+                                      ]}
+                                    />
+                                  </div>
 
-                              <div className="space-y-1">
-                                <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
-                                  Mood (অনুভব)
-                                </span>
-                                <ArchivalSelect
-                                  value={selectedEntry.mood}
-                                  onChange={(val) =>
-                                    updateEntry(
-                                      selectedEntry.id,
-                                      { mood: val as EntryMood },
-                                      true
-                                    )
-                                  }
-                                  ariaLabel="Mood (অনুভব)"
-                                  compact
-                                  className="w-full"
-                                  options={[
-                                    { value: '', label: 'No mood (নিরপেক্ষ)' },
-                                    ...ENTRY_MOODS.map((m) => ({
-                                      value: m.value,
-                                      label: `${m.value} (${m.bangla})`,
-                                    })),
-                                  ]}
-                                />
-                              </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
+                                      Collection (সংকলন)
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <ArchivalSelect
+                                        value={selectedEntry.collectionId}
+                                        onChange={(val) =>
+                                          updateEntry(
+                                            selectedEntry.id,
+                                            { collectionId: val },
+                                            true
+                                          )
+                                        }
+                                        ariaLabel="Collection (সংকলন)"
+                                        compact
+                                        className="w-full flex-1 min-w-0"
+                                        options={[
+                                          { value: '', label: 'সংকলন নেই' },
+                                          ...collections.map((c) => ({
+                                            value: c.id,
+                                            label: c.name,
+                                          })),
+                                        ]}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setNewCollectionModalOpen(true)}
+                                        title="Create new collection"
+                                        aria-label="Create new collection"
+                                        className="p-1.5 rounded-[5px] bg-[#E5D3B8] dark:bg-[#332C23] border border-[#BEA37E] text-[#2B1E16] dark:text-[#EAE4D7] shrink-0 hover:bg-[#DAC2A0]"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
 
-                              <div className="space-y-1">
-                                <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
-                                  Status (অবস্থা)
-                                </span>
-                                <ArchivalSelect
-                                  value={selectedEntry.status}
-                                  onChange={(val) =>
-                                    updateEntry(
-                                      selectedEntry.id,
-                                      { status: val as EntryStatus },
-                                      true
-                                    )
-                                  }
-                                  ariaLabel="Status (অবস্থা)"
-                                  compact
-                                  className="w-full"
-                                  options={[
-                                    { value: 'complete', label: 'Complete (সম্পূর্ণ)' },
-                                    { value: 'draft', label: 'Draft (খসড়া)' },
-                                    { value: 'archived', label: 'Archived (আর্কাইভ)' },
-                                  ]}
-                                />
-                              </div>
-                            </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
+                                      Mood (অনুভব)
+                                    </span>
+                                    <ArchivalSelect
+                                      value={selectedEntry.mood}
+                                      onChange={(val) =>
+                                        updateEntry(
+                                          selectedEntry.id,
+                                          { mood: val as EntryMood },
+                                          true
+                                        )
+                                      }
+                                      ariaLabel="Mood (অনুভব)"
+                                      compact
+                                      className="w-full"
+                                      options={[
+                                        { value: '', label: 'No mood (নিরপেক্ষ)' },
+                                        ...ENTRY_MOODS.map((m) => ({
+                                          value: m.value,
+                                          label: `${m.value} (${m.bangla})`,
+                                        })),
+                                      ]}
+                                    />
+                                  </div>
 
-                            {/* Tags & Live Word/Character Count */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {selectedEntry.tags.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[5px] bg-[#E5D3BA] dark:bg-[#332C24] border border-[#C5AB89] dark:border-[#4A3E32] text-xs text-[#2B1E16] dark:text-[#EAE4D7] font-bangla"
-                                  >
-                                    #{tag}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveTagFromSelected(tag)}
-                                      aria-label={`Remove tag ${tag}`}
-                                      className="hover:text-[var(--danger)]"
+                                  <div className="space-y-1">
+                                    <span className="text-[11px] font-bangla text-[var(--ink-soft)] block">
+                                      Status (অবস্থা)
+                                    </span>
+                                    <ArchivalSelect
+                                      value={selectedEntry.status}
+                                      onChange={(val) =>
+                                        updateEntry(
+                                          selectedEntry.id,
+                                          { status: val as EntryStatus },
+                                          true
+                                        )
+                                      }
+                                      ariaLabel="Status (অবস্থা)"
+                                      compact
+                                      className="w-full"
+                                      options={[
+                                        { value: 'complete', label: 'Complete (সম্পূর্ণ)' },
+                                        { value: 'draft', label: 'Draft (খসড়া)' },
+                                        { value: 'archived', label: 'Archived (আর্কাইভ)' },
+                                      ]}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-dashed border-[#D5C0A1] dark:border-[#3A3025]">
+                                  {selectedEntry.tags.map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[5px] bg-[#E5D3BA] dark:bg-[#332C24] border border-[#C5AB89] dark:border-[#4A3E32] text-xs text-[#2B1E16] dark:text-[#EAE4D7] font-bangla"
                                     >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </span>
-                                ))}
+                                      #{tag}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTagFromSelected(tag)}
+                                        aria-label={`Remove tag ${tag}`}
+                                        className="hover:text-[var(--danger)]"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                  <form
+                                    onSubmit={handleAddTagToSelected}
+                                    className="inline-flex"
+                                  >
+                                    <input
+                                      type="text"
+                                      value={newTagInput}
+                                      onChange={(e) => setNewTagInput(e.target.value)}
+                                      placeholder="+ ট্যাগ যোগ করুন…"
+                                      aria-label="Add tag"
+                                      list="versevault-tags-datalist"
+                                      className="px-2.5 py-0.5 text-xs bg-[#FAF3E8] dark:bg-[#2B2620] border border-[#C5AB89] dark:border-[#423B31] rounded-[5px] text-[#2B1E16] dark:text-[#EAE4D7] w-32 focus:outline-none font-bangla"
+                                    />
+                                    <datalist id="versevault-tags-datalist">
+                                      {tags.map((t) => (
+                                        <option key={t.id} value={t.name} />
+                                      ))}
+                                    </datalist>
+                                  </form>
+                                </div>
+                              </div>
+                            )}
 
-                                <form
-                                  onSubmit={handleAddTagToSelected}
-                                  className="inline-flex"
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  data-testid="toggle-editor-details"
+                                  onClick={() => setEditorDetailsOpen((v) => !v)}
+                                  className="px-2.5 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1.5 cursor-pointer hover:bg-[#DEC6A4]"
                                 >
-                                  <input
-                                    type="text"
-                                    value={newTagInput}
-                                    onChange={(e) => setNewTagInput(e.target.value)}
-                                    placeholder="+ ট্যাগ যোগ করুন…"
-                                    aria-label="Add tag"
-                                    list="versevault-tags-datalist"
-                                    className="px-2.5 py-0.5 text-xs bg-[#FAF3E8] dark:bg-[#2B2620] border border-[#C5AB89] dark:border-[#423B31] rounded-[5px] text-[#2B1E16] dark:text-[#EAE4D7] w-32 focus:outline-none font-bangla"
-                                  />
-                                  <datalist id="versevault-tags-datalist">
-                                    {tags.map((t) => (
-                                      <option key={t.id} value={t.name} />
-                                    ))}
-                                  </datalist>
-                                </form>
+                                  <span>
+                                    পাতার তথ্য ও ট্যাগ ({selectedEntry.type}
+                                    {selectedEntry.tags.length > 0
+                                      ? ` · #${toBanglaDigits(selectedEntry.tags.length)}`
+                                      : ''}
+                                    )
+                                  </span>
+                                </button>
+
+                                {/* Poetic & Literary Quick-Insert Helpers */}
+                                <ParchmentPlateButton
+                                  size="xs"
+                                  onClick={() => insertTextAtCursor('। ')}
+                                  title="Insert Bangla Dari (।)"
+                                >
+                                  ।
+                                </ParchmentPlateButton>
+                                <ParchmentPlateButton
+                                  size="xs"
+                                  onClick={() => insertTextAtCursor(' — ')}
+                                  title="Insert Em-Dash (—)"
+                                >
+                                  —
+                                </ParchmentPlateButton>
+                                <ParchmentPlateButton
+                                  size="xs"
+                                  onClick={() => insertTextAtCursor('\n\n❖\n\n')}
+                                  title="Insert Stanza Divider (❖)"
+                                >
+                                  ❖ স্তবক
+                                </ParchmentPlateButton>
                               </div>
 
                               {settings.showWordCount && (
@@ -3657,7 +3683,7 @@ export function OpenLeatherJournalSpread() {
                         </div>
                       ) : (
                         /* ==============================================================
-                           RIGHT PAGE READING VIEW (With 6 Page Variations & Authentic Art)
+                           RIGHT PAGE READING VIEW (Clean Book Typography & Unified Controls)
                            ============================================================== */
                         <>
                           {/* Top-Right Plum-Blossom Branch & Full Moon Watercolor when on Poetry Scroll */}
@@ -3693,8 +3719,8 @@ export function OpenLeatherJournalSpread() {
                               </span>
                             </div>
 
-                            {/* Top Date & Action Icons Row */}
-                            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm shrink-0">
+                            {/* Single Clean Top Date & Action Row (with Unified Page/Style/Ink Popover) */}
+                            <div className="relative flex items-center justify-between gap-2 text-xs sm:text-sm shrink-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <time
                                   dateTime={selectedEntry.entryDate}
@@ -3721,50 +3747,49 @@ export function OpenLeatherJournalSpread() {
                                       setLeftPageMode('collection-entries');
                                       setMobileView('left-page');
                                     }}
-                                    className="px-2.5 py-0.5 rounded-[5px] bg-[#E5D3B8]/90 dark:bg-[#322B23] border border-[#C4AA87] dark:border-[#4A3E32] text-[11px] font-bangla text-[#5A412C] dark:text-[#D8C3A5] hover:underline"
+                                    className="text-xs font-bangla text-[var(--accent)] hover:underline cursor-pointer"
                                   >
-                                    {selectedCollection.name}
+                                    · {selectedCollection.name}
                                   </button>
                                 )}
                               </div>
 
                               <div className="flex items-center gap-1.5 relative">
                                 {activePageVariation === 'epistolary-letter' && (
-                                  <div className="hidden sm:block mr-2">
+                                  <div className="hidden sm:block mr-1">
                                     <EpistolaryWaxSealStamp />
                                   </div>
                                 )}
 
-                                {isAdmin ? (
-                                  <ParchmentPlateButton
-                                    onClick={handleOpenEntryLockModal}
-                                    ariaLabel={selectedEntry.isLocked ? 'Change entry lock' : 'Set password lock'}
-                                    title={selectedEntry.isLocked ? 'পাতা তালাবদ্ধ (Password protected)' : 'পাসওয়ার্ড লক সেট করুন'}
-                                    compact
-                                  >
-                                    {selectedEntry.isLocked ? (
-                                      <>
-                                        <Lock className="w-3.5 h-3.5 text-[#8B3A32] dark:text-[#E08D85]" />
-                                        <span className="text-[#8B3A32] dark:text-[#E08D85] font-bangla">লকড</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Unlock className="w-3.5 h-3.5 text-[var(--ink-soft)]" />
-                                        <span className="font-bangla">লক</span>
-                                      </>
-                                    )}
-                                  </ParchmentPlateButton>
-                                ) : selectedEntry.isLocked && isEntryUnlockedForViewer(selectedEntry) ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => lockEntryAgain(selectedEntry.id)}
-                                    title="পুনরায় তালাবদ্ধ করুন (Re-lock this page)"
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] border border-[#B8976C] text-[11px] font-bangla text-[#8B3A32] dark:text-[#D8A668] hover:bg-[#E8D9C5] dark:hover:bg-[#3A3226] cursor-pointer"
-                                  >
-                                    <Lock className="w-3 h-3" />
-                                    <span>লক করুন</span>
-                                  </button>
-                                ) : null}
+                                <button
+                                  type="button"
+                                  data-testid="mark-leaving-place-btn"
+                                  onClick={handleMarkReadingPlace}
+                                  title="পড়া বা লেখা এখানেই চিহ্নিত করে রাখুন যেন পরেরবার এখান থেকেই শুরু হয়"
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[5px] text-[11px] font-bangla border transition-all cursor-pointer ${
+                                    readingBookmark?.entryId === selectedEntry.id
+                                      ? 'bg-[#6E1F19] text-[#FCEFD9] border-[#DFB578]'
+                                      : 'bg-[#E6D4BA]/85 dark:bg-[#322A21] hover:bg-[#DEC6A4] text-[var(--ink)] border-[#BEA37E] dark:border-[#4F4234]'
+                                  }`}
+                                >
+                                  <BookMarked className="w-3 h-3 text-[#8B2626] dark:text-[#D8A668]" />
+                                  <span>
+                                    {readingBookmark?.entryId === selectedEntry.id
+                                      ? 'ফিতা হালনাগাদ'
+                                      : 'ফিতা রাখুন'}
+                                  </span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  data-testid="toggle-writing-style-bar"
+                                  onClick={() => setStyleBarOpen((v) => !v)}
+                                  title="পাতার কাগজ, হাতের লেখার ধরন ও ফাউন্টেন পেনের কালি পরিবর্তন করুন"
+                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:bg-[#DEC6A4]"
+                                >
+                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
+                                  <span>পাতা ও কালি</span>
+                                </button>
 
                                 <ParchmentPlateButton
                                   onClick={() => {
@@ -3782,26 +3807,36 @@ export function OpenLeatherJournalSpread() {
                                   <span>সম্পাদনা</span>
                                 </ParchmentPlateButton>
 
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleTrashCurrentEntry(
-                                      selectedEntry.id,
-                                      selectedEntry.title
-                                    )
-                                  }
-                                  aria-label="Move entry to trash"
-                                  title="Move to trash"
-                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] dark:hover:border-[#5A4A38] hover:bg-[#E5D3B8]/70 dark:hover:bg-[#3A3226]/80 transition-colors text-[#4A3728] dark:text-[#D8C3A5]"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {isAdmin ? (
+                                  <button
+                                    type="button"
+                                    onClick={handleOpenEntryLockModal}
+                                    aria-label={selectedEntry.isLocked ? 'Change entry lock' : 'Set password lock'}
+                                    title={selectedEntry.isLocked ? 'পাতা তালাবদ্ধ (Password protected)' : 'পাসওয়ার্ড লক সেট করুন'}
+                                    className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] dark:hover:border-[#5A4A38] hover:bg-[#E5D3B8]/70 dark:hover:bg-[#3A3226]/80 transition-colors text-[#4A3728] dark:text-[#D8C3A5] cursor-pointer"
+                                  >
+                                    {selectedEntry.isLocked ? (
+                                      <Lock className="w-3.5 h-3.5 text-[#8B3A32] dark:text-[#E08D85]" />
+                                    ) : (
+                                      <Unlock className="w-3.5 h-3.5 text-[var(--ink-soft)]" />
+                                    )}
+                                  </button>
+                                ) : selectedEntry.isLocked && isEntryUnlockedForViewer(selectedEntry) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => lockEntryAgain(selectedEntry.id)}
+                                    title="পুনরায় তালাবদ্ধ করুন (Re-lock this page)"
+                                    className="p-1.5 rounded-[5px] border border-[#B8976C] text-[#8B3A32] dark:text-[#D8A668] cursor-pointer"
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : null}
 
                                 <button
                                   type="button"
                                   onClick={() => setMoreMenuOpen((v) => !v)}
                                   aria-label="More entry options"
-                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] dark:hover:border-[#5A4A38] hover:bg-[#E5D3B8]/70 dark:hover:bg-[#3A3226]/80 transition-colors text-[#4A3728] dark:text-[#D8C3A5]"
+                                  className="p-1.5 rounded-[5px] border border-transparent hover:border-[#C4AA87] dark:hover:border-[#5A4A38] hover:bg-[#E5D3B8]/70 dark:hover:bg-[#3A3226]/80 transition-colors text-[#4A3728] dark:text-[#D8C3A5] cursor-pointer"
                                 >
                                   <MoreHorizontal className="w-4 h-4" />
                                 </button>
@@ -3894,15 +3929,47 @@ export function OpenLeatherJournalSpread() {
                                         <span>Archive entry</span>
                                       </button>
                                     )}
+                                    <div className="my-1 border-t border-[#D8C5AA]/70 dark:border-[#3A3127]" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMoreMenuOpen(false);
+                                        handleTrashCurrentEntry(
+                                          selectedEntry.id,
+                                          selectedEntry.title
+                                        );
+                                      }}
+                                      aria-label="Move entry to trash"
+                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 text-[var(--danger)] hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Move to trash (ট্র্যাশে সরান)</span>
+                                    </button>
                                   </div>
                                 )}
                               </div>
-                            </div>
 
-                            {/* 1-Click Page Variation + Writing Style & Fountain Ink Bar */}
-                            <div className="relative shrink-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex-1 min-w-0">
+                              {/* Unified Floating Page Surface, Writing Style & Ink Popover */}
+                              {styleBarOpen && (
+                                <div
+                                  data-testid="writing-style-ink-bar"
+                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-3 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] space-y-2.5 text-[11px]"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-bangla font-semibold text-[var(--ink)]">
+                                      পাতার কাগজ (১০টি রূপ):
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setStyleBarOpen(false);
+                                        setTemplateModalOpen(true);
+                                      }}
+                                      className="text-[11px] font-bangla text-[var(--accent)] hover:underline cursor-pointer"
+                                    >
+                                      সব টেমপ্লেট ও আবহ স্টুডিও →
+                                    </button>
+                                  </div>
                                   <PageVariationSwitcher
                                     value={activePageVariation}
                                     onChange={(nextVar) =>
@@ -3914,72 +3981,56 @@ export function OpenLeatherJournalSpread() {
                                     }
                                     compact
                                   />
-                                </div>
-                                <button
-                                  type="button"
-                                  data-testid="toggle-writing-style-bar"
-                                  onClick={() => setStyleBarOpen((v) => !v)}
-                                  title="হাতের লেখার ধরন ও ফাউন্টেন পেনের কালি পরিবর্তন করুন"
-                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:bg-[#DEC6A4]"
-                                >
-                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
-                                  <span>লেখার ধরন ও কালি</span>
-                                </button>
-                              </div>
-
-                              {styleBarOpen && (
-                                <div
-                                  data-testid="writing-style-ink-bar"
-                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-2.5 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] flex flex-wrap items-center justify-between gap-2 text-[11px]"
-                                >
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    <span className="font-bangla text-[var(--ink-soft)] mr-1">
-                                      শৈলী:
-                                    </span>
-                                    {WRITING_STYLE_PRESETS.map((ws) => (
+                                  <div className="pt-2 border-t border-dashed border-[#D5C0A1] dark:border-[#3A3025] flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-1">
+                                      <span className="font-bangla text-[var(--ink-soft)] mr-1">
+                                        হাতের লেখা:
+                                      </span>
+                                      {WRITING_STYLE_PRESETS.map((ws) => (
+                                        <button
+                                          key={ws.id}
+                                          type="button"
+                                          data-testid={`writing-style-pill-${ws.id}`}
+                                          onClick={() => handleChangeWritingStyle(ws.id)}
+                                          className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
+                                            activeWritingStyleId === ws.id
+                                              ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
+                                              : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
+                                          }`}
+                                        >
+                                          {ws.nameBn}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bangla text-[var(--ink-soft)]">
+                                        কালি:
+                                      </span>
+                                      {INK_COLOR_PRESETS.map((ink) => (
+                                        <button
+                                          key={ink.id}
+                                          type="button"
+                                          data-testid={`ink-color-pill-${ink.id}`}
+                                          onClick={() => handleChangeInkColor(ink.id)}
+                                          title={`${ink.nameBn} (${ink.nameEn})`}
+                                          aria-label={`Select ${ink.nameEn} ink`}
+                                          className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
+                                            activeInkColorId === ink.id
+                                              ? 'scale-125 ring-2 ring-[#D8A668] border-white'
+                                              : 'border-black/25 hover:scale-110'
+                                          }`}
+                                          style={{ backgroundColor: ink.swatchHex }}
+                                        />
+                                      ))}
                                       <button
-                                        key={ws.id}
                                         type="button"
-                                        data-testid={`writing-style-pill-${ws.id}`}
-                                        onClick={() => handleChangeWritingStyle(ws.id)}
-                                        className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
-                                          activeWritingStyleId === ws.id
-                                            ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
-                                            : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
-                                        }`}
+                                        onClick={() => setStyleBarOpen(false)}
+                                        aria-label="Close writing style bar"
+                                        className="ml-1 p-0.5 text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
                                       >
-                                        {ws.nameBn}
+                                        <X className="w-3.5 h-3.5" />
                                       </button>
-                                    ))}
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bangla text-[var(--ink-soft)]">
-                                      কালি:
-                                    </span>
-                                    {INK_COLOR_PRESETS.map((ink) => (
-                                      <button
-                                        key={ink.id}
-                                        type="button"
-                                        data-testid={`ink-color-pill-${ink.id}`}
-                                        onClick={() => handleChangeInkColor(ink.id)}
-                                        title={`${ink.nameBn} (${ink.nameEn})`}
-                                        aria-label={`Select ${ink.nameEn} ink`}
-                                        className={`w-4 h-4 rounded-full border transition-transform cursor-pointer ${
-                                          activeInkColorId === ink.id
-                                            ? 'scale-125 ring-2 ring-[#D8A668] border-white'
-                                            : 'border-black/25 hover:scale-110'
-                                        }`}
-                                        style={{ backgroundColor: ink.swatchHex }}
-                                      />
-                                    ))}
-                                    <button
-                                      type="button"
-                                      onClick={() => setStyleBarOpen(false)}
-                                      aria-label="Close writing style bar"
-                                      className="ml-1 p-0.5 text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -3999,58 +4050,34 @@ export function OpenLeatherJournalSpread() {
                               data-testid="right-page-manuscript-scroll"
                               className="flex-1 min-h-0 overflow-y-auto pr-2 sm:pr-4 space-y-3"
                             >
-                              {/* Title Row + Bookmark Ribbon on Right */}
-                              <div className="pt-1 flex items-start justify-between gap-4">
-                                <div className="min-w-0">
-                                  <h1
-                                    onDoubleClick={() => setIsEditingOnRightPage(true)}
-                                    title="Double-click to edit title"
-                                    className={`text-2xl sm:text-[30px] font-bold tracking-tight leading-snug journal-content cursor-text ${
+                              {/* Title Row */}
+                              <div className="pt-1">
+                                <h1
+                                  onDoubleClick={() => setIsEditingOnRightPage(true)}
+                                  title="Double-click to edit title"
+                                  className={`text-2xl sm:text-[30px] font-bold tracking-tight leading-snug journal-content cursor-text ${
+                                    isNocturnalPage
+                                      ? 'text-[#F7EBD9]'
+                                      : 'text-[#2B1E16] dark:text-[#EAE4D7]'
+                                  }`}
+                                  data-script={fontScript}
+                                >
+                                  {selectedEntry.title ||
+                                    `Untitled ${selectedEntry.type}`}
+                                </h1>
+                                {selectedEntry.subtitle && (
+                                  <p
+                                    className={`text-sm italic mt-1 journal-content ${
                                       isNocturnalPage
-                                        ? 'text-[#F7EBD9]'
-                                        : 'text-[#2B1E16] dark:text-[#EAE4D7]'
+                                        ? 'text-[#C8B299]'
+                                        : 'text-[var(--ink-soft)]'
                                     }`}
                                     data-script={fontScript}
                                   >
-                                    {selectedEntry.title ||
-                                      `Untitled ${selectedEntry.type}`}
-                                  </h1>
-                                  {selectedEntry.subtitle && (
-                                    <p
-                                      className={`text-sm italic mt-1 journal-content ${
-                                        isNocturnalPage
-                                          ? 'text-[#C8B299]'
-                                          : 'text-[var(--ink-soft)]'
-                                      }`}
-                                      data-script={fontScript}
-                                    >
-                                      {selectedEntry.subtitle}
-                                    </p>
-                                  )}
-                                  <VintageTitleFlourish />
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    playInkStamp();
-                                    toggleFavorite(selectedEntry.id);
-                                  }}
-                                  aria-label={
-                                    selectedEntry.isFavorite
-                                      ? 'Remove bookmark'
-                                      : 'Bookmark this page'
-                                  }
-                                  className="p-1.5 text-[#5E4937] dark:text-[#C8A882] hover:scale-110 transition-transform shrink-0 mt-1"
-                                >
-                                  <Bookmark
-                                    className={`w-5 h-5 ${
-                                      selectedEntry.isFavorite
-                                        ? 'fill-[#8B3A32] text-[#8B3A32] dark:fill-[#C8A882]'
-                                        : ''
-                                    }`}
-                                  />
-                                </button>
+                                    {selectedEntry.subtitle}
+                                  </p>
+                                )}
+                                <VintageTitleFlourish />
                               </div>
                               {selectedEntry.isLocked &&
                               !isEntryUnlockedForViewer(selectedEntry) &&
@@ -4148,10 +4175,10 @@ export function OpenLeatherJournalSpread() {
                             </div>
                           </div>
 
-                          {/* Bottom Hashtags, Heart, Authentic River Boat Art & Page-Turner Footer */}
-                          <div className="pt-3 mt-2 space-y-2.5 z-10 shrink-0">
-                            <div className="flex items-center justify-between gap-4 pr-2 sm:pr-24">
-                              <div className="flex flex-wrap items-center gap-2 font-bangla">
+                          {/* Quiet Literary Bottom Margin (Tags, Favorite & Classic Page-Turner Footer) */}
+                          <div className="pt-2 mt-1.5 space-y-2 z-10 shrink-0">
+                            <div className="flex items-center justify-between gap-3 pr-2 sm:pr-20">
+                              <div className="flex flex-wrap items-center gap-1.5 font-bangla text-xs">
                                 {selectedEntry.tags.map((tag) => (
                                   <button
                                     key={tag}
@@ -4164,10 +4191,10 @@ export function OpenLeatherJournalSpread() {
                                       setLeftPageMode('list');
                                       setMobileView('left-page');
                                     }}
-                                    className={`px-3 py-0.5 rounded-[5px] text-xs font-medium transition-all whitespace-nowrap shrink-0 border ${
+                                    className={`px-2 py-0.5 rounded-[4px] text-[11px] transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                                       activeTagFilter === tag
-                                        ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
-                                        : 'bg-[#E5D3BA]/90 dark:bg-[#332C23] text-[#4A3525] dark:text-[#D8C3A5] border-[#C5AB89] dark:border-[#4A3E32] hover:bg-[#D8C09E] dark:hover:bg-[#443A2C]'
+                                        ? 'bg-[#5B3D28] text-[#FDF8F0]'
+                                        : 'text-[#5A412C] dark:text-[#D8C3A5] hover:underline'
                                     }`}
                                   >
                                     #{tag}
@@ -4186,7 +4213,7 @@ export function OpenLeatherJournalSpread() {
                                       onBlur={() => setInlineTagAdderOpen(false)}
                                       placeholder="#ট্যাগ…"
                                       aria-label="New tag name"
-                                      className="w-24 px-2.5 py-0.5 rounded-[5px] bg-[#FAF3E8] dark:bg-[#2B2620] border border-[#CBB699] dark:border-[#4A3E32] text-xs text-[#2B1E16] dark:text-[#EAE4D7] focus:outline-none font-bangla"
+                                      className="w-24 px-2 py-0.5 rounded-[4px] bg-[#FAF3E8] dark:bg-[#2B2620] border border-[#CBB699] dark:border-[#4A3E32] text-xs text-[#2B1E16] dark:text-[#EAE4D7] focus:outline-none font-bangla"
                                       autoFocus
                                     />
                                   </form>
@@ -4194,14 +4221,14 @@ export function OpenLeatherJournalSpread() {
                                   <button
                                     type="button"
                                     onClick={() => setInlineTagAdderOpen(true)}
-                                    className="px-2.5 py-0.5 rounded-[5px] border border-dashed border-[#BDA382] text-[11px] text-[var(--ink-soft)] hover:text-[var(--ink)] font-bangla"
+                                    className="text-[11px] text-[var(--ink-soft)] hover:text-[var(--ink)] font-bangla cursor-pointer"
                                   >
                                     + ট্যাগ
                                   </button>
                                 )}
 
                                 {selectedEntry.mood && (
-                                  <span className="text-xs text-[var(--ink-soft)] italic ml-1">
+                                  <span className="text-[11px] text-[var(--ink-soft)] italic">
                                     · {selectedEntry.mood}
                                   </span>
                                 )}
@@ -4218,10 +4245,10 @@ export function OpenLeatherJournalSpread() {
                                     ? 'Unfavorite this entry'
                                     : 'Love this entry'
                                 }
-                                className="p-2 rounded-full text-[#5E4937] dark:text-[#D8C3A5] hover:scale-110 transition-transform"
+                                className="p-1.5 rounded-full text-[#5E4937] dark:text-[#D8C3A5] hover:scale-110 transition-transform cursor-pointer"
                               >
                                 <Heart
-                                  className={`w-5 h-5 ${
+                                  className={`w-4 h-4 ${
                                     selectedEntry.isFavorite
                                       ? 'fill-[#8B3A32] text-[#8B3A32]'
                                       : ''
@@ -4237,20 +4264,20 @@ export function OpenLeatherJournalSpread() {
                               </div>
                             )}
 
-                            {/* Book Page-Turner Bar (Prev Page / Page X of Y + Reading Time & Mark Place / Next Page) */}
-                            <div className="pt-3 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-soft)] pr-2 sm:pr-20">
+                            {/* Classic Book Page-Turner Footer */}
+                            <div className="pt-2 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex items-center justify-between gap-2 text-xs text-[var(--ink-soft)] pr-2 sm:pr-20">
                               <button
                                 type="button"
                                 disabled={currentEntryPageIndex <= 0}
                                 onClick={() => handleTurnPage('prev')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1 py-0.5 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-colors cursor-pointer"
                               >
                                 <ChevronLeft className="w-3.5 h-3.5" />
                                 <span>পূর্ববর্তী পাতা</span>
                               </button>
 
-                              <div className="flex items-center gap-2">
-                                <span className="font-bangla text-[11px] px-2.5 py-0.5 rounded-[4px] bg-[#E8D7BE]/65 dark:bg-[#2A231B] border border-[#CBB393]/60 dark:border-[#453B30]/60 text-[#4A3525] dark:text-[#D8C3A5]">
+                              <div className="flex items-center gap-1.5 font-bangla text-[11px] text-[var(--ink-soft)]">
+                                <span className="font-medium text-[var(--ink)]">
                                   পাতা{' '}
                                   {toBanglaDigits(
                                     currentEntryPageIndex >= 0
@@ -4259,7 +4286,7 @@ export function OpenLeatherJournalSpread() {
                                   )}{' '}
                                   / {toBanglaDigits(Math.max(1, bookIndexEntries.length))}
                                 </span>
-                                <span className="hidden sm:inline-block font-bangla text-[11px] text-[var(--ink-soft)]">
+                                <span className="hidden sm:inline">
                                   · {toBanglaDigits(readingMetrics.lines)} পঙক্তি · ~{readingMetrics.readMinsBn} মিনিট পাঠ
                                 </span>
                               </div>
@@ -4271,7 +4298,7 @@ export function OpenLeatherJournalSpread() {
                                   currentEntryPageIndex >= bookIndexEntries.length - 1
                                 }
                                 onClick={() => handleTurnPage('next')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] border border-transparent hover:border-[#C5AB89] dark:hover:border-[#5A4A38] hover:bg-[#EADBC5]/60 dark:hover:bg-[#3A3226]/70 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1 py-0.5 font-bangla hover:text-[var(--ink)] disabled:opacity-35 disabled:pointer-events-none transition-colors cursor-pointer"
                               >
                                 <span>পরবর্তী পাতা</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -4292,87 +4319,87 @@ export function OpenLeatherJournalSpread() {
             </div>
           </div>
         </div>
+
+        {/* ========================================================================
+            MOBILE BOTTOM NAVIGATION BAR (< lg, Inside Outer Leather Book Cover)
+           ======================================================================== */}
+        <nav
+          aria-label="Mobile Quick Navigation"
+          className="mt-2 rounded-[10px] lg:hidden bg-[#26180F]/95 border border-[#6E4E35] px-2 py-1.5 flex items-center justify-around text-[#CDB89E]"
+        >
+          <button
+            type="button"
+            onClick={() => selectNavMode('overview', 'journal', 'all')}
+            className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[11px] font-bangla ${
+              leftPageMode === 'overview' && mobileView === 'left-page'
+                ? 'text-[#D8A668] font-bold'
+                : ''
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>শুভ সন্ধ্যা</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => selectNavMode('list', 'journal', 'all')}
+            className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[11px] font-bangla ${
+              leftPageMode === 'list' && mobileView === 'left-page'
+                ? 'text-[#D8A668] font-bold'
+                : ''
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>ডায়েরি</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleStartNewEntry()}
+            className="flex items-center justify-center w-10 h-10 -mt-3 rounded-full bg-gradient-to-b from-[#8B6343] to-[#5E4029] text-[#FFF8EE] shadow-lg border border-[#D8A668]/50"
+            aria-label="Create new entry"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => selectNavMode('calendar', 'calendar', 'all')}
+            className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[11px] font-bangla ${
+              leftPageMode === 'calendar' && mobileView === 'left-page'
+                ? 'text-[#D8A668] font-bold'
+                : ''
+            }`}
+          >
+            <CalendarIcon className="w-4 h-4" />
+            <span>ক্যালেন্ডার</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileView('right-page')}
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-bangla ${
+              mobileView === 'right-page' ? 'text-[#D8A668] font-bold' : ''
+            }`}
+          >
+            <Feather className="w-4 h-4" />
+            <span>পাতা</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => selectNavMode('collections', 'collections', 'all')}
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-bangla ${
+              leftPageMode === 'collections' && mobileView === 'left-page'
+                ? 'text-[#D8A668] font-bold'
+                : ''
+            }`}
+          >
+            <Folder className="w-4 h-4" />
+            <span>সংকলন</span>
+          </button>
+        </nav>
       </motion.div>
-
-      {/* ========================================================================
-          MOBILE STICKY BOTTOM NAVIGATION BAR (< lg)
-         ======================================================================== */}
-      <nav
-        aria-label="Mobile Quick Navigation"
-        className="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-[#26180F]/95 backdrop-blur-md border-t border-[#6E4E35] px-2 py-1.5 flex items-center justify-around text-[#CDB89E]"
-      >
-        <button
-          type="button"
-          onClick={() => selectNavMode('overview', 'journal', 'all')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[11px] font-bangla ${
-            leftPageMode === 'overview' && mobileView === 'left-page'
-              ? 'text-[#D8A668] font-bold'
-              : ''
-          }`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>শুভ সন্ধ্যা</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => selectNavMode('list', 'journal', 'all')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[11px] font-bangla ${
-            leftPageMode === 'list' && mobileView === 'left-page'
-              ? 'text-[#D8A668] font-bold'
-              : ''
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>ডায়েরি</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleStartNewEntry()}
-          className="flex items-center justify-center w-10 h-10 -mt-4 rounded-full bg-gradient-to-b from-[#8B6343] to-[#5E4029] text-[#FFF8EE] shadow-lg border border-[#D8A668]/50"
-          aria-label="Create new entry"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => selectNavMode('calendar', 'calendar', 'all')}
-          className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[11px] font-bangla ${
-            leftPageMode === 'calendar' && mobileView === 'left-page'
-              ? 'text-[#D8A668] font-bold'
-              : ''
-          }`}
-        >
-          <CalendarIcon className="w-4 h-4" />
-          <span>ক্যালেন্ডার</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileView('right-page')}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-bangla ${
-            mobileView === 'right-page' ? 'text-[#D8A668] font-bold' : ''
-          }`}
-        >
-          <Feather className="w-4 h-4" />
-          <span>পাতা</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => selectNavMode('collections', 'collections', 'all')}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] font-bangla ${
-            leftPageMode === 'collections' && mobileView === 'left-page'
-              ? 'text-[#D8A668] font-bold'
-              : ''
-          }`}
-        >
-          <Folder className="w-4 h-4" />
-          <span>সংকলন</span>
-        </button>
-      </nav>
 
       {/* Template, Page Variation, Desk Background & Writing Style Picker Modal */}
       <TemplatePickerModal
