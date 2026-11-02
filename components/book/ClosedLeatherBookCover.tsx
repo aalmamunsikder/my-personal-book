@@ -19,6 +19,8 @@ interface ClosedLeatherBookCoverProps {
   bookThemeNameBn?: string;
   coverBackgroundCss?: string;
   coverBorderHex?: string;
+  ribbonGradient?: string;
+  ribbonBorder?: string;
   totalEntries: number;
   poemsCount: number;
   collectionsCount: number;
@@ -34,6 +36,8 @@ export function ClosedLeatherBookCover({
   bookThemeNameBn,
   coverBackgroundCss,
   coverBorderHex,
+  ribbonGradient,
+  ribbonBorder,
   totalEntries,
   poemsCount,
   collectionsCount,
@@ -66,11 +70,14 @@ export function ClosedLeatherBookCover({
           className="pointer-events-none absolute -bottom-3 left-5 right-0 h-4 rounded-b-[8px] bg-[repeating-linear-gradient(0deg,#DFCBB0_0px,#DFCBB0_1.5px,#AD906B_1.5px,#AD906B_3px)] border-x border-b border-[#8A6B48]"
         />
 
-        {/* Crimson Silk Ribbon Tail Peeking Out From Bottom */}
+        {/* Custom Silk Ribbon Tail Peeking Out From Bottom */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-6 w-5 h-9 bg-gradient-to-b from-[#7E241C] to-[#56140E] shadow-lg"
-          style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)' }}
+          className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-6 w-5 h-9 shadow-lg"
+          style={{
+            clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%)',
+            background: ribbonGradient || 'linear-gradient(180deg, #7E241C 0%, #56140E 100%)',
+          }}
         />
 
         {/* Front Hand-Tooled Leather Cover Board */}
@@ -200,15 +207,27 @@ export function ClosedLeatherBookCover({
                     e.stopPropagation();
                     onResumeBookmark();
                   }}
-                  className="w-full px-3 py-2 rounded-[6px] bg-gradient-to-r from-[#6E1F19] via-[#832820] to-[#5D1A15] border border-[#DFB578]/75 text-[#FCEFD9] text-xs font-bangla flex items-center justify-between gap-2 shadow-md hover:brightness-110 transition-all cursor-pointer"
+                  style={{
+                    background:
+                      ribbonGradient ||
+                      'linear-gradient(to right, #6E1F19, #832820, #5D1A15)',
+                    borderColor: ribbonBorder || '#DFB578',
+                  }}
+                  className="w-full px-3 py-2 rounded-[6px] border text-[#FCEFD9] text-xs font-bangla flex items-center justify-between gap-2 shadow-md hover:brightness-110 transition-all cursor-pointer"
                 >
                   <span className="flex items-center gap-1.5 truncate">
-                    <Bookmark className="w-3.5 h-3.5 fill-[#DFB578] text-[#DFB578] shrink-0" />
+                    <Bookmark
+                      className="w-3.5 h-3.5 shrink-0"
+                      style={{ color: ribbonBorder || '#DFB578', fill: ribbonBorder || '#DFB578' }}
+                    />
                     <span className="truncate">
                       শেষ যেখানে রেখেছিলেন: “{readingBookmark.entryTitle}”
                     </span>
                   </span>
-                  <span className="text-[#DFB578] font-semibold shrink-0">
+                  <span
+                    className="font-semibold shrink-0"
+                    style={{ color: ribbonBorder || '#DFB578' }}
+                  >
                     সেখানেই খুলুন →
                   </span>
                 </button>

@@ -207,6 +207,12 @@ describe('VerseVault Book Themes, Templates & Customization System Tests', () =>
     for (const bg of DESK_BACKGROUNDS) {
       assert.ok(bg.pageSpreadLightCss.includes('linear-gradient'));
       assert.ok(bg.pageSpreadDarkCss.includes('linear-gradient'));
+      assert.ok(bg.conceptSubtitleBn.length > 0, `Theme ${bg.id} must have a concept subtitle`);
+      assert.ok(bg.conceptQuoteBn.length > 0, `Theme ${bg.id} must have a concept quote`);
+      assert.ok(bg.flapBackgroundCss.length > 0, `Theme ${bg.id} must have a custom flap background`);
+      assert.ok(bg.ribbonGradient.length > 0, `Theme ${bg.id} must have a silk ribbon gradient`);
+      assert.ok(bg.ribbonBorder.length > 0, `Theme ${bg.id} must have a ribbon border`);
+      assert.ok(bg.paperEdgeGiltHex.length > 0, `Theme ${bg.id} must have paperEdgeGiltHex`);
     }
 
     assert.equal(getDeskBackground('rainy-veranda').id, 'rainy-veranda');
@@ -226,6 +232,30 @@ describe('VerseVault Book Themes, Templates & Customization System Tests', () =>
       resolveEffectivePageVariation('poem', 'royal-illuminated'),
       'royal-illuminated'
     );
+
+    // Bangladesh Standard Time (Asia/Dhaka) tests
+    const { getBangladeshDateParts, getBangladeshGreeting, formatBangladeshTime, getLocalTodayDateString } =
+      await import('./lib/entry-utils.ts');
+    
+    const bdParts = getBangladeshDateParts(new Date('2026-11-02T03:00:00Z')); // 3 AM UTC = 9 AM BD
+    assert.equal(bdParts.hour, 9);
+    assert.equal(bdParts.day, 2);
+
+    const bdMorning = getBangladeshGreeting(new Date('2026-11-02T02:00:00Z')); // 8 AM BD
+    assert.equal(bdMorning.bangla, 'শুভ সকাল');
+
+    const bdEvening = getBangladeshGreeting(new Date('2026-11-02T13:00:00Z')); // 7 PM BD
+    assert.equal(bdEvening.bangla, 'শুভ সন্ধ্যা');
+
+    const bdNight = getBangladeshGreeting(new Date('2026-11-02T17:00:00Z')); // 11 PM BD
+    assert.equal(bdNight.bangla, 'শুভ রাত্রি');
+
+    const bdTimeFormatted = formatBangladeshTime(new Date('2026-11-02T13:45:00Z'));
+    assert.ok(bdTimeFormatted.includes('সন্ধ্যা'));
+    assert.ok(bdTimeFormatted.includes('৭:৪৫'));
+
+    const todayStr = getLocalTodayDateString(new Date('2026-11-02T03:00:00Z'));
+    assert.equal(todayStr, '2026-11-02');
   });
 });
 

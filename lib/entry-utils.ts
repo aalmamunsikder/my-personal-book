@@ -160,14 +160,89 @@ export function resolveContentFontScript(
   return 'serif';
 }
 
+export const BANGLADESH_TIMEZONE = 'Asia/Dhaka';
+
+export interface BangladeshDateParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
 /**
- * Returns today's date in local YYYY-MM-DD format.
+ * Extracts exact calendar and clock components in Bangladesh Standard Time (Asia/Dhaka, UTC+6).
+ */
+export function getBangladeshDateParts(now: Date = new Date()): BangladeshDateParts {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: BANGLADESH_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  const parts = formatter.formatToParts(now);
+  const map: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      map[part.type] = Number(part.value);
+    }
+  }
+  return {
+    year: map.year || now.getUTCFullYear(),
+    month: map.month || now.getUTCMonth() + 1,
+    day: map.day || now.getUTCDate(),
+    hour: map.hour ?? 0,
+    minute: map.minute ?? 0,
+    second: map.second ?? 0,
+  };
+}
+
+/**
+ * Returns today's date in Bangladesh Standard Time (Asia/Dhaka) YYYY-MM-DD format.
  */
 export function getLocalTodayDateString(now: Date = new Date()): string {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const { year, month, day } = getBangladeshDateParts(now);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Returns the authentic Bangla time-of-day greeting according to Bangladesh Standard Time (Asia/Dhaka).
+ */
+export function getBangladeshGreeting(now: Date = new Date()): {
+  bangla: string;
+  english: string;
+  periodBn: string;
+} {
+  const { hour } = getBangladeshDateParts(now);
+  if (hour >= 5 && hour < 12) {
+    return { bangla: 'শুভ সকাল', english: 'Good Morning', periodBn: 'সকাল' };
+  }
+  if (hour >= 12 && hour < 15) {
+    return { bangla: 'শুভ দুপুর', english: 'Good Noon', periodBn: 'দুপুর' };
+  }
+  if (hour >= 15 && hour < 18) {
+    return { bangla: 'শুভ বিকেল', english: 'Good Afternoon', periodBn: 'বিকেল' };
+  }
+  if (hour >= 18 && hour < 21) {
+    return { bangla: 'শুভ সন্ধ্যা', english: 'Good Evening', periodBn: 'সন্ধ্যা' };
+  }
+  return { bangla: 'শুভ রাত্রি', english: 'Good Night', periodBn: 'রাত' };
+}
+
+/**
+ * Formats the current time in Bangladesh Standard Time (Asia/Dhaka) using Bangla digits.
+ */
+export function formatBangladeshTime(now: Date = new Date()): string {
+  const { hour, minute } = getBangladeshDateParts(now);
+  const { periodBn } = getBangladeshGreeting(now);
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const minStr = String(minute).padStart(2, '0');
+  return `${periodBn} ${toBanglaDigits(hour12)}:${toBanglaDigits(minStr)}`;
 }
 
 /**

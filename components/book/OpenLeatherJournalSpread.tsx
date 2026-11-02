@@ -48,11 +48,13 @@ import {
   countWords,
   ENTRY_MOODS,
   filterAndSortEntries,
+  formatBangladeshTime,
   formatBanglaFullDate,
   formatDayMonthBadge,
   formatEditorialDate,
   formatEntryAsMarkdown,
   formatEntryAsPlainText,
+  getBangladeshGreeting,
   getLocalTodayDateString,
   getSingleLinePreview,
   resolveContentFontScript,
@@ -91,7 +93,6 @@ import {
   LeatherMountainMoonArtwork,
   MistySunriseHeaderArtwork,
   PlumBlossomMoonCorner,
-  PoemRiverBoatFooterArtwork,
   VintageTitleFlourish,
 } from '../common/JournalArtwork';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -268,6 +269,10 @@ export function OpenLeatherJournalSpread() {
   const [bookmarkToast, setBookmarkToast] = useState<string>('');
   const [styleBarOpen, setStyleBarOpen] = useState<boolean>(false);
   const [editorDetailsOpen, setEditorDetailsOpen] = useState<boolean>(false);
+
+  // Dynamic Bangladesh Time & Time-of-day Greeting (Asia/Dhaka, UTC+6)
+  const bdGreeting = useMemo(() => getBangladeshGreeting(), []);
+  const bdTimeStr = useMemo(() => formatBangladeshTime(), []);
 
   const editorTitleRef = useRef<HTMLInputElement | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -876,6 +881,15 @@ export function OpenLeatherJournalSpread() {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DESK_BG_STORAGE_KEY, bgId);
     }
+    const bgMeta = getDeskBackground(bgId);
+    if (bgMeta) {
+      setDefaultInkColor(bgMeta.recommendedInkId);
+      setDefaultWritingStyle(bgMeta.recommendedWritingStyleId);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(DEFAULT_INK_COLOR_KEY, bgMeta.recommendedInkId);
+        window.localStorage.setItem(DEFAULT_WRITING_STYLE_KEY, bgMeta.recommendedWritingStyleId);
+      }
+    }
   };
 
   const handleChangeWritingStyle = (styleId: WritingStyleId) => {
@@ -1269,6 +1283,8 @@ export function OpenLeatherJournalSpread() {
         bookThemeNameBn={activeDeskBg.nameBn}
         coverBackgroundCss={activeDeskBg.backgroundCss}
         coverBorderHex={activeDeskBg.accentHex}
+        ribbonGradient={activeDeskBg.ribbonGradient}
+        ribbonBorder={activeDeskBg.ribbonBorder}
         totalEntries={activeEntries.length}
         poemsCount={categoryStats[0].count}
         collectionsCount={collections.length}
@@ -1499,7 +1515,7 @@ export function OpenLeatherJournalSpread() {
                 >
                   <span className="flex items-center gap-3">
                     <Sparkles className="w-4 h-4 text-[#D8A668]" />
-                    <span className="font-bangla">শুভ সন্ধ্যা (Home Hub)</span>
+                    <span className="font-bangla">{bdGreeting.bangla} (নীড়)</span>
                   </span>
                 </button>
                 <button
@@ -1651,7 +1667,11 @@ export function OpenLeatherJournalSpread() {
              ==================================================================== */}
           <aside
             aria-label="Journal Sections"
-            className="hidden lg:flex lg:w-[238px] shrink-0 pl-4 pr-3.5 py-3 flex-col justify-between text-[#E8D8C3] select-none"
+            style={{
+              background: activeDeskBg.flapBackgroundCss,
+              borderColor: activeDeskBg.flapBorderHex,
+            }}
+            className="hidden lg:flex lg:w-[238px] shrink-0 pl-4 pr-3.5 py-3 flex-col justify-between text-[#E8D8C3] select-none rounded-[12px] border transition-all duration-500 shadow-inner"
           >
             <div className="space-y-2.5">
               {/* Brand Lockup with Authentic Golden Feather Quill */}
@@ -1747,6 +1767,9 @@ export function OpenLeatherJournalSpread() {
                     {activeDeskBg.nameBn}
                   </span>
                 </div>
+                <p className="text-[9.5px] font-bangla text-[#C8B196]/80 leading-tight">
+                  {activeDeskBg.conceptSubtitleBn}
+                </p>
                 <div className="flex items-center justify-between gap-1 pt-0.5">
                   {DESK_BACKGROUNDS.map((bg) => {
                     const isActive = deskBackground === bg.id;
@@ -1804,7 +1827,7 @@ export function OpenLeatherJournalSpread() {
                 >
                   <span className="flex items-center gap-2.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
-                    <span className="font-bangla">শুভ সন্ধ্যা (Hub)</span>
+                    <span className="font-bangla">{bdGreeting.bangla} (হাব)</span>
                   </span>
                 </button>
 
@@ -2000,7 +2023,10 @@ export function OpenLeatherJournalSpread() {
           {/* ====================================================================
               3D STACKED PARCHMENT BOOK BLOCK (Multi-Layer Page Edges + Spine Ribbon)
              ==================================================================== */}
-          <div className="flex-1 min-w-0 relative rounded-[15px] bg-[#BEA380] dark:bg-[#3A3226] p-[3px] sm:p-[6px] shadow-[inset_0_0_0_1px_rgba(65,42,22,0.55),0_12px_28px_rgba(12,6,2,0.45)]">
+          <div
+            style={{ backgroundColor: activeDeskBg.paperEdgeGiltHex }}
+            className="flex-1 min-w-0 relative rounded-[15px] p-[3px] sm:p-[6px] shadow-[inset_0_0_0_1px_rgba(65,42,22,0.55),0_12px_28px_rgba(12,6,2,0.45)] transition-colors duration-500"
+          >
             {/* Second Stacked Page Layer (Simulated gilt deckled edges) */}
             <div className="rounded-[12px] bg-[#D6BFA0] dark:bg-[#3A3226] p-[3px] sm:p-[5px] border border-[#AE926F] dark:border-[#4C4436] shadow-inner">
               {/* Third Stacked Page Layer */}
@@ -2185,12 +2211,14 @@ export function OpenLeatherJournalSpread() {
                           style={{
                             transformOrigin: 'top center',
                             clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%)',
+                            background: activeDeskBg.ribbonGradient,
+                            borderColor: activeDeskBg.ribbonBorder,
                           }}
                           className={`pointer-events-auto cursor-pointer w-5 ${
                             readingBookmark?.entryId === selectedEntry?.id
-                              ? 'h-28 from-[#8E2219] via-[#B83227] to-[#7A1B14] border-[#FFD89B]'
-                              : 'h-20 from-[#6E1F18] via-[#922C23] to-[#681C15] border-[#DFB578]/45'
-                          } bg-gradient-to-b shadow-[0_6px_14px_rgba(25,10,5,0.55)] border-x transition-all duration-300 hover:h-28`}
+                              ? 'h-28 ring-1 ring-white/40'
+                              : 'h-20 opacity-90'
+                          } shadow-[0_6px_14px_rgba(25,10,5,0.55)] border-x transition-all duration-300 hover:h-28`}
                         />
                         {/* Authentic Kettle-Stitch Bookbinding Thread Marks */}
                         <div className="space-y-24 opacity-45">
@@ -2216,10 +2244,20 @@ export function OpenLeatherJournalSpread() {
                         {readingBookmark && (
                           <div
                             data-testid="resume-bookmark-banner"
-                            className="mb-2.5 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-[7px] bg-gradient-to-r from-[#6E1F19] via-[#832820] to-[#5D1A15] border border-[#DFB578]/70 text-[#FCEFD9] text-[11px] font-bangla shadow-xs shrink-0"
+                            style={{
+                              background: activeDeskBg.ribbonGradient,
+                              borderColor: activeDeskBg.ribbonBorder,
+                            }}
+                            className="mb-2.5 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-[7px] border text-[#FCEFD9] text-[11px] font-bangla shadow-xs shrink-0"
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <Bookmark className="w-3.5 h-3.5 fill-[#DFB578] text-[#DFB578] shrink-0" />
+                              <Bookmark
+                                className="w-3.5 h-3.5 shrink-0"
+                                style={{
+                                  color: activeDeskBg.ribbonBorder,
+                                  fill: activeDeskBg.ribbonBorder,
+                                }}
+                              />
                               <span className="truncate">
                                 শেষ যেখানে রেখেছিলেন: “{readingBookmark.entryTitle}”
                                 {(readingBookmark.scrollProgress ?? 0) > 0
@@ -2276,13 +2314,13 @@ export function OpenLeatherJournalSpread() {
                                 </div>
                                 <div className="absolute bottom-3 left-4 right-4 text-[#2B1E16]">
                                   <h2 className="text-2xl font-bold font-bangla flex items-center gap-2">
-                                    <span>শুভ সন্ধ্যা</span>
+                                    <span>{bdGreeting.bangla}</span>
                                     <span className="text-lg" aria-hidden="true">
                                       🌿
                                     </span>
                                   </h2>
                                   <p className="text-xs sm:text-sm font-bangla text-[#4A382B]">
-                                    আজ কী লিখবে?
+                                    বাংলাদেশ সময়: {bdTimeStr} · আজ কী লিখবে?
                                   </p>
                                 </div>
                               </div>
@@ -2346,12 +2384,10 @@ export function OpenLeatherJournalSpread() {
                               />
                             </div>
 
-                            {/* Signature Botanical Quote Footer with Authentic Sprig Illustration */}
+                            {/* Signature Literary Quote Footer for Active Atmosphere */}
                             <div className="relative pt-3 border-t border-[#D8C5AA]/80 dark:border-[#353028] text-center pr-10 shrink-0">
-                              <blockquote className="text-sm font-bangla font-medium text-[var(--ink)] leading-relaxed">
-                                “কিছু কথা কখনো বলা হয় না,
-                                <br />
-                                শুধু লিখে রাখা হয়...”
+                              <blockquote className="text-sm font-bangla font-medium text-[var(--ink)] leading-relaxed italic">
+                                {activeDeskBg.conceptQuoteBn}
                               </blockquote>
                               <BotanicalSprigOrnament className="w-12 h-12 absolute bottom-0 right-0" />
                             </div>
@@ -3061,7 +3097,7 @@ export function OpenLeatherJournalSpread() {
                                   }}
                                   className="hover:underline text-[var(--accent)] font-bangla cursor-pointer"
                                 >
-                                  শুভ সন্ধ্যা হাব
+                                  {bdGreeting.bangla} হাব
                                 </button>
                                 <span>·</span>
                                 <button
@@ -4257,13 +4293,6 @@ export function OpenLeatherJournalSpread() {
                               </button>
                             </div>
 
-                            {/* Authentic Misty River & Solitary Boat Watercolor Artwork on Poetry Scroll */}
-                            {activePageVariation === 'poetry-scroll' && (
-                              <div className="-mx-5 sm:-mx-8 lg:-mx-10 -mb-2">
-                                <PoemRiverBoatFooterArtwork />
-                              </div>
-                            )}
-
                             {/* Classic Book Page-Turner Footer */}
                             <div className="pt-2 border-t border-[#D8C5AA]/70 dark:border-[#353028] flex items-center justify-between gap-2 text-xs text-[var(--ink-soft)] pr-2 sm:pr-20">
                               <button
@@ -4337,7 +4366,7 @@ export function OpenLeatherJournalSpread() {
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>শুভ সন্ধ্যা</span>
+            <span>{bdGreeting.bangla}</span>
           </button>
 
           <button

@@ -606,6 +606,76 @@ export function TemplatePickerModal({
               ))}
             </div>
           </div>
+
+          {/* Section 3: 8 Unique Book Atmospheres & Complete Conceptual Transformations */}
+          <div className="space-y-3 pt-2 border-t border-[#D5C0A1] dark:border-[#3A3025]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5F422D] dark:text-[#D8B485] font-bangla">
+                ✦ ৩. বইয়ের সার্বিক আবহ ও চামড়ার বাঁধাই (8 Unique Book Atmospheres &amp; Concepts)
+              </span>
+              <span className="flex-1 h-[1px] bg-gradient-to-r from-[#C8B192] dark:from-[#4A3D2F] to-transparent" />
+            </div>
+            <p className="text-xs font-bangla text-[#63513F] dark:text-[#B8A48C]">
+              প্রতিটি আবহ কেবল রং পরিবর্তন করে না—চামড়ার বাঁধাই, পাতার গঠন, রেশমি ফিতা ও মনস্তাত্ত্বিক সাহিত্যিক অনুভবকে সম্পূর্ণ রূপান্তর করে।
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {DESK_BACKGROUNDS.map((bg) => {
+                const isActive = deskBackground === bg.id;
+                return (
+                  <button
+                    key={bg.id}
+                    type="button"
+                    onClick={() => {
+                      bookSound.playPageTurnSound('next');
+                      onChangeDeskBackground?.(bg.id);
+                    }}
+                    className={`relative text-left p-3.5 rounded-[10px] border transition-all flex flex-col justify-between gap-3 shadow-md cursor-pointer ${
+                      isActive
+                        ? 'ring-2 ring-[#DFB578] border-[#9E6E3D] shadow-lg scale-[1.01]'
+                        : 'border-[#CBB494] dark:border-[#463B2F] hover:scale-[1.01] opacity-95 hover:opacity-100'
+                    }`}
+                    style={{
+                      background: bg.backgroundCss,
+                      borderColor: isActive ? '#DFB578' : bg.flapBorderHex,
+                    }}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-4 h-4 rounded-full border border-white/40 shadow-xs shrink-0"
+                            style={{ background: bg.accentHex }}
+                          />
+                          <h4 className="text-sm font-bold font-bangla text-[#FDF8F0] drop-shadow-xs">
+                            {bg.nameBn}
+                          </h4>
+                        </div>
+                        {isActive && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#DFB578] text-[#24140B] font-bold font-bangla">
+                            সক্রিয়
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] font-bangla text-[#E6D4BE] leading-relaxed">
+                        {bg.conceptSubtitleBn}
+                      </p>
+
+                      <div className="p-2 rounded-[6px] bg-black/35 border border-white/10 text-[10.5px] font-bangla text-[#E8D9C5] italic">
+                        {bg.conceptQuoteBn}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[10px] text-[#DFB578] font-bangla">
+                      <span className="truncate">রেশমি ফিতা: {bg.shortLabel}</span>
+                      <span className="font-semibold underline">আবহ রূপান্তর করুন →</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
     </BookDialogFrame>
   );

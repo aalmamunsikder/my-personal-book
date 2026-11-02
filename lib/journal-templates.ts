@@ -267,13 +267,22 @@ export interface DeskBackgroundMeta {
   nameEn: string;
   shortLabel: string;
   descriptionBn: string;
+  conceptSubtitleBn: string;
+  conceptQuoteBn: string;
   swatchGradient: string;
   backgroundCss: string;
+  flapBackgroundCss: string;
+  flapBorderHex: string;
   pageSpreadLightCss: string;
   pageSpreadDarkCss: string;
   patternCss: string;
   ambientGlowCss: string;
   accentHex: string;
+  ribbonGradient: string;
+  ribbonBorder: string;
+  paperEdgeGiltHex: string;
+  recommendedInkId: InkColorId;
+  recommendedWritingStyleId: WritingStyleId;
   isDarkScene: boolean;
 }
 
@@ -284,8 +293,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Mahogany & Antique Parchment',
     shortLabel: 'Mahogany Book',
     descriptionBn: 'মেহগনি চামড়ার বাঁধাই ও উষ্ণ প্রাচীন পার্চমেন্ট পাতার ক্লাসিক ডায়েরি।',
+    conceptSubtitleBn: 'উষ্ণ মোমবাতি, প্রাচীন সেপিয়া ও মেহগনি বাঁধাই',
+    conceptQuoteBn: '“কিছু কথা কখনো বলা হয় না, শুধু লিখে রাখা হয়...”',
     swatchGradient: 'linear-gradient(135deg, #3A2214 0%, #24140B 60%, #160B06 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 18%, #3B2314 0%, #24140B 55%, #120904 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #2A170C 0%, #1E1007 50%, #120904 100%)',
+    flapBorderHex: '#6E482B',
     pageSpreadLightCss: 'linear-gradient(90deg, #F4E9D8 0%, #EFE0C9 50%, #F6ECDC 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #221F1B 0%, #1C1916 50%, #24201C 100%)',
     patternCss:
@@ -293,6 +306,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 18% 12%, rgba(235, 178, 98, 0.16) 0%, rgba(216, 146, 68, 0.05) 42%, transparent 72%)',
     accentHex: '#8C5230',
+    ribbonGradient: 'linear-gradient(180deg, #8E2219 0%, #B83227 50%, #7A1B14 100%)',
+    ribbonBorder: '#DFB578',
+    paperEdgeGiltHex: '#BEA380',
+    recommendedInkId: 'sepia-walnut',
+    recommendedWritingStyleId: 'classic-book',
     isDarkScene: true,
   },
   {
@@ -301,8 +319,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Monsoon Slate & Mist Pages',
     shortLabel: 'Monsoon Slate',
     descriptionBn: 'বৃষ্টির বিকেলের মেঘলা নীলচে বাঁধাই ও শীতল কুয়াশা-রঙা ডায়েরির পাতা।',
+    conceptSubtitleBn: 'শ্রাবণের মেঘে ভেজা একলা বারান্দা ও শীতল নীলচে কুয়াশা',
+    conceptQuoteBn: '“মেঘের ডাক আর ভেজা মাটির ঘ্রাণে সব পুরানো স্মৃতিরা ফিরে আসে...”',
     swatchGradient: 'linear-gradient(135deg, #2C363B 0%, #1E262B 60%, #141A1E 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 10%, #2D3940 0%, #1C252A 58%, #101619 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #1C272C 0%, #141C20 50%, #0D1216 100%)',
+    flapBorderHex: '#3E5561',
     pageSpreadLightCss: 'linear-gradient(90deg, #E3ECEF 0%, #D8E4E8 50%, #E7F0F2 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #1B2327 0%, #161D21 50%, #1E262B 100%)',
     patternCss:
@@ -310,6 +332,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 82% 14%, rgba(136, 188, 214, 0.22) 0%, transparent 65%)',
     accentHex: '#4F6D7A',
+    ribbonGradient: 'linear-gradient(180deg, #3A5364 0%, #4D6D82 50%, #2A3C49 100%)',
+    ribbonBorder: '#9BB4C7',
+    paperEdgeGiltHex: '#9BB1BC',
+    recommendedInkId: 'oxford-midnight',
+    recommendedWritingStyleId: 'epistolary-intimate',
     isDarkScene: true,
   },
   {
@@ -318,8 +345,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Candlelight Amber Folio',
     shortLabel: 'Candlelight',
     descriptionBn: 'মধ্যরাতের পাঠাগারে মোমবাতির সোনালি-তাম্র আভায় রাঙানো পাতা।',
+    conceptSubtitleBn: 'অন্ধকার ঘরে একাকী মোমের মৃদু কম্পন ও স্বর্ণালী মলাট',
+    conceptQuoteBn: '“নিঝুম রাতে বইয়ের পাতার ওপরেই কেবল নিজের মুখোমুখি হওয়া যায়।”',
     swatchGradient: 'radial-gradient(circle at 30% 30%, #593818 0%, #1E130B 65%, #0F0905 100%)',
     backgroundCss: 'radial-gradient(circle at 50% 24%, #452912 0%, #1F1209 56%, #0D0704 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #331C0B 0%, #241307 50%, #160B03 100%)',
+    flapBorderHex: '#8B5B24',
     pageSpreadLightCss: 'linear-gradient(90deg, #F6E4C4 0%, #EDD5AC 50%, #F8E8CB 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #281D13 0%, #20170E 50%, #2A1F14 100%)',
     patternCss:
@@ -327,6 +358,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 75% 18%, rgba(255, 185, 82, 0.24) 0%, rgba(214, 128, 42, 0.08) 45%, transparent 72%)',
     accentHex: '#C98A3E',
+    ribbonGradient: 'linear-gradient(180deg, #9C6721 0%, #D49337 50%, #784E15 100%)',
+    ribbonBorder: '#F5D38C',
+    paperEdgeGiltHex: '#CBB07E',
+    recommendedInkId: 'gilded-amber',
+    recommendedWritingStyleId: 'fountain-calligraphy',
     isDarkScene: true,
   },
   {
@@ -335,8 +371,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Botanical Sage & Herbarium',
     shortLabel: 'Botanical Sage',
     descriptionBn: 'অরণ্য-সবুজ চামড়ার মলাট ও জলপাই-রঙা ভেষজ ডায়েরির পাতা।',
+    conceptSubtitleBn: 'অরণ্যের বুনো ঘ্রাণ, শুকনো ফার্ন পাতা আর গভীর স্তব্ধতা',
+    conceptQuoteBn: '“গাছের ছায়ায় লেখা একটি পঙ্‌ক্তি কখনো মিথ্যে হয় না।”',
     swatchGradient: 'linear-gradient(135deg, #2D3B2E 0%, #1F2A20 65%, #141C15 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 15%, #2E3D2F 0%, #1D281E 60%, #111812 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #1D2B1F 0%, #141E15 50%, #0D140E 100%)',
+    flapBorderHex: '#3F5B41',
     pageSpreadLightCss: 'linear-gradient(90deg, #E6EFE2 0%, #DCE8D7 50%, #EAF2E6 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #1C241C 0%, #171E17 50%, #1E261E 100%)',
     patternCss:
@@ -344,6 +384,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 78% 16%, rgba(148, 204, 132, 0.2) 0%, transparent 65%)',
     accentHex: '#587A56',
+    ribbonGradient: 'linear-gradient(180deg, #264A2B 0%, #376E3E 50%, #1B3820 100%)',
+    ribbonBorder: '#8CC593',
+    paperEdgeGiltHex: '#9FBFA1',
+    recommendedInkId: 'forest-moss',
+    recommendedWritingStyleId: 'poetic-centered',
     isDarkScene: true,
   },
   {
@@ -352,8 +397,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Crimson Velvet & Rose Parchment',
     shortLabel: 'Crimson Velvet',
     descriptionBn: 'গাঢ় মেরুন মখমলের বাঁধাই ও গোলাপি-তাম্র আভার রাজকীয় পাতা।',
+    conceptSubtitleBn: 'গাঢ় রক্তিম মখমল, গোলাপের পাপড়ি ও রাজকীয় অলংকরণ',
+    conceptQuoteBn: '“হৃদয়ের প্রতিটি ক্ষতের ভেতর লুকিয়ে থাকে এক একটি অমর কবিতা।”',
     swatchGradient: 'linear-gradient(135deg, #421C22 0%, #281014 65%, #17080B 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 20%, #461B22 0%, #280E13 60%, #140609 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #301116 0%, #220B0F 50%, #150608 100%)',
+    flapBorderHex: '#782E39',
     pageSpreadLightCss: 'linear-gradient(90deg, #F5E5E3 0%, #ECD6D3 50%, #F7E8E6 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #29181B 0%, #211215 50%, #2B1A1D 100%)',
     patternCss:
@@ -361,6 +410,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 25% 15%, rgba(226, 140, 128, 0.18) 0%, transparent 68%)',
     accentHex: '#8E2F3C',
+    ribbonGradient: 'linear-gradient(180deg, #6B1520 0%, #992331 50%, #520D16 100%)',
+    ribbonBorder: '#F6AAB5',
+    paperEdgeGiltHex: '#C4989E',
+    recommendedInkId: 'oxblood-crimson',
+    recommendedWritingStyleId: 'fountain-calligraphy',
     isDarkScene: true,
   },
   {
@@ -369,8 +423,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Sunlit Khadi & Sandstone',
     shortLabel: 'Sunlit Khadi',
     descriptionBn: 'শরতের উজ্জ্বল রোদে বোনা খাদি ও সোনালি বেলেপাথর রঙের পাতা।',
+    conceptSubtitleBn: 'শিশিরভেজা শিউলি ফুল, মিষ্টি রোদ ও দেশি সুতোয় বোনা পাতা',
+    conceptQuoteBn: '“শরতের কাশফুল আর রোদের ওম মনে করিয়ে দেয় ঘরের টান।”',
     swatchGradient: 'linear-gradient(135deg, #E8DAC5 0%, #D5C0A3 65%, #BFA482 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 12%, #6B4C32 0%, #4E3521 62%, #382415 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #3A2516 0%, #2B1A0E 50%, #1A0E07 100%)',
+    flapBorderHex: '#7C5535',
     pageSpreadLightCss: 'linear-gradient(90deg, #FBF3E4 0%, #F4E7CF 50%, #FCF6E9 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #26211A 0%, #1F1B15 50%, #28231C 100%)',
     patternCss:
@@ -378,6 +436,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 80% 12%, rgba(255, 225, 165, 0.28) 0%, transparent 65%)',
     accentHex: '#C8A273',
+    ribbonGradient: 'linear-gradient(180deg, #A86532 0%, #C97E42 50%, #7E461E 100%)',
+    ribbonBorder: '#F5CE9E',
+    paperEdgeGiltHex: '#D4BD9E',
+    recommendedInkId: 'gilded-amber',
+    recommendedWritingStyleId: 'compact-chronicle',
     isDarkScene: false,
   },
   {
@@ -386,8 +449,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Starlit Midnight Vellum',
     shortLabel: 'Starlit Night',
     descriptionBn: 'গভীর নীল রাতের বাঁধাই ও তারার আলোমাখা নিশুতি পাতা।',
+    conceptSubtitleBn: 'গভীর নিশীথে ছাদের রেলিং আর আকাশের দূর নক্ষত্রবীথি',
+    conceptQuoteBn: '“যখন পুরো শহর ঘুমিয়ে পড়ে, কেবল নক্ষত্রেরা ডায়েরির পাতা পড়ে।”',
     swatchGradient: 'linear-gradient(135deg, #1B2236 0%, #111626 65%, #090C16 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 15%, #1E2740 0%, #121728 60%, #090C15 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #121828 0%, #0C111C 50%, #070A12 100%)',
+    flapBorderHex: '#2F3C5E',
     pageSpreadLightCss: 'linear-gradient(90deg, #E4E8F2 0%, #D9DFEC 50%, #E8ECF5 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #181D2B 0%, #131723 50%, #1A2030 100%)',
     patternCss:
@@ -395,6 +462,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 75% 15%, rgba(142, 174, 245, 0.2) 0%, transparent 65%)',
     accentHex: '#435785',
+    ribbonGradient: 'linear-gradient(180deg, #223761 0%, #335496 50%, #172747 100%)',
+    ribbonBorder: '#9BBBF5',
+    paperEdgeGiltHex: '#8E9EBE',
+    recommendedInkId: 'royal-amethyst',
+    recommendedWritingStyleId: 'poetic-centered',
     isDarkScene: true,
   },
   {
@@ -403,8 +475,12 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     nameEn: 'Quiet Travertine Ivory',
     shortLabel: 'Quiet Ivory',
     descriptionBn: 'ন্যূনতম অলংকরণে শান্ত ও একাগ্র পাঠের জন্য শুভ্র আইভরি পাতা।',
+    conceptSubtitleBn: 'কোলাহলহীন শুভ্রতা, পাথরের শীতলতা ও খাঁটি ধ্যান',
+    conceptQuoteBn: '“অতিরিক্ত শব্দের ভিড় সরিয়ে নিঃশব্দেই লুকিয়ে থাকে পূর্ণতা।”',
     swatchGradient: 'linear-gradient(135deg, #DFD9CE 0%, #CBC3B5 65%, #B5AC9C 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 15%, #4A433B 0%, #332E28 65%, #221E1A 100%)',
+    flapBackgroundCss: 'linear-gradient(180deg, #282420 0%, #1C1916 50%, #12100E 100%)',
+    flapBorderHex: '#544D44',
     pageSpreadLightCss: 'linear-gradient(90deg, #F7F5F0 0%, #EFECE4 50%, #F9F7F3 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #21201E 0%, #1B1A18 50%, #232220 100%)',
     patternCss:
@@ -412,6 +488,11 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ambientGlowCss:
       'radial-gradient(circle at 25% 15%, rgba(255, 252, 245, 0.25) 0%, transparent 65%)',
     accentHex: '#A69B8A',
+    ribbonGradient: 'linear-gradient(180deg, #5C564E 0%, #7A7268 50%, #443E37 100%)',
+    ribbonBorder: '#DDD7CE',
+    paperEdgeGiltHex: '#C7C1B5',
+    recommendedInkId: 'sepia-walnut',
+    recommendedWritingStyleId: 'grand-folio',
     isDarkScene: false,
   },
 ];

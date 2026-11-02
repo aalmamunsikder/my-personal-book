@@ -26,7 +26,6 @@ import {
 import {
   CollectionCardIllustration,
   MistySunriseHeaderArtwork,
-  PoemRiverBoatFooterArtwork,
   VintageTitleFlourish,
 } from '../common/JournalArtwork';
 import { BookDialogFrame } from '../common/BookDialogFrame';
@@ -586,10 +585,6 @@ export function SignaturePanelsShowcase() {
             )}
           </div>
 
-          {/* Bottom Misty River & Boat Illustration */}
-          <div className="mt-auto">
-            <PoemRiverBoatFooterArtwork />
-          </div>
         </article>
       </div>
 

@@ -112,8 +112,8 @@ test('toSafeFilenameSlug keeps Bangla Unicode characters while stripping unsafe 
 });
 
 test('JOURNAL_TEMPLATES and PAGE_VARIATIONS provide complete literary templates and page variations', () => {
-  assert.equal(PAGE_VARIATIONS.length, 6);
-  assert.equal(JOURNAL_TEMPLATES.length, 8);
+  assert.equal(PAGE_VARIATIONS.length, 10);
+  assert.equal(JOURNAL_TEMPLATES.length, 12);
 
   for (const tpl of JOURNAL_TEMPLATES) {
     assert.ok(tpl.nameBn.length > 0);
