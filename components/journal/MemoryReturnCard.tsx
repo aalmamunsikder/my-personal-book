@@ -25,23 +25,32 @@ export function MemoryReturnCard({ entries, onSelectEntry }: MemoryReturnCardPro
   const memory = memoryPool[shuffleIndex % memoryPool.length];
 
   return (
-    <div className="relative rounded-[7px] bg-gradient-to-b from-[#F9F1E2] to-[#EBDEC7] dark:from-[#2B251E] dark:to-[#221D17] border border-[#C5AD8B] dark:border-[#42392E] p-3.5 space-y-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_2px_6px_rgba(40,24,10,0.08)]">
+    <div
+      style={{
+        background: 'var(--vv-card-bg)',
+        borderColor: 'var(--vv-card-border)',
+      }}
+      className="relative rounded-[7px] border p-3.5 space-y-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_2px_6px_rgba(40,24,10,0.08)] transition-all duration-300"
+    >
       {/* Corner filigree ticks */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 left-1.5 text-[9px] text-[#9E7B56]/70 select-none"
+        className="pointer-events-none absolute top-1 left-1.5 text-[9px] text-[var(--accent)] opacity-70 select-none"
       >
         ⌜
       </span>
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 right-1.5 text-[9px] text-[#9E7B56]/70 select-none"
+        className="pointer-events-none absolute top-1 right-1.5 text-[9px] text-[var(--accent)] opacity-70 select-none"
       >
         ⌝
       </span>
-      <div className="flex items-center justify-between text-[11px] text-[#6E5239] dark:text-[#C8A882] border-b border-dashed border-[#D3BE9E] dark:border-[#3D342A] pb-1.5">
+      <div
+        style={{ borderColor: 'var(--vv-card-border)' }}
+        className="flex items-center justify-between text-[11px] text-[var(--accent)] border-b border-dashed pb-1.5"
+      >
         <span className="inline-flex items-center gap-1.5 font-bangla font-semibold">
-          <Sparkles className="w-3.5 h-3.5 text-[#9C6B3B]" />
+          <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>স্মৃতির পাতা থেকে (Archival Memory Leaf)</span>
         </span>
         {memoryPool.length > 1 && (
@@ -53,7 +62,11 @@ export function MemoryReturnCard({ entries, onSelectEntry }: MemoryReturnCardPro
             }}
             aria-label="Show another memory"
             title="অন্য একটি স্মৃতি দেখুন"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#E5D3B8]/80 dark:bg-[#362E25] border border-[#C4AC89] dark:border-[#4B3F33] hover:bg-[#DBC4A2] dark:hover:bg-[#4A3F33] font-bangla text-[10.5px] cursor-pointer"
+            style={{
+              background: 'var(--vv-secondary-btn-bg)',
+              borderColor: 'var(--vv-card-border)',
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] border hover:brightness-95 text-[var(--ink)] font-bangla text-[10.5px] cursor-pointer"
           >
             <RefreshCw className="w-2.5 h-2.5" />
             <span>পাল্টান</span>
@@ -80,7 +93,7 @@ export function MemoryReturnCard({ entries, onSelectEntry }: MemoryReturnCardPro
         <p className="text-xs font-bangla text-[var(--ink-soft)] line-clamp-2 leading-relaxed italic">
           “{getSingleLinePreview(memory.content, 85)}”
         </p>
-        <span className="inline-flex items-center gap-1 text-[11px] font-bangla font-medium text-[#6E4F3A] dark:text-[#C8A882] pt-0.5 group-hover:underline">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bangla font-medium text-[var(--accent)] pt-0.5 group-hover:underline">
           <BookOpen className="w-3 h-3" />
           <span>পাতাটি খুলুন →</span>
         </span>

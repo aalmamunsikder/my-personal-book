@@ -269,10 +269,15 @@ export interface DeskBackgroundMeta {
   descriptionBn: string;
   conceptSubtitleBn: string;
   conceptQuoteBn: string;
+  conceptBadgeBn: string;
+  conceptMotifSymbol: string;
+  mappedAppThemeId: string;
   swatchGradient: string;
   backgroundCss: string;
   flapBackgroundCss: string;
   flapBorderHex: string;
+  flapActiveNavCss: string;
+  flapActiveBorderHex: string;
   pageSpreadLightCss: string;
   pageSpreadDarkCss: string;
   patternCss: string;
@@ -281,6 +286,22 @@ export interface DeskBackgroundMeta {
   ribbonGradient: string;
   ribbonBorder: string;
   paperEdgeGiltHex: string;
+  paperStackLayer1Light: string;
+  paperStackLayer1Dark: string;
+  paperStackLayer2Light: string;
+  paperStackLayer2Dark: string;
+  cardSurfaceLightCss: string;
+  cardSurfaceDarkCss: string;
+  cardBorderLightHex: string;
+  cardBorderDarkHex: string;
+  cardSelectedLightCss: string;
+  cardSelectedDarkCss: string;
+  primaryButtonCss: string;
+  primaryButtonBorderHex: string;
+  primaryButtonTextHex: string;
+  secondaryButtonLightCss: string;
+  secondaryButtonDarkCss: string;
+  headerArtworkTintCss: string;
   recommendedInkId: InkColorId;
   recommendedWritingStyleId: WritingStyleId;
   isDarkScene: boolean;
@@ -295,10 +316,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'মেহগনি চামড়ার বাঁধাই ও উষ্ণ প্রাচীন পার্চমেন্ট পাতার ক্লাসিক ডায়েরি।',
     conceptSubtitleBn: 'উষ্ণ মোমবাতি, প্রাচীন সেপিয়া ও মেহগনি বাঁধাই',
     conceptQuoteBn: '“কিছু কথা কখনো বলা হয় না, শুধু লিখে রাখা হয়...”',
+    conceptBadgeBn: 'ক্লাসিক মেহগনি সংস্করণ · Antique Archival Tome',
+    conceptMotifSymbol: '✒️',
+    mappedAppThemeId: 'heritage-parchment',
     swatchGradient: 'linear-gradient(135deg, #3A2214 0%, #24140B 60%, #160B06 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 18%, #3B2314 0%, #24140B 55%, #120904 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #2A170C 0%, #1E1007 50%, #120904 100%)',
     flapBorderHex: '#6E482B',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(94,62,40,0.92) 0%, rgba(68,44,28,0.88) 100%)',
+    flapActiveBorderHex: '#B8895A',
     pageSpreadLightCss: 'linear-gradient(90deg, #F4E9D8 0%, #EFE0C9 50%, #F6ECDC 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #221F1B 0%, #1C1916 50%, #24201C 100%)',
     patternCss:
@@ -309,6 +335,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #8E2219 0%, #B83227 50%, #7A1B14 100%)',
     ribbonBorder: '#DFB578',
     paperEdgeGiltHex: '#BEA380',
+    paperStackLayer1Light: '#D6BFA0',
+    paperStackLayer1Dark: '#3A3226',
+    paperStackLayer2Light: '#E6D5BA',
+    paperStackLayer2Dark: '#2E2820',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #FAF3E6 0%, #EDE0C9 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #2B241D 0%, #211B15 100%)',
+    cardBorderLightHex: '#C5AD8B',
+    cardBorderDarkHex: '#4A3F32',
+    cardSelectedLightCss: 'linear-gradient(90deg, #E6D3B5 0%, #EFE0C8 50%, #E6D3B5 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #382E23 0%, #31281E 50%, #2C241B 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #6C4C35 0%, #563B28 55%, #422C1D 100%)',
+    primaryButtonBorderHex: '#9E7755',
+    primaryButtonTextHex: '#FDF8F0',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #FBF5E9 0%, #EBDEC7 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #322A21 0%, #261F18 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #EFE1CA 0%, #EFE1CA 34%, rgba(239,225,202,0.75) 56%, rgba(239,225,202,0) 85%)',
     recommendedInkId: 'sepia-walnut',
     recommendedWritingStyleId: 'classic-book',
     isDarkScene: true,
@@ -321,10 +363,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'বৃষ্টির বিকেলের মেঘলা নীলচে বাঁধাই ও শীতল কুয়াশা-রঙা ডায়েরির পাতা।',
     conceptSubtitleBn: 'শ্রাবণের মেঘে ভেজা একলা বারান্দা ও শীতল নীলচে কুয়াশা',
     conceptQuoteBn: '“মেঘের ডাক আর ভেজা মাটির ঘ্রাণে সব পুরানো স্মৃতিরা ফিরে আসে...”',
+    conceptBadgeBn: 'শ্রাবণ-মেঘ সংস্করণ · Monsoon Veranda Folio',
+    conceptMotifSymbol: '🌧️',
+    mappedAppThemeId: 'ocean-ink',
     swatchGradient: 'linear-gradient(135deg, #2C363B 0%, #1E262B 60%, #141A1E 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 10%, #2D3940 0%, #1C252A 58%, #101619 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #1C272C 0%, #141C20 50%, #0D1216 100%)',
     flapBorderHex: '#3E5561',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(48,74,89,0.92) 0%, rgba(33,52,64,0.88) 100%)',
+    flapActiveBorderHex: '#7BA3B8',
     pageSpreadLightCss: 'linear-gradient(90deg, #E3ECEF 0%, #D8E4E8 50%, #E7F0F2 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #1B2327 0%, #161D21 50%, #1E262B 100%)',
     patternCss:
@@ -335,6 +382,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #3A5364 0%, #4D6D82 50%, #2A3C49 100%)',
     ribbonBorder: '#9BB4C7',
     paperEdgeGiltHex: '#9BB1BC',
+    paperStackLayer1Light: '#B8CBD4',
+    paperStackLayer1Dark: '#253137',
+    paperStackLayer2Light: '#CEE0E6',
+    paperStackLayer2Dark: '#1E282D',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #EFF5F7 0%, #DCE8EC 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #212C31 0%, #192226 100%)',
+    cardBorderLightHex: '#A8C0CB',
+    cardBorderDarkHex: '#364954',
+    cardSelectedLightCss: 'linear-gradient(90deg, #C7DBE3 0%, #D6E6EC 50%, #C7DBE3 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #2B3B42 0%, #243238 50%, #1E2A2F 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #3B5B6C 0%, #2C4654 55%, #1E323D 100%)',
+    primaryButtonBorderHex: '#6E95A8',
+    primaryButtonTextHex: '#F2F8FA',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #F2F7F9 0%, #DCE7EC 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #253238 0%, #1B252A 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #DAE6EA 0%, #DAE6EA 36%, rgba(218,230,234,0.78) 58%, rgba(218,230,234,0) 88%)',
     recommendedInkId: 'oxford-midnight',
     recommendedWritingStyleId: 'epistolary-intimate',
     isDarkScene: true,
@@ -347,10 +410,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'মধ্যরাতের পাঠাগারে মোমবাতির সোনালি-তাম্র আভায় রাঙানো পাতা।',
     conceptSubtitleBn: 'অন্ধকার ঘরে একাকী মোমের মৃদু কম্পন ও স্বর্ণালী মলাট',
     conceptQuoteBn: '“নিঝুম রাতে বইয়ের পাতার ওপরেই কেবল নিজের মুখোমুখি হওয়া যায়।”',
+    conceptBadgeBn: 'দীপশিখা পাঠাগার সংস্করণ · Candlelight Nocturne',
+    conceptMotifSymbol: '🕯️',
+    mappedAppThemeId: 'desert-clay',
     swatchGradient: 'radial-gradient(circle at 30% 30%, #593818 0%, #1E130B 65%, #0F0905 100%)',
     backgroundCss: 'radial-gradient(circle at 50% 24%, #452912 0%, #1F1209 56%, #0D0704 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #331C0B 0%, #241307 50%, #160B03 100%)',
     flapBorderHex: '#8B5B24',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(122,76,26,0.92) 0%, rgba(84,50,15,0.88) 100%)',
+    flapActiveBorderHex: '#E0A858',
     pageSpreadLightCss: 'linear-gradient(90deg, #F6E4C4 0%, #EDD5AC 50%, #F8E8CB 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #281D13 0%, #20170E 50%, #2A1F14 100%)',
     patternCss:
@@ -361,6 +429,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #9C6721 0%, #D49337 50%, #784E15 100%)',
     ribbonBorder: '#F5D38C',
     paperEdgeGiltHex: '#CBB07E',
+    paperStackLayer1Light: '#DFC28E',
+    paperStackLayer1Dark: '#3E2D1B',
+    paperStackLayer2Light: '#ECD5AA',
+    paperStackLayer2Dark: '#322415',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #FCF0D8 0%, #EED6AE 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #332416 0%, #261B10 100%)',
+    cardBorderLightHex: '#CCA870',
+    cardBorderDarkHex: '#593F23',
+    cardSelectedLightCss: 'linear-gradient(90deg, #E8C892 0%, #F2D8AA 50%, #E8C892 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #47321D 0%, #3B2917 50%, #322213 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #8F5A22 0%, #6E4316 55%, #52300D 100%)',
+    primaryButtonBorderHex: '#C9924C',
+    primaryButtonTextHex: '#FFF6E5',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #FDF2DC 0%, #ECD4AC 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #382819 0%, #2B1E12 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #F0DAB4 0%, #F0DAB4 36%, rgba(240,218,180,0.78) 58%, rgba(240,218,180,0) 88%)',
     recommendedInkId: 'gilded-amber',
     recommendedWritingStyleId: 'fountain-calligraphy',
     isDarkScene: true,
@@ -373,10 +457,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'অরণ্য-সবুজ চামড়ার মলাট ও জলপাই-রঙা ভেষজ ডায়েরির পাতা।',
     conceptSubtitleBn: 'অরণ্যের বুনো ঘ্রাণ, শুকনো ফার্ন পাতা আর গভীর স্তব্ধতা',
     conceptQuoteBn: '“গাছের ছায়ায় লেখা একটি পঙ্‌ক্তি কখনো মিথ্যে হয় না।”',
+    conceptBadgeBn: 'ভেষজ অরণ্য সংস্করণ · Botanical Herbarium',
+    conceptMotifSymbol: '🌿',
+    mappedAppThemeId: 'botanical-journal',
     swatchGradient: 'linear-gradient(135deg, #2D3B2E 0%, #1F2A20 65%, #141C15 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 15%, #2E3D2F 0%, #1D281E 60%, #111812 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #1D2B1F 0%, #141E15 50%, #0D140E 100%)',
     flapBorderHex: '#3F5B41',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(52,82,55,0.92) 0%, rgba(36,59,39,0.88) 100%)',
+    flapActiveBorderHex: '#84B087',
     pageSpreadLightCss: 'linear-gradient(90deg, #E6EFE2 0%, #DCE8D7 50%, #EAF2E6 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #1C241C 0%, #171E17 50%, #1E261E 100%)',
     patternCss:
@@ -387,6 +476,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #264A2B 0%, #376E3E 50%, #1B3820 100%)',
     ribbonBorder: '#8CC593',
     paperEdgeGiltHex: '#9FBFA1',
+    paperStackLayer1Light: '#BDD1B8',
+    paperStackLayer1Dark: '#263327',
+    paperStackLayer2Light: '#D2E2CE',
+    paperStackLayer2Dark: '#1F291F',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #F1F7EE 0%, #DFEBDC 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #222D22 0%, #1A231A 100%)',
+    cardBorderLightHex: '#ACC4A7',
+    cardBorderDarkHex: '#374B38',
+    cardSelectedLightCss: 'linear-gradient(90deg, #CBE0C6 0%, #D9EAD5 50%, #CBE0C6 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #2D3D2E 0%, #253326 50%, #1F2B20 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #3D613F 0%, #2D4A2F 55%, #1E3420 100%)',
+    primaryButtonBorderHex: '#739E76',
+    primaryButtonTextHex: '#F2F9F1',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #F3F8F1 0%, #DEEBDA 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #263327 0%, #1C261D 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #DCE8D8 0%, #DCE8D8 36%, rgba(220,232,216,0.78) 58%, rgba(220,232,216,0) 88%)',
     recommendedInkId: 'forest-moss',
     recommendedWritingStyleId: 'poetic-centered',
     isDarkScene: true,
@@ -399,10 +504,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'গাঢ় মেরুন মখমলের বাঁধাই ও গোলাপি-তাম্র আভার রাজকীয় পাতা।',
     conceptSubtitleBn: 'গাঢ় রক্তিম মখমল, গোলাপের পাপড়ি ও রাজকীয় অলংকরণ',
     conceptQuoteBn: '“হৃদয়ের প্রতিটি ক্ষতের ভেতর লুকিয়ে থাকে এক একটি অমর কবিতা।”',
+    conceptBadgeBn: 'রাজকীয় মখমল সংস্করণ · Royal Velvet Manuscript',
+    conceptMotifSymbol: '🌹',
+    mappedAppThemeId: 'rosewood-letters',
     swatchGradient: 'linear-gradient(135deg, #421C22 0%, #281014 65%, #17080B 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 20%, #461B22 0%, #280E13 60%, #140609 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #301116 0%, #220B0F 50%, #150608 100%)',
     flapBorderHex: '#782E39',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(112,34,46,0.92) 0%, rgba(78,22,31,0.88) 100%)',
+    flapActiveBorderHex: '#D9828F',
     pageSpreadLightCss: 'linear-gradient(90deg, #F5E5E3 0%, #ECD6D3 50%, #F7E8E6 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #29181B 0%, #211215 50%, #2B1A1D 100%)',
     patternCss:
@@ -413,6 +523,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #6B1520 0%, #992331 50%, #520D16 100%)',
     ribbonBorder: '#F6AAB5',
     paperEdgeGiltHex: '#C4989E',
+    paperStackLayer1Light: '#D8B6B4',
+    paperStackLayer1Dark: '#3A2125',
+    paperStackLayer2Light: '#E8CECC',
+    paperStackLayer2Dark: '#2E191C',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #FBF0EE 0%, #EEDBD8 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #321D21 0%, #261518 100%)',
+    cardBorderLightHex: '#CCA5A2',
+    cardBorderDarkHex: '#543036',
+    cardSelectedLightCss: 'linear-gradient(90deg, #E5C6C3 0%, #F0D6D3 50%, #E5C6C3 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #45262B 0%, #381E22 50%, #2E181C 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #7A232E 0%, #5E1922 55%, #451018 100%)',
+    primaryButtonBorderHex: '#B85A67',
+    primaryButtonTextHex: '#FDF2F3',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #FCF2F1 0%, #ECDAD8 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #382024 0%, #2A171A 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #EED8D5 0%, #EED8D5 36%, rgba(238,216,213,0.78) 58%, rgba(238,216,213,0) 88%)',
     recommendedInkId: 'oxblood-crimson',
     recommendedWritingStyleId: 'fountain-calligraphy',
     isDarkScene: true,
@@ -425,10 +551,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'শরতের উজ্জ্বল রোদে বোনা খাদি ও সোনালি বেলেপাথর রঙের পাতা।',
     conceptSubtitleBn: 'শিশিরভেজা শিউলি ফুল, মিষ্টি রোদ ও দেশি সুতোয় বোনা পাতা',
     conceptQuoteBn: '“শরতের কাশফুল আর রোদের ওম মনে করিয়ে দেয় ঘরের টান।”',
+    conceptBadgeBn: 'শারদীয় খাদি সংস্করণ · Handspun Khadi Edition',
+    conceptMotifSymbol: '🌾',
+    mappedAppThemeId: 'old-library',
     swatchGradient: 'linear-gradient(135deg, #E8DAC5 0%, #D5C0A3 65%, #BFA482 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 12%, #6B4C32 0%, #4E3521 62%, #382415 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #3A2516 0%, #2B1A0E 50%, #1A0E07 100%)',
     flapBorderHex: '#7C5535',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(110,74,44,0.92) 0%, rgba(82,53,30,0.88) 100%)',
+    flapActiveBorderHex: '#D8AB79',
     pageSpreadLightCss: 'linear-gradient(90deg, #FBF3E4 0%, #F4E7CF 50%, #FCF6E9 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #26211A 0%, #1F1B15 50%, #28231C 100%)',
     patternCss:
@@ -439,6 +570,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #A86532 0%, #C97E42 50%, #7E461E 100%)',
     ribbonBorder: '#F5CE9E',
     paperEdgeGiltHex: '#D4BD9E',
+    paperStackLayer1Light: '#DFCAA8',
+    paperStackLayer1Dark: '#3A3125',
+    paperStackLayer2Light: '#EDE0C7',
+    paperStackLayer2Dark: '#2E271E',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #FDF7EB 0%, #F2E4CC 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #2E271E 0%, #231E17 100%)',
+    cardBorderLightHex: '#CFB692',
+    cardBorderDarkHex: '#4E4132',
+    cardSelectedLightCss: 'linear-gradient(90deg, #EAD6B5 0%, #F4E4C8 50%, #EAD6B5 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #3D3326 0%, #332B20 50%, #2B241B 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #8B572A 0%, #6E421D 55%, #522F12 100%)',
+    primaryButtonBorderHex: '#C48B56',
+    primaryButtonTextHex: '#FFF8EE',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #FEF9EF 0%, #EFE2C9 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #362E23 0%, #29221A 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #F4E6CE 0%, #F4E6CE 36%, rgba(244,230,206,0.78) 58%, rgba(244,230,206,0) 88%)',
     recommendedInkId: 'gilded-amber',
     recommendedWritingStyleId: 'compact-chronicle',
     isDarkScene: false,
@@ -451,10 +598,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'গভীর নীল রাতের বাঁধাই ও তারার আলোমাখা নিশুতি পাতা।',
     conceptSubtitleBn: 'গভীর নিশীথে ছাদের রেলিং আর আকাশের দূর নক্ষত্রবীথি',
     conceptQuoteBn: '“যখন পুরো শহর ঘুমিয়ে পড়ে, কেবল নক্ষত্রেরা ডায়েরির পাতা পড়ে।”',
+    conceptBadgeBn: 'নক্ষত্রবীথি সংস্করণ · Celestial Midnight Vellum',
+    conceptMotifSymbol: '✨',
+    mappedAppThemeId: 'lavender-nocturne',
     swatchGradient: 'linear-gradient(135deg, #1B2236 0%, #111626 65%, #090C16 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 15%, #1E2740 0%, #121728 60%, #090C15 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #121828 0%, #0C111C 50%, #070A12 100%)',
     flapBorderHex: '#2F3C5E',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(44,61,102,0.92) 0%, rgba(29,42,74,0.88) 100%)',
+    flapActiveBorderHex: '#7E9CE0',
     pageSpreadLightCss: 'linear-gradient(90deg, #E4E8F2 0%, #D9DFEC 50%, #E8ECF5 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #181D2B 0%, #131723 50%, #1A2030 100%)',
     patternCss:
@@ -465,6 +617,22 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #223761 0%, #335496 50%, #172747 100%)',
     ribbonBorder: '#9BBBF5',
     paperEdgeGiltHex: '#8E9EBE',
+    paperStackLayer1Light: '#B8C2DA',
+    paperStackLayer1Dark: '#232B40',
+    paperStackLayer2Light: '#CDD5E8',
+    paperStackLayer2Dark: '#1B2233',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #EFF2F9 0%, #DCE2F0 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #1F2638 0%, #171C2B 100%)',
+    cardBorderLightHex: '#A6B4D4',
+    cardBorderDarkHex: '#333F5E',
+    cardSelectedLightCss: 'linear-gradient(90deg, #C6D1E8 0%, #D6DFF2 50%, #C6D1E8 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #29344F 0%, #222B42 50%, #1C2438 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #314878 0%, #233559 55%, #17243F 100%)',
+    primaryButtonBorderHex: '#6886C4',
+    primaryButtonTextHex: '#F0F4FC',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #F2F4FA 0%, #DCE2F0 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #232B40 0%, #192030 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #DCE2F0 0%, #DCE2F0 36%, rgba(220,226,240,0.78) 58%, rgba(220,226,240,0) 88%)',
     recommendedInkId: 'royal-amethyst',
     recommendedWritingStyleId: 'poetic-centered',
     isDarkScene: true,
@@ -477,10 +645,15 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     descriptionBn: 'ন্যূনতম অলংকরণে শান্ত ও একাগ্র পাঠের জন্য শুভ্র আইভরি পাতা।',
     conceptSubtitleBn: 'কোলাহলহীন শুভ্রতা, পাথরের শীতলতা ও খাঁটি ধ্যান',
     conceptQuoteBn: '“অতিরিক্ত শব্দের ভিড় সরিয়ে নিঃশব্দেই লুকিয়ে থাকে পূর্ণতা।”',
+    conceptBadgeBn: 'শুভ্র পাথুরে সংস্করণ · Minimal Travertine Codex',
+    conceptMotifSymbol: '🕊️',
+    mappedAppThemeId: 'minimal-chalk',
     swatchGradient: 'linear-gradient(135deg, #DFD9CE 0%, #CBC3B5 65%, #B5AC9C 100%)',
     backgroundCss: 'radial-gradient(ellipse at 50% 15%, #4A433B 0%, #332E28 65%, #221E1A 100%)',
     flapBackgroundCss: 'linear-gradient(180deg, #282420 0%, #1C1916 50%, #12100E 100%)',
     flapBorderHex: '#544D44',
+    flapActiveNavCss: 'linear-gradient(90deg, rgba(78,72,64,0.92) 0%, rgba(56,51,45,0.88) 100%)',
+    flapActiveBorderHex: '#B8B0A4',
     pageSpreadLightCss: 'linear-gradient(90deg, #F7F5F0 0%, #EFECE4 50%, #F9F7F3 100%)',
     pageSpreadDarkCss: 'linear-gradient(90deg, #21201E 0%, #1B1A18 50%, #232220 100%)',
     patternCss:
@@ -491,11 +664,59 @@ export const DESK_BACKGROUNDS: DeskBackgroundMeta[] = [
     ribbonGradient: 'linear-gradient(180deg, #5C564E 0%, #7A7268 50%, #443E37 100%)',
     ribbonBorder: '#DDD7CE',
     paperEdgeGiltHex: '#C7C1B5',
+    paperStackLayer1Light: '#D5CFC3',
+    paperStackLayer1Dark: '#302E2B',
+    paperStackLayer2Light: '#E5E0D6',
+    paperStackLayer2Dark: '#262422',
+    cardSurfaceLightCss: 'linear-gradient(180deg, #FAF9F6 0%, #ECE8DF 100%)',
+    cardSurfaceDarkCss: 'linear-gradient(180deg, #282624 0%, #1F1E1C 100%)',
+    cardBorderLightHex: '#C7C0B4',
+    cardBorderDarkHex: '#45413C',
+    cardSelectedLightCss: 'linear-gradient(90deg, #DFDAD0 0%, #EAE6DE 50%, #DFDAD0 100%)',
+    cardSelectedDarkCss: 'linear-gradient(90deg, #363330 0%, #2E2B28 50%, #262421 100%)',
+    primaryButtonCss: 'linear-gradient(180deg, #59534B 0%, #423D37 55%, #2E2A26 100%)',
+    primaryButtonBorderHex: '#948B7F',
+    primaryButtonTextHex: '#F7F5F2',
+    secondaryButtonLightCss: 'linear-gradient(180deg, #FBF9F6 0%, #EAE6DD 100%)',
+    secondaryButtonDarkCss: 'linear-gradient(180deg, #302E2B 0%, #242220 100%)',
+    headerArtworkTintCss: 'linear-gradient(90deg, #EAE6DE 0%, #EAE6DE 36%, rgba(234,230,222,0.78) 58%, rgba(234,230,222,0) 88%)',
     recommendedInkId: 'sepia-walnut',
     recommendedWritingStyleId: 'grand-folio',
     isDarkScene: false,
   },
 ];
+
+export function getBookThemeCssVars(
+  bg: DeskBackgroundMeta,
+  isDarkTheme = false
+): Record<string, string> {
+  return {
+    '--vv-cover-bg': bg.backgroundCss,
+    '--vv-cover-border': bg.accentHex,
+    '--vv-flap-bg': bg.flapBackgroundCss,
+    '--vv-flap-border': bg.flapBorderHex,
+    '--vv-flap-active-bg': bg.flapActiveNavCss,
+    '--vv-flap-active-border': bg.flapActiveBorderHex,
+    '--vv-ribbon-bg': bg.ribbonGradient,
+    '--vv-ribbon-border': bg.ribbonBorder,
+    '--vv-edge-gilt': bg.paperEdgeGiltHex,
+    '--vv-stack-1': isDarkTheme ? bg.paperStackLayer1Dark : bg.paperStackLayer1Light,
+    '--vv-stack-2': isDarkTheme ? bg.paperStackLayer2Dark : bg.paperStackLayer2Light,
+    '--vv-card-bg': isDarkTheme ? bg.cardSurfaceDarkCss : bg.cardSurfaceLightCss,
+    '--vv-card-border': isDarkTheme ? bg.cardBorderDarkHex : bg.cardBorderLightHex,
+    '--vv-card-selected-bg': isDarkTheme
+      ? bg.cardSelectedDarkCss
+      : bg.cardSelectedLightCss,
+    '--vv-primary-btn-bg': bg.primaryButtonCss,
+    '--vv-primary-btn-border': bg.primaryButtonBorderHex,
+    '--vv-primary-btn-text': bg.primaryButtonTextHex,
+    '--vv-secondary-btn-bg': isDarkTheme
+      ? bg.secondaryButtonDarkCss
+      : bg.secondaryButtonLightCss,
+    '--vv-header-tint': bg.headerArtworkTintCss,
+    '--vv-accent': bg.accentHex,
+  };
+}
 
 export interface JournalTemplate {
   id: string;

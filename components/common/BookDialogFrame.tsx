@@ -68,14 +68,21 @@ export function BookDialogFrame({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`relative ${widthClassName} w-full rounded-[10px] border-2 border-[#8B6343] dark:border-[#6B4E36] bg-[#F6ECDC] dark:bg-[#241E19] shadow-[0_24px_60px_rgba(12,6,2,0.65),inset_0_0_0_2px_rgba(195,155,105,0.28)] outline-none`}
+        style={{
+          background: 'var(--vv-card-bg)',
+          borderColor: 'var(--vv-flap-border)',
+        }}
+        className={`relative ${widthClassName} w-full rounded-[10px] border-2 shadow-[0_24px_60px_rgba(12,6,2,0.65),inset_0_0_0_2px_rgba(195,155,105,0.28)] outline-none transition-all duration-300`}
       >
         <BrassCornerOrnament position="tl" />
         <BrassCornerOrnament position="tr" />
         <BrassCornerOrnament position="bl" />
         <BrassCornerOrnament position="br" />
 
-        <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-dashed border-[#D3BE9E] dark:border-[#3D3329]">
+        <div
+          style={{ borderColor: 'var(--vv-card-border)' }}
+          className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-dashed"
+        >
           <div className="min-w-0">
             {eyebrow && (
               <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ink-muted)] font-bangla">
@@ -93,7 +100,7 @@ export function BookDialogFrame({
             type="button"
             onClick={onClose}
             aria-label={closeLabel}
-            className="shrink-0 p-1.5 rounded-[5px] text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[#E7D6BB]/70 dark:hover:bg-[#332A21] cursor-pointer"
+            className="shrink-0 p-1.5 rounded-[5px] text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -102,7 +109,10 @@ export function BookDialogFrame({
         <div className="px-5 py-4 max-h-[62vh] overflow-y-auto">{children}</div>
 
         {footer && (
-          <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-4 border-t border-dashed border-[#D3BE9E] dark:border-[#3D3329]">
+          <div
+            style={{ borderColor: 'var(--vv-card-border)' }}
+            className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-4 border-t border-dashed"
+          >
             {footer}
           </div>
         )}

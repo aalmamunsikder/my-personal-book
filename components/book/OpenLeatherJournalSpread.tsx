@@ -64,6 +64,7 @@ import {
 import { triggerTextDownload } from '../../lib/export-utils';
 import {
   DESK_BACKGROUNDS,
+  getBookThemeCssVars,
   getDeskBackground,
   getInkColorPreset,
   getWritingStylePreset,
@@ -172,6 +173,7 @@ export function OpenLeatherJournalSpread() {
     permanentlyDeleteEntry,
     createCollection,
     updateSettings,
+    updateAppearanceConfig,
     setVaultLocked,
   } = useJournal();
 
@@ -847,6 +849,21 @@ export function OpenLeatherJournalSpread() {
     [deskBackground]
   );
 
+  const bookThemeCssVars = useMemo(
+    () => getBookThemeCssVars(activeDeskBg, isDarkTheme),
+    [activeDeskBg, isDarkTheme]
+  );
+
+  // Sync book theme CSS custom properties and mapped data-theme on documentElement so all components & portaled modals inherit them
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    for (const [key, val] of Object.entries(bookThemeCssVars)) {
+      root.style.setProperty(key, val);
+    }
+    root.setAttribute('data-theme', activeDeskBg.mappedAppThemeId);
+  }, [bookThemeCssVars, activeDeskBg.mappedAppThemeId]);
+
   const activeWritingStyleId: WritingStyleId = useMemo(() => {
     const override = selectedEntry?.appearanceOverride?.writingStyle as
       | WritingStyleId
@@ -885,6 +902,9 @@ export function OpenLeatherJournalSpread() {
     if (bgMeta) {
       setDefaultInkColor(bgMeta.recommendedInkId);
       setDefaultWritingStyle(bgMeta.recommendedWritingStyleId);
+      updateAppearanceConfig({
+        appThemeId: bgMeta.mappedAppThemeId as any,
+      });
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(DEFAULT_INK_COLOR_KEY, bgMeta.recommendedInkId);
         window.localStorage.setItem(DEFAULT_WRITING_STYLE_KEY, bgMeta.recommendedWritingStyleId);
@@ -1281,8 +1301,13 @@ export function OpenLeatherJournalSpread() {
           }
         }}
         bookThemeNameBn={activeDeskBg.nameBn}
+        conceptBadgeBn={activeDeskBg.conceptBadgeBn}
+        conceptSubtitleBn={activeDeskBg.conceptSubtitleBn}
+        conceptQuoteBn={activeDeskBg.conceptQuoteBn}
+        conceptMotifSymbol={activeDeskBg.conceptMotifSymbol}
         coverBackgroundCss={activeDeskBg.backgroundCss}
         coverBorderHex={activeDeskBg.accentHex}
+        paperEdgeGiltHex={activeDeskBg.paperEdgeGiltHex}
         ribbonGradient={activeDeskBg.ribbonGradient}
         ribbonBorder={activeDeskBg.ribbonBorder}
         totalEntries={activeEntries.length}
@@ -1311,6 +1336,7 @@ export function OpenLeatherJournalSpread() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
         style={{
+          ...(bookThemeCssVars as React.CSSProperties),
           background: activeDeskBg.backgroundCss,
           borderColor: activeDeskBg.accentHex,
         }}
@@ -1331,13 +1357,23 @@ export function OpenLeatherJournalSpread() {
         {/* ========================================================================
             MOBILE TOP BAR (< lg): Custom Stitched Leather & Brass Header Inside Book
            ======================================================================== */}
-        <div className="flex lg:hidden items-center justify-between px-3 py-2 mb-2 rounded-[10px] bg-gradient-to-r from-[#2D1D13] via-[#24160E] to-[#2D1D13] text-[#F5E9D7] border border-[#6E4E35] shadow-md">
+        <div
+          style={{
+            background: activeDeskBg.flapBackgroundCss,
+            borderColor: activeDeskBg.flapBorderHex,
+          }}
+          className="flex lg:hidden items-center justify-between px-3 py-2 mb-2 rounded-[10px] text-[#F5E9D7] border shadow-md transition-all duration-500"
+        >
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
               aria-label="Open journal navigation menu"
-              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/50"
+              style={{
+                background: activeDeskBg.flapActiveNavCss,
+                borderColor: activeDeskBg.flapActiveBorderHex,
+              }}
+              className="p-1.5 rounded-[5px] text-[#D8A668] border"
             >
               <Menu className="w-4 h-4" />
             </button>
@@ -1349,6 +1385,9 @@ export function OpenLeatherJournalSpread() {
               <span className="text-base font-literary font-semibold tracking-tight text-[#F5E9D7]">
                 VerseVault
               </span>
+              <span className="hidden xs:inline-block text-[10px] font-bangla px-1.5 py-0.5 rounded bg-black/25 text-[#E8D5BC] border border-white/10">
+                {activeDeskBg.conceptMotifSymbol} {activeDeskBg.conceptBadgeBn}
+              </span>
             </button>
           </div>
 
@@ -1358,7 +1397,7 @@ export function OpenLeatherJournalSpread() {
               onClick={toggleSound}
               aria-label={soundEnabled ? 'Mute book sounds' : 'Enable book sounds'}
               title={soundEnabled ? 'Sound FX On' : 'Sound FX Muted'}
-              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
+              className="p-1.5 rounded-[5px] bg-black/25 text-[#D8A668] border border-white/15"
             >
               {soundEnabled ? (
                 <Volume2 className="w-3.5 h-3.5" />
@@ -1373,7 +1412,7 @@ export function OpenLeatherJournalSpread() {
                 setIsBookClosed(true);
               }}
               aria-label="Close leather book cover"
-              className="px-2 py-1 rounded-[5px] bg-[#3D281A] text-[#E6CFAF] text-[11px] font-bangla border border-[#8B6343]/40 flex items-center gap-1"
+              className="px-2 py-1 rounded-[5px] bg-black/25 text-[#E6CFAF] text-[11px] font-bangla border border-white/15 flex items-center gap-1"
             >
               <BookMarked className="w-3 h-3 text-[#D8A668]" />
               <span>প্রচ্ছদ</span>
@@ -1381,7 +1420,12 @@ export function OpenLeatherJournalSpread() {
             <button
               type="button"
               onClick={() => handleStartNewEntry()}
-              className="px-2.5 py-1 rounded-[5px] bg-gradient-to-b from-[#745138] to-[#563A26] text-[#FDF8F0] text-xs font-bangla font-medium border border-[#9E7755] flex items-center gap-1 shadow-xs"
+              style={{
+                background: 'var(--vv-primary-btn-bg)',
+                borderColor: 'var(--vv-primary-btn-border)',
+                color: 'var(--vv-primary-btn-text)',
+              }}
+              className="px-2.5 py-1 rounded-[5px] text-xs font-bangla font-medium border flex items-center gap-1 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>লিখুন</span>
@@ -1394,7 +1438,7 @@ export function OpenLeatherJournalSpread() {
                 })
               }
               aria-label="Toggle theme"
-              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
+              className="p-1.5 rounded-[5px] bg-black/25 text-[#D8A668] border border-white/15"
             >
               {settings.theme === 'dark' ? (
                 <Sun className="w-3.5 h-3.5" />
@@ -1413,7 +1457,7 @@ export function OpenLeatherJournalSpread() {
               }}
               aria-label={isAdmin ? 'Sign out admin' : 'Admin login'}
               title={isAdmin ? `${user?.email ?? 'মালিক'} (ক্লিক করে লগআউট)` : 'মালিক লগইন'}
-              className="p-1.5 rounded-[5px] bg-[#3D281A] text-[#D8A668] border border-[#8B6343]/40"
+              className="p-1.5 rounded-[5px] bg-black/25 text-[#D8A668] border border-white/15"
             >
               {isAdmin ? (
                 <ShieldCheck className="w-3.5 h-3.5 text-[#7EB865]" />
@@ -1438,9 +1482,18 @@ export function OpenLeatherJournalSpread() {
             className="absolute inset-0 bg-black/60 backdrop-blur-xs"
             onClick={() => setMobileDrawerOpen(false)}
           />
-          <div className="relative z-10 w-72 max-w-[82vw] h-full bg-gradient-to-b from-[#2E1E14] via-[#23150D] to-[#1A100A] border-r-2 border-[#6E4E35] p-4 flex flex-col justify-between text-[#E8D8C3] overflow-y-auto">
+          <div
+            style={{
+              background: activeDeskBg.flapBackgroundCss,
+              borderColor: activeDeskBg.flapBorderHex,
+            }}
+            className="relative z-10 w-72 max-w-[82vw] h-full border-r-2 p-4 flex flex-col justify-between text-[#E8D8C3] overflow-y-auto"
+          >
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#4E3422]">
+              <div
+                style={{ borderColor: activeDeskBg.flapBorderHex }}
+                className="flex items-center justify-between pb-3 border-b"
+              >
                 <div className="flex items-center gap-2.5">
                   <GoldenQuillEmblem className="w-9 h-9" />
                   <div>
@@ -1702,7 +1755,11 @@ export function OpenLeatherJournalSpread() {
                         ? 'পাতা উল্টানোর ধ্বনি চালু (Book Sound FX On)'
                         : 'ধ্বনি বন্ধ (Book Sound FX Muted)'
                     }
-                    className="p-1.5 rounded-[5px] bg-[#382417] hover:bg-[#4B3120] text-[#D8A668] border border-[#8B6343]/60 transition-colors cursor-pointer"
+                    style={{
+                      background: activeDeskBg.flapActiveNavCss,
+                      borderColor: activeDeskBg.flapBorderHex,
+                    }}
+                    className="p-1.5 rounded-[5px] hover:brightness-110 text-[#D8A668] border transition-all cursor-pointer"
                   >
                     {soundEnabled ? (
                       <Volume2 className="w-3.5 h-3.5" />
@@ -1723,7 +1780,11 @@ export function OpenLeatherJournalSpread() {
                         ? 'Switch to Warm Parchment'
                         : 'Switch to Nocturnal Ink'
                     }
-                    className="p-1.5 rounded-[5px] bg-[#382417] hover:bg-[#4B3120] text-[#D8A668] border border-[#8B6343]/60 transition-colors cursor-pointer"
+                    style={{
+                      background: activeDeskBg.flapActiveNavCss,
+                      borderColor: activeDeskBg.flapBorderHex,
+                    }}
+                    className="p-1.5 rounded-[5px] hover:brightness-110 text-[#D8A668] border transition-all cursor-pointer"
                   >
                     {settings.theme === 'dark' ? (
                       <Sun className="w-3.5 h-3.5" />
@@ -1740,7 +1801,11 @@ export function OpenLeatherJournalSpread() {
                   type="button"
                   data-testid="open-book-studio-btn"
                   onClick={() => setTemplateModalOpen(true)}
-                  className="py-1.5 px-2.5 rounded-[6px] bg-gradient-to-b from-[#4E3523] to-[#382416] hover:from-[#5D402B] hover:to-[#452D1D] text-[#F5E4CC] border border-[#966D4B]/60 text-[11px] font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                  style={{
+                    background: activeDeskBg.flapActiveNavCss,
+                    borderColor: activeDeskBg.flapActiveBorderHex,
+                  }}
+                  className="py-1.5 px-2.5 rounded-[6px] hover:brightness-110 text-[#F5E4CC] border text-[11px] font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3 text-[#D8A668] shrink-0" />
                   <span>সাজসজ্জা ও টেমপ্লেট</span>
@@ -1752,7 +1817,11 @@ export function OpenLeatherJournalSpread() {
                     setIsBookClosed(true);
                   }}
                   title="ডায়েরির চামড়ার প্রচ্ছদ বন্ধ করুন (View Closed Leather Book Cover)"
-                  className="py-1.5 px-2.5 rounded-[6px] bg-gradient-to-b from-[#3E291A] to-[#2B1B10] hover:from-[#4E3422] hover:to-[#382416] text-[#E8CFAF] border border-[#845E3E]/60 text-[11px] font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                  style={{
+                    background: 'rgba(0,0,0,0.28)',
+                    borderColor: activeDeskBg.flapBorderHex,
+                  }}
+                  className="py-1.5 px-2.5 rounded-[6px] hover:bg-black/40 text-[#E8CFAF] border text-[11px] font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
                   <BookMarked className="w-3 h-3 text-[#D8A668] shrink-0" />
                   <span>প্রচ্ছদ (Cover)</span>
@@ -1760,7 +1829,10 @@ export function OpenLeatherJournalSpread() {
               </div>
 
               {/* Stitched Leather Book Theme Medallions (Inside Left Book Flap) */}
-              <div className="px-2.5 py-1.5 rounded-[8px] bg-[#1A0F09]/55 border border-[#DFB578]/30 space-y-1">
+              <div
+                style={{ borderColor: activeDeskBg.flapBorderHex }}
+                className="px-2.5 py-1.5 rounded-[8px] bg-black/35 border space-y-1"
+              >
                 <div className="flex items-center justify-between text-[10.5px] font-bangla text-[#D8A668]">
                   <span>বইয়ের আবহ:</span>
                   <span className="text-[#E8D5BC] truncate max-w-[115px]">
@@ -1798,13 +1870,24 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'journal', 'all')}
-                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
+                  style={
                     leftPageMode === 'list' &&
                     typeDropdown === 'all' &&
                     activeSection !== 'favorites' &&
                     activeSection !== 'archive'
-                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                      ? {
+                          background: activeDeskBg.flapActiveNavCss,
+                          borderColor: activeDeskBg.flapActiveBorderHex,
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer border ${
+                    leftPageMode === 'list' &&
+                    typeDropdown === 'all' &&
+                    activeSection !== 'favorites' &&
+                    activeSection !== 'archive'
+                      ? 'text-[#FFF8EE] font-medium'
+                      : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -1819,10 +1902,18 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('overview', 'journal', 'all')}
-                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
+                  style={
                     leftPageMode === 'overview'
-                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                      ? {
+                          background: activeDeskBg.flapActiveNavCss,
+                          borderColor: activeDeskBg.flapActiveBorderHex,
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer border ${
+                    leftPageMode === 'overview'
+                      ? 'text-[#FFF8EE] font-medium'
+                      : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -1834,10 +1925,18 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'poems', 'poem')}
-                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
+                  style={
                     leftPageMode === 'list' && typeDropdown === 'poem'
-                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                      ? {
+                          background: activeDeskBg.flapActiveNavCss,
+                          borderColor: activeDeskBg.flapActiveBorderHex,
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer border ${
+                    leftPageMode === 'list' && typeDropdown === 'poem'
+                      ? 'text-[#FFF8EE] font-medium'
+                      : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -1852,10 +1951,18 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'quotes', 'quote')}
-                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
+                  style={
                     leftPageMode === 'list' && typeDropdown === 'quote'
-                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                      ? {
+                          background: activeDeskBg.flapActiveNavCss,
+                          borderColor: activeDeskBg.flapActiveBorderHex,
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer border ${
+                    leftPageMode === 'list' && typeDropdown === 'quote'
+                      ? 'text-[#FFF8EE] font-medium'
+                      : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -1870,10 +1977,18 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('list', 'fragments', 'fragment')}
-                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
+                  style={
                     leftPageMode === 'list' && typeDropdown === 'fragment'
-                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                      ? {
+                          background: activeDeskBg.flapActiveNavCss,
+                          borderColor: activeDeskBg.flapActiveBorderHex,
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer border ${
+                    leftPageMode === 'list' && typeDropdown === 'fragment'
+                      ? 'text-[#FFF8EE] font-medium'
+                      : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -1888,10 +2003,18 @@ export function OpenLeatherJournalSpread() {
                 <button
                   type="button"
                   onClick={() => selectNavMode('collections', 'collections', 'all')}
-                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer ${
+                  style={
                     leftPageMode === 'collections' || leftPageMode === 'collection-entries'
-                      ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                      : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                      ? {
+                          background: activeDeskBg.flapActiveNavCss,
+                          borderColor: activeDeskBg.flapActiveBorderHex,
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-[7px] text-xs sm:text-[13px] transition-all cursor-pointer border ${
+                    leftPageMode === 'collections' || leftPageMode === 'collection-entries'
+                      ? 'text-[#FFF8EE] font-medium'
+                      : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
@@ -1904,14 +2027,25 @@ export function OpenLeatherJournalSpread() {
                 </button>
 
                 {/* Compact 2x2 Grid for Secondary Tools (Calendar, Favorites, Archive, Ask Archive) */}
-                <div className="grid grid-cols-2 gap-1 pt-2 mt-1.5 border-t border-[#4E3422]/50">
+                <div
+                  style={{ borderColor: activeDeskBg.flapBorderHex }}
+                  className="grid grid-cols-2 gap-1 pt-2 mt-1.5 border-t"
+                >
                   <button
                     type="button"
                     onClick={() => selectNavMode('calendar', 'calendar', 'all')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer ${
+                    style={
                       leftPageMode === 'calendar'
-                        ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                        : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                        ? {
+                            background: activeDeskBg.flapActiveNavCss,
+                            borderColor: activeDeskBg.flapActiveBorderHex,
+                          }
+                        : undefined
+                    }
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer border ${
+                      leftPageMode === 'calendar'
+                        ? 'text-[#FFF8EE] font-medium'
+                        : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                     }`}
                   >
                     <CalendarIcon className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
@@ -1921,10 +2055,18 @@ export function OpenLeatherJournalSpread() {
                   <button
                     type="button"
                     onClick={() => selectNavMode('list', 'favorites', 'all')}
-                    className={`flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer ${
+                    style={
                       leftPageMode === 'list' && activeSection === 'favorites'
-                        ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                        : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                        ? {
+                            background: activeDeskBg.flapActiveNavCss,
+                            borderColor: activeDeskBg.flapActiveBorderHex,
+                          }
+                        : undefined
+                    }
+                    className={`flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer border ${
+                      leftPageMode === 'list' && activeSection === 'favorites'
+                        ? 'text-[#FFF8EE] font-medium'
+                        : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                     }`}
                   >
                     <span className="flex items-center gap-1.5 truncate">
@@ -1939,10 +2081,18 @@ export function OpenLeatherJournalSpread() {
                   <button
                     type="button"
                     onClick={() => selectNavMode('list', 'archive', 'all')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer ${
+                    style={
                       leftPageMode === 'list' && activeSection === 'archive'
-                        ? 'bg-[#4E3422]/90 text-[#FFF8EE] font-medium border border-[#9E7551]/50'
-                        : 'text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55'
+                        ? {
+                            background: activeDeskBg.flapActiveNavCss,
+                            borderColor: activeDeskBg.flapActiveBorderHex,
+                          }
+                        : undefined
+                    }
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs transition-all cursor-pointer border ${
+                      leftPageMode === 'list' && activeSection === 'archive'
+                        ? 'text-[#FFF8EE] font-medium'
+                        : 'border-transparent text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25'
                     }`}
                   >
                     <Archive className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
@@ -1953,7 +2103,7 @@ export function OpenLeatherJournalSpread() {
                     type="button"
                     onClick={() => setAskArchiveModalOpen(true)}
                     title="Ask My Archive"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-[#362317]/55 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-xs text-[#CDB89E] hover:text-[#FFF8EE] hover:bg-black/25 transition-all cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-[#D8A668] shrink-0" />
                     <span className="truncate">Ask Archive</span>
@@ -1963,7 +2113,10 @@ export function OpenLeatherJournalSpread() {
             </div>
 
             {/* Bottom Utility Controls & Embossed Mountain-Moon Leather Artwork */}
-            <div className="pt-3 space-y-2 border-t border-[#4E3422]/60 mt-3">
+            <div
+              style={{ borderColor: activeDeskBg.flapBorderHex }}
+              className="pt-3 space-y-2 border-t mt-3"
+            >
               <div className="flex items-center justify-between px-2 text-xs text-[#B89F82]">
                 <button
                   type="button"
@@ -1990,7 +2143,13 @@ export function OpenLeatherJournalSpread() {
 
               <div className="px-2 space-y-1.5">
                 {isAdmin ? (
-                  <div className="p-2 rounded-lg bg-[#3A2417] border border-[#7D5638] flex items-center justify-between text-xs">
+                  <div
+                    style={{
+                      background: activeDeskBg.flapActiveNavCss,
+                      borderColor: activeDeskBg.flapActiveBorderHex,
+                    }}
+                    className="p-2 rounded-lg border flex items-center justify-between text-xs"
+                  >
                     <span className="flex items-center gap-1.5 text-[#EAD5BE] truncate" title={user?.email ?? 'মালিক'}>
                       <ShieldCheck className="w-3.5 h-3.5 text-[#7EB865] shrink-0" />
                       <span className="truncate">{user?.email ?? 'মালিক'}</span>
@@ -2008,7 +2167,11 @@ export function OpenLeatherJournalSpread() {
                   <button
                     type="button"
                     onClick={() => setAdminLoginModalOpen(true)}
-                    className="w-full py-1.5 px-2.5 rounded-lg bg-[#3A2518] hover:bg-[#4E3220] border border-[#8B6343]/60 text-xs text-[#E8D8C3] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    style={{
+                      background: activeDeskBg.flapActiveNavCss,
+                      borderColor: activeDeskBg.flapBorderHex,
+                    }}
+                    className="w-full py-1.5 px-2.5 rounded-lg hover:brightness-110 border text-xs text-[#E8D8C3] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <KeyRound className="w-3.5 h-3.5 text-[#D8A668]" />
                     <span>মালিক লগইন</span>
@@ -2028,13 +2191,46 @@ export function OpenLeatherJournalSpread() {
             className="flex-1 min-w-0 relative rounded-[15px] p-[3px] sm:p-[6px] shadow-[inset_0_0_0_1px_rgba(65,42,22,0.55),0_12px_28px_rgba(12,6,2,0.45)] transition-colors duration-500"
           >
             {/* Second Stacked Page Layer (Simulated gilt deckled edges) */}
-            <div className="rounded-[12px] bg-[#D6BFA0] dark:bg-[#3A3226] p-[3px] sm:p-[5px] border border-[#AE926F] dark:border-[#4C4436] shadow-inner">
+            <div
+              style={{
+                backgroundColor: 'var(--vv-stack-1)',
+                borderColor: 'var(--vv-card-border)',
+              }}
+              className="rounded-[12px] p-[3px] sm:p-[5px] border shadow-inner transition-colors duration-500"
+            >
               {/* Third Stacked Page Layer */}
-              <div className="rounded-[10px] bg-[#E6D5BA] dark:bg-[#2E2820] p-[2px] sm:p-[4px] border border-[#C3A987] dark:border-[#443C30]">
+              <div
+                style={{
+                  backgroundColor: 'var(--vv-stack-2)',
+                  borderColor: 'var(--vv-card-border)',
+                }}
+                className="rounded-[10px] p-[2px] sm:p-[4px] border transition-colors duration-500"
+              >
                 {/* Settings & Backup Full View */}
                 {leftPageMode === 'settings' ? (
-                  <div className="bg-[var(--page)] rounded-[8px] p-4 sm:p-8 h-[690px] sm:h-[720px] max-h-[720px] flex flex-col overflow-hidden border border-[var(--line)]">
-                    <div className="mb-4 pb-3 border-b border-[var(--line)] flex items-center justify-between shrink-0">
+                  <div
+                    style={{
+                      background: isDarkTheme
+                        ? activeDeskBg.pageSpreadDarkCss
+                        : activeDeskBg.pageSpreadLightCss,
+                      borderColor: 'var(--vv-card-border)',
+                    }}
+                    className="relative rounded-[8px] p-4 sm:p-8 h-[690px] sm:h-[720px] max-h-[720px] flex flex-col overflow-hidden border transition-all duration-500"
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-0 opacity-90"
+                      style={{ backgroundImage: activeDeskBg.patternCss }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-0"
+                      style={{ background: activeDeskBg.ambientGlowCss }}
+                    />
+                    <div
+                      style={{ borderColor: 'var(--vv-card-border)' }}
+                      className="relative z-10 mb-4 pb-3 border-b flex items-center justify-between shrink-0"
+                    >
                       <ParchmentPlateButton
                         onClick={() => selectNavMode('list', 'journal', 'all')}
                         size="sm"
@@ -2043,11 +2239,14 @@ export function OpenLeatherJournalSpread() {
                         <span>ডায়েরির পাতায় ফিরে যান (Return to Open Diary)</span>
                       </ParchmentPlateButton>
                       <span className="text-xs text-[var(--ink-soft)] font-literary italic">
-                        VerseVault Literary Archive &amp; Backup
+                        {activeDeskBg.conceptMotifSymbol} {activeDeskBg.nameBn} · {activeDeskBg.conceptBadgeBn}
                       </span>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-                      <SettingsBackupView />
+                    <div className="relative z-10 flex-1 min-h-0 overflow-y-auto pr-1">
+                      <SettingsBackupView
+                        deskBackground={deskBackground}
+                        onChangeDeskBackground={handleChangeDeskBackground}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -2058,10 +2257,11 @@ export function OpenLeatherJournalSpread() {
                       background: isDarkTheme
                         ? activeDeskBg.pageSpreadDarkCss
                         : activeDeskBg.pageSpreadLightCss,
+                      borderColor: 'var(--vv-card-border)',
                     }}
                     data-testid="book-spread-container"
                     data-book-theme={deskBackground}
-                    className="relative grid grid-cols-1 lg:grid-cols-12 grid-rows-[minmax(0,1fr)] rounded-[8px] overflow-hidden border border-[#C8B294] dark:border-[#3A342B] h-[690px] sm:h-[720px] max-h-[720px] shadow-[inset_0_0_40px_rgba(120,88,52,0.09)] transition-all duration-500"
+                    className="relative grid grid-cols-1 lg:grid-cols-12 grid-rows-[minmax(0,1fr)] rounded-[8px] overflow-hidden border h-[690px] sm:h-[720px] max-h-[720px] shadow-[inset_0_0_40px_rgba(120,88,52,0.09)] transition-all duration-500"
                   >
                     {/* In-Book Atmospheric Paper Pattern & Candle/Ambient Glow Layers (Strictly Inside the Open Spread) */}
                     <div
@@ -2292,12 +2492,20 @@ export function OpenLeatherJournalSpread() {
                           <div className="flex flex-col justify-between h-full min-h-0 space-y-3.5">
                             <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-1">
                               {/* Authentic Misty Sunrise Watercolor Header Card */}
-                              <div className="relative rounded-2xl overflow-hidden border border-[#CBB699] dark:border-[#3A342B] shadow-xs">
-                                <MistySunriseHeaderArtwork />
+                              <div
+                                style={{ borderColor: 'var(--vv-card-border)' }}
+                                className="relative rounded-2xl overflow-hidden border shadow-xs"
+                              >
+                                <MistySunriseHeaderArtwork tintCss={activeDeskBg.headerArtworkTintCss} />
                                 <div className="absolute top-3 left-4 right-4 flex items-center justify-between text-[#3A281B]">
-                                  <span className="text-sm font-literary font-semibold">
-                                    VerseVault
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-literary font-semibold">
+                                      VerseVault
+                                    </span>
+                                    <span className="text-[10.5px] font-bangla px-2 py-0.5 rounded-full bg-white/60 text-[#2B1E16] border border-black/10 font-medium">
+                                      {activeDeskBg.conceptMotifSymbol} {activeDeskBg.conceptBadgeBn}
+                                    </span>
+                                  </div>
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       type="button"
@@ -2316,7 +2524,7 @@ export function OpenLeatherJournalSpread() {
                                   <h2 className="text-2xl font-bold font-bangla flex items-center gap-2">
                                     <span>{bdGreeting.bangla}</span>
                                     <span className="text-lg" aria-hidden="true">
-                                      🌿
+                                      {activeDeskBg.conceptMotifSymbol}
                                     </span>
                                   </h2>
                                   <p className="text-xs sm:text-sm font-bangla text-[#4A382B]">
@@ -2337,9 +2545,13 @@ export function OpenLeatherJournalSpread() {
                                         setTypeDropdown(stat.type);
                                         setLeftPageMode('list');
                                       }}
-                                      className="bg-[#F7EFE2] dark:bg-[#2C2620] hover:bg-[#E8D7BF] dark:hover:bg-[#3A3226] border border-[#D6C2A7] dark:border-[#423A30] rounded-xl py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 transition-all shadow-2xs group"
+                                      style={{
+                                        background: 'var(--vv-card-bg)',
+                                        borderColor: 'var(--vv-card-border)',
+                                      }}
+                                      className="hover:brightness-95 border rounded-xl py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 transition-all shadow-2xs group cursor-pointer"
                                     >
-                                      <Icon className="w-4 h-4 text-[#6B4E37] dark:text-[#C8A882] group-hover:scale-110 transition-transform" />
+                                      <Icon className="w-4 h-4 text-[var(--accent)] group-hover:scale-110 transition-transform" />
                                       <span className="text-[11px] font-medium text-[var(--ink-soft)]">
                                         {stat.label}
                                       </span>
@@ -2356,7 +2568,12 @@ export function OpenLeatherJournalSpread() {
                                 <button
                                   type="button"
                                   onClick={() => handleStartNewEntry({ type: 'diary' })}
-                                  className="flex-1 py-2.5 px-3 rounded-xl bg-[#6E4F3A] hover:bg-[#5D412F] text-[#FDF8F0] text-xs font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                                  style={{
+                                    background: 'var(--vv-primary-btn-bg)',
+                                    borderColor: 'var(--vv-primary-btn-border)',
+                                    color: 'var(--vv-primary-btn-text)',
+                                  }}
+                                  className="flex-1 py-2.5 px-3 rounded-xl border text-xs font-bangla font-medium flex items-center justify-center gap-1.5 shadow-xs transition-all hover:brightness-110 cursor-pointer"
                                 >
                                   <Plus className="w-4 h-4" />
                                   <span>আজকের পাতা লিখুন</span>
@@ -2364,9 +2581,13 @@ export function OpenLeatherJournalSpread() {
                                 <button
                                   type="button"
                                   onClick={() => setTemplateModalOpen(true)}
-                                  className="py-2.5 px-3 rounded-xl bg-[#E5D2B5] dark:bg-[#322B23] hover:bg-[#DBC29E] dark:hover:bg-[#3E3529] text-[var(--ink)] text-xs font-bangla font-medium flex items-center justify-center gap-1.5 border border-[#C8B193] dark:border-[#4F4336] transition-colors"
+                                  style={{
+                                    background: 'var(--vv-secondary-btn-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="py-2.5 px-3 rounded-xl text-[var(--ink)] text-xs font-bangla font-medium flex items-center justify-center gap-1.5 border transition-all hover:brightness-95 cursor-pointer"
                                 >
-                                  <Sparkles className="w-3.5 h-3.5 text-[#6E4F3A] dark:text-[#C8A882]" />
+                                  <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
                                   <span>টেমপ্লেট</span>
                                 </button>
                               </div>
@@ -2421,7 +2642,11 @@ export function OpenLeatherJournalSpread() {
                                       setCalMonth(0);
                                       setSelectedCalendarDate('2025-01-28');
                                     }}
-                                    className="text-[11px] px-2 py-0.5 rounded bg-[#E3D1B8] dark:bg-[#332C24] text-[var(--ink)] hover:opacity-85"
+                                    style={{
+                                      background: 'var(--vv-secondary-btn-bg)',
+                                      borderColor: 'var(--vv-card-border)',
+                                    }}
+                                    className="text-[11px] px-2 py-0.5 rounded border text-[var(--ink)] hover:opacity-85"
                                   >
                                     Jan 2025
                                   </button>
@@ -2434,7 +2659,11 @@ export function OpenLeatherJournalSpread() {
                                       setCalMonth(m - 1);
                                       setSelectedCalendarDate(today);
                                     }}
-                                    className="text-[11px] px-2 py-0.5 rounded bg-[#6E4F3A] text-[#FDF8F0] hover:opacity-90"
+                                    style={{
+                                      background: 'var(--vv-primary-btn-bg)',
+                                      color: 'var(--vv-primary-btn-text)',
+                                    }}
+                                    className="text-[11px] px-2 py-0.5 rounded hover:opacity-90"
                                   >
                                     Today
                                   </button>
@@ -2442,7 +2671,13 @@ export function OpenLeatherJournalSpread() {
                               </div>
 
                               {/* Month Switcher */}
-                              <div className="flex items-center justify-between px-2 py-1 bg-[#EAE0D0]/60 dark:bg-[#2B251F] rounded-xl">
+                              <div
+                                style={{
+                                  background: 'var(--vv-card-bg)',
+                                  borderColor: 'var(--vv-card-border)',
+                                }}
+                                className="flex items-center justify-between px-2 py-1 border rounded-xl"
+                              >
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2513,18 +2748,30 @@ export function OpenLeatherJournalSpread() {
                                       className="relative h-8 flex flex-col items-center justify-center group focus:outline-none"
                                     >
                                       <span
+                                        style={
+                                          isSelectedDate
+                                            ? {
+                                                background: 'var(--vv-primary-btn-bg)',
+                                                color: 'var(--vv-primary-btn-text)',
+                                              }
+                                            : entryCountOnDate > 0
+                                            ? {
+                                                background: 'var(--vv-secondary-btn-bg)',
+                                              }
+                                            : undefined
+                                        }
                                         className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors tabular-nums ${
                                           isSelectedDate
-                                            ? 'bg-[#4E3624] text-[#FDF8F0] font-bold shadow-xs'
+                                            ? 'font-bold shadow-xs'
                                             : entryCountOnDate > 0
-                                            ? 'text-[var(--ink)] font-semibold bg-[#E5D3B8]/60 dark:bg-[#332C23] group-hover:bg-[#DBC3A0] dark:group-hover:bg-[#3F3629]'
-                                            : 'text-[var(--ink-soft)] group-hover:bg-[#E5D4BC]/50 dark:group-hover:bg-[#332C23]/70'
+                                            ? 'text-[var(--ink)] font-semibold'
+                                            : 'text-[var(--ink-soft)] group-hover:bg-black/5'
                                         }`}
                                       >
                                         {cell.day}
                                       </span>
                                       {entryCountOnDate > 0 && !isSelectedDate && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#6E4F3A] dark:bg-[#C8A882] absolute -bottom-0.5" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] absolute -bottom-0.5" />
                                       )}
                                     </button>
                                   );
@@ -2533,7 +2780,10 @@ export function OpenLeatherJournalSpread() {
                             </div>
 
                             {/* Selected Date Entries List & "+ এই দিনে লিখুন" */}
-                            <div className="pt-3 border-t border-[#D8C5AA] dark:border-[#353028] space-y-2.5 shrink-0">
+                            <div
+                              style={{ borderColor: 'var(--vv-card-border)' }}
+                              className="pt-3 border-t space-y-2.5 shrink-0"
+                            >
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold font-bangla text-[var(--ink)]">
                                   {formatBanglaFullDate(selectedCalendarDate, false)}
@@ -2543,7 +2793,11 @@ export function OpenLeatherJournalSpread() {
                                   onClick={() =>
                                     handleStartNewEntry({ entryDate: selectedCalendarDate })
                                   }
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#6E4F3A] text-[#FDF8F0] text-[11px] font-bangla hover:opacity-95"
+                                  style={{
+                                    background: 'var(--vv-primary-btn-bg)',
+                                    color: 'var(--vv-primary-btn-text)',
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bangla hover:opacity-95"
                                 >
                                   <Plus className="w-3 h-3" />
                                   <span>এই দিনে লিখুন</span>
@@ -2551,7 +2805,13 @@ export function OpenLeatherJournalSpread() {
                               </div>
 
                               {selectedDayEntries.length === 0 ? (
-                                <div className="p-4 rounded-xl bg-[#F7EFE2]/70 dark:bg-[#2C2620] border border-dashed border-[#CBB699] dark:border-[#4A3E32] text-center space-y-1.5">
+                                <div
+                                  style={{
+                                    background: 'var(--vv-card-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="p-4 rounded-xl border border-dashed text-center space-y-1.5"
+                                >
                                   <p className="text-xs font-bangla text-[var(--ink-soft)]">
                                     এই তারিখে এখনো কোনো পাতা লেখা হয়নি।
                                   </p>
@@ -2562,7 +2822,7 @@ export function OpenLeatherJournalSpread() {
                                         entryDate: selectedCalendarDate,
                                       })
                                     }
-                                    className="text-xs font-bangla font-semibold text-[#6E4F3A] dark:text-[#C8A882] underline"
+                                    className="text-xs font-bangla font-semibold text-[var(--accent)] underline"
                                   >
                                     + নতুন লেখা শুরু করুন
                                   </button>
@@ -2585,11 +2845,13 @@ export function OpenLeatherJournalSpread() {
                                             handleSelectEntryFromList(entry.id, false);
                                           }
                                         }}
-                                        className={`w-full text-left p-3 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-colors ${
-                                          isSelected
-                                            ? 'bg-[#E5D2B5] dark:bg-[#322B23] border-[#C4AA87]'
-                                            : 'bg-[#F8F1E5] dark:bg-[#2C2620] border-[#D6C2A7] hover:bg-[#EFE2CE] dark:hover:bg-[#383128]'
-                                        }`}
+                                        style={{
+                                          background: isSelected
+                                            ? 'var(--vv-card-selected-bg)'
+                                            : 'var(--vv-card-bg)',
+                                          borderColor: 'var(--vv-card-border)',
+                                        }}
+                                        className="w-full text-left p-3 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-colors"
                                       >
                                         <div className="min-w-0">
                                           <h4 className="text-sm font-bold font-bangla text-[var(--ink)] truncate">
@@ -2606,7 +2868,8 @@ export function OpenLeatherJournalSpread() {
                                             handleSelectEntryFromList(entry.id, true);
                                           }}
                                           aria-label={`Edit ${entry.title}`}
-                                          className="p-1.5 rounded-full bg-[#E6D4BC] dark:bg-[#3A3229] text-[#5C422E] dark:text-[#D8C3A5] shrink-0 hover:scale-105"
+                                          style={{ background: 'var(--vv-secondary-btn-bg)' }}
+                                          className="p-1.5 rounded-full text-[var(--ink)] shrink-0 hover:scale-105"
                                         >
                                           <Edit3 className="w-3.5 h-3.5" />
                                         </button>
@@ -2623,7 +2886,10 @@ export function OpenLeatherJournalSpread() {
                         {leftPageMode === 'collections' && (
                           <div className="flex flex-col justify-between h-full min-h-0 space-y-4">
                             <div className="space-y-3.5 flex-1 min-h-0 flex flex-col overflow-hidden">
-                              <div className="flex items-center justify-between pb-2 border-b border-[#D8C5AA] dark:border-[#353028] shrink-0">
+                              <div
+                                style={{ borderColor: 'var(--vv-card-border)' }}
+                                className="flex items-center justify-between pb-2 border-b shrink-0"
+                              >
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
@@ -2641,7 +2907,11 @@ export function OpenLeatherJournalSpread() {
                                   type="button"
                                   onClick={() => setNewCollectionModalOpen(true)}
                                   aria-label="Create new collection"
-                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#6E4F3A] text-[#FDF8F0] text-xs font-bangla hover:opacity-95"
+                                  style={{
+                                    background: 'var(--vv-primary-btn-bg)',
+                                    color: 'var(--vv-primary-btn-text)',
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bangla hover:opacity-95"
                                 >
                                   <Plus className="w-3.5 h-3.5" />
                                   <span>নতুন সংকলন</span>
@@ -2667,7 +2937,11 @@ export function OpenLeatherJournalSpread() {
                                         setIsEditingOnRightPage(false);
                                       }
                                     }}
-                                    className="group rounded-xl overflow-hidden bg-[#F8F1E5] dark:bg-[#2C2620] border border-[#D4C0A3] dark:border-[#423A30] shadow-xs hover:shadow-md transition-all text-center flex flex-col"
+                                    style={{
+                                      background: 'var(--vv-card-bg)',
+                                      borderColor: 'var(--vv-card-border)',
+                                    }}
+                                    className="group rounded-xl overflow-hidden border shadow-xs hover:shadow-md transition-all text-center flex flex-col cursor-pointer"
                                   >
                                     <div className="h-[78px] w-full overflow-hidden">
                                       <CollectionCardIllustration
@@ -2961,28 +3235,42 @@ export function OpenLeatherJournalSpread() {
                                             handleSelectEntryFromList(item.id, false);
                                           }
                                         }}
+                                        style={{
+                                          background: isSelected
+                                            ? 'var(--vv-card-selected-bg)'
+                                            : 'var(--vv-card-bg)',
+                                          borderColor: 'var(--vv-card-border)',
+                                        }}
                                         className={`group relative flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-[7px] transition-all cursor-pointer border ${
                                           isSelected
-                                            ? 'bg-gradient-to-r from-[#E6D3B5] via-[#EFE0C8] to-[#E6D3B5] dark:from-[#352D24] dark:via-[#312A21] dark:to-[#2D261E] border-[#AD8B63] dark:border-[#665441] shadow-[0_3px_10px_rgba(45,28,12,0.12),inset_0_1px_0_rgba(255,252,245,0.75)]'
-                                            : 'bg-[#FAF3E6]/55 dark:bg-[#27211B]/55 border-[#DFCBB0]/80 dark:border-[#393027] hover:bg-[#EFE1C9]/85 dark:hover:bg-[#302820] hover:border-[#C5AB88]'
+                                            ? 'shadow-[0_3px_10px_rgba(45,28,12,0.12),inset_0_1px_0_rgba(255,252,245,0.65)]'
+                                            : 'hover:brightness-95'
                                         }`}
                                       >
                                         {/* Active Brass Index Tab Bar on Left Edge */}
                                         {isSelected && (
                                           <span
                                             aria-hidden="true"
-                                            className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-gradient-to-b from-[#C89B5E] via-[#8B5E34] to-[#5A3A1E]"
+                                            style={{ background: activeDeskBg.ribbonGradient }}
+                                            className="absolute left-0 top-2 bottom-2 w-1 rounded-r"
                                           />
                                         )}
 
                                         <div className="flex items-center gap-3 min-w-0 flex-1">
                                           {/* Perforated Archival Postage Date Stamp Badge ("28 Jan") */}
                                           <div
-                                            className={`w-12 h-12 rounded-[5px] border flex flex-col items-center justify-center shrink-0 transition-colors ${
-                                              isSelected
-                                                ? 'bg-gradient-to-b from-[#5A3E28] to-[#422C1B] text-[#FAF2E4] border-[#8C6747] shadow-xs'
-                                                : 'bg-gradient-to-b from-[#EFE2CC] to-[#DFCCB0] dark:from-[#3A3229] dark:to-[#2E2720] text-[var(--ink)] border-[#C4AC89] dark:border-[#4F4336]'
-                                            }`}
+                                            style={{
+                                              background: isSelected
+                                                ? 'var(--vv-primary-btn-bg)'
+                                                : 'var(--vv-secondary-btn-bg)',
+                                              borderColor: isSelected
+                                                ? 'var(--vv-primary-btn-border)'
+                                                : 'var(--vv-card-border)',
+                                              color: isSelected
+                                                ? 'var(--vv-primary-btn-text)'
+                                                : 'var(--ink)',
+                                            }}
+                                            className="w-12 h-12 rounded-[5px] border flex flex-col items-center justify-center shrink-0 transition-colors shadow-2xs"
                                           >
                                             <span className="text-base font-bold leading-none tabular-nums">
                                               {badge.day}
@@ -2990,7 +3278,7 @@ export function OpenLeatherJournalSpread() {
                                             <span
                                               className={`text-[10.5px] uppercase tracking-wider mt-0.5 ${
                                                 isSelected
-                                                  ? 'text-[#DFC4A2]'
+                                                  ? 'opacity-85'
                                                   : 'text-[var(--ink-soft)]'
                                               }`}
                                             >
@@ -3006,10 +3294,17 @@ export function OpenLeatherJournalSpread() {
                                               </h3>
                                               <span
                                                 aria-hidden="true"
-                                                className="flex-1 border-b border-dotted border-[#BDA382]/60 dark:border-[#4A3F32] mx-1 hidden sm:block"
+                                                style={{ borderColor: 'var(--vv-card-border)' }}
+                                                className="flex-1 border-b border-dotted mx-1 hidden sm:block opacity-70"
                                               />
                                               {item.status === 'draft' && (
-                                                <span className="text-[10px] px-1.5 py-0.2 rounded-[3px] border border-[#BEA482] bg-[#E5D3B8] dark:bg-[#3D3429] text-[var(--ink-soft)]">
+                                                <span
+                                                  style={{
+                                                    background: 'var(--vv-secondary-btn-bg)',
+                                                    borderColor: 'var(--vv-card-border)',
+                                                  }}
+                                                  className="text-[10px] px-1.5 py-0.2 rounded-[3px] border text-[var(--ink-soft)]"
+                                                >
                                                   খসড়া
                                                 </span>
                                               )}
@@ -3136,8 +3431,11 @@ export function OpenLeatherJournalSpread() {
                           className="pointer-events-none absolute top-0 left-0 right-0 h-[3px] bg-[#D8C5AA]/30 dark:bg-[#3A3226]/40 z-20 overflow-hidden"
                         >
                           <div
-                            className="h-full bg-gradient-to-r from-[#8B2626] via-[#D8A668] to-[#754832] transition-all duration-200"
-                            style={{ width: `${Math.max(4, scrollProgress)}%` }}
+                            className="h-full transition-all duration-200"
+                            style={{
+                              width: `${Math.max(4, scrollProgress)}%`,
+                              background: activeDeskBg.ribbonGradient,
+                            }}
                           />
                         </div>
                       )}
@@ -3271,9 +3569,13 @@ export function OpenLeatherJournalSpread() {
                                   data-testid="toggle-writing-style-bar"
                                   onClick={() => setStyleBarOpen((v) => !v)}
                                   title="পাতার কাগজ, হাতের লেখা ও কালি পরিবর্তন করুন"
-                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:bg-[#DEC6A4]"
+                                  style={{
+                                    background: 'var(--vv-secondary-btn-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="px-2 py-1 rounded-[5px] border text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:brightness-95"
                                 >
-                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
+                                  <Feather className="w-3 h-3 text-[var(--accent)]" />
                                   <span>পাতা ও কালি</span>
                                 </button>
 
@@ -3282,7 +3584,7 @@ export function OpenLeatherJournalSpread() {
                                   onClick={handleMarkReadingPlace}
                                   title="পড়া বা লেখা এখানেই চিহ্নিত করে রাখুন (Mark Place)"
                                 >
-                                  <BookMarked className="w-3 h-3 text-[#8B2626] dark:text-[#D8A668]" />
+                                  <BookMarked className="w-3 h-3 text-[var(--accent)]" />
                                   <span>ফিতা রাখুন</span>
                                 </ParchmentPlateButton>
 
@@ -3321,7 +3623,11 @@ export function OpenLeatherJournalSpread() {
                               {styleBarOpen && (
                                 <div
                                   data-testid="writing-style-ink-bar"
-                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-3 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] space-y-2.5 text-[11px]"
+                                  style={{
+                                    background: 'var(--vv-card-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-3 rounded-[8px] border shadow-[0_14px_32px_rgba(20,10,4,0.34)] space-y-2.5 text-[11px]"
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="font-bangla font-semibold text-[var(--ink)]">
@@ -3349,7 +3655,10 @@ export function OpenLeatherJournalSpread() {
                                     }
                                     compact
                                   />
-                                  <div className="pt-2 border-t border-dashed border-[#D5C0A1] dark:border-[#3A3025] flex flex-wrap items-center justify-between gap-2">
+                                  <div
+                                    style={{ borderColor: 'var(--vv-card-border)' }}
+                                    className="pt-2 border-t border-dashed flex flex-wrap items-center justify-between gap-2"
+                                  >
                                     <div className="flex flex-wrap items-center gap-1">
                                       <span className="font-bangla text-[var(--ink-soft)] mr-1">
                                         হাতের লেখা:
@@ -3360,11 +3669,19 @@ export function OpenLeatherJournalSpread() {
                                           type="button"
                                           data-testid={`writing-style-pill-${ws.id}`}
                                           onClick={() => handleChangeWritingStyle(ws.id)}
-                                          className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
+                                          style={
                                             activeWritingStyleId === ws.id
-                                              ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
-                                              : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
-                                          }`}
+                                              ? {
+                                                  background: 'var(--vv-primary-btn-bg)',
+                                                  borderColor: 'var(--vv-primary-btn-border)',
+                                                  color: 'var(--vv-primary-btn-text)',
+                                                }
+                                              : {
+                                                  background: 'var(--vv-secondary-btn-bg)',
+                                                  borderColor: 'var(--vv-card-border)',
+                                                }
+                                          }
+                                          className="px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer text-[var(--ink)]"
                                         >
                                           {ws.nameBn}
                                         </button>
@@ -3788,6 +4105,16 @@ export function OpenLeatherJournalSpread() {
                                     · {selectedCollection.name}
                                   </button>
                                 )}
+                                <span
+                                  style={{
+                                    background: 'var(--vv-secondary-btn-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="hidden xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10.5px] font-bangla text-[var(--ink-soft)]"
+                                >
+                                  <span>{activeDeskBg.conceptMotifSymbol}</span>
+                                  <span>{activeDeskBg.conceptBadgeBn}</span>
+                                </span>
                               </div>
 
                               <div className="flex items-center gap-1.5 relative">
@@ -3802,13 +4129,21 @@ export function OpenLeatherJournalSpread() {
                                   data-testid="mark-leaving-place-btn"
                                   onClick={handleMarkReadingPlace}
                                   title="পড়া বা লেখা এখানেই চিহ্নিত করে রাখুন যেন পরেরবার এখান থেকেই শুরু হয়"
-                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[5px] text-[11px] font-bangla border transition-all cursor-pointer ${
+                                  style={
                                     readingBookmark?.entryId === selectedEntry.id
-                                      ? 'bg-[#6E1F19] text-[#FCEFD9] border-[#DFB578]'
-                                      : 'bg-[#E6D4BA]/85 dark:bg-[#322A21] hover:bg-[#DEC6A4] text-[var(--ink)] border-[#BEA37E] dark:border-[#4F4234]'
-                                  }`}
+                                      ? {
+                                          background: activeDeskBg.ribbonGradient,
+                                          borderColor: activeDeskBg.ribbonBorder,
+                                          color: '#FCEFD9',
+                                        }
+                                      : {
+                                          background: 'var(--vv-secondary-btn-bg)',
+                                          borderColor: 'var(--vv-card-border)',
+                                        }
+                                  }
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-[5px] text-[11px] font-bangla border transition-all cursor-pointer text-[var(--ink)] hover:brightness-95"
                                 >
-                                  <BookMarked className="w-3 h-3 text-[#8B2626] dark:text-[#D8A668]" />
+                                  <BookMarked className="w-3 h-3 text-[var(--accent)]" />
                                   <span>
                                     {readingBookmark?.entryId === selectedEntry.id
                                       ? 'ফিতা হালনাগাদ'
@@ -3821,9 +4156,13 @@ export function OpenLeatherJournalSpread() {
                                   data-testid="toggle-writing-style-bar"
                                   onClick={() => setStyleBarOpen((v) => !v)}
                                   title="পাতার কাগজ, হাতের লেখার ধরন ও ফাউন্টেন পেনের কালি পরিবর্তন করুন"
-                                  className="px-2 py-1 rounded-[5px] bg-[#E6D4BA]/85 dark:bg-[#322A21] border border-[#BEA37E] dark:border-[#4F4234] text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:bg-[#DEC6A4]"
+                                  style={{
+                                    background: 'var(--vv-secondary-btn-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="px-2 py-1 rounded-[5px] border text-[11px] font-bangla text-[var(--ink)] flex items-center gap-1 shrink-0 cursor-pointer hover:brightness-95"
                                 >
-                                  <Feather className="w-3 h-3 text-[#754832] dark:text-[#D8A668]" />
+                                  <Feather className="w-3 h-3 text-[var(--accent)]" />
                                   <span>পাতা ও কালি</span>
                                 </button>
 
@@ -3878,14 +4217,20 @@ export function OpenLeatherJournalSpread() {
                                 </button>
 
                                 {moreMenuOpen && (
-                                  <div className="absolute right-0 top-9 z-30 w-56 rounded-[8px] bg-gradient-to-b from-[#FAF3E6] to-[#EFE1CA] dark:from-[#262019] dark:to-[#1E1913] border border-[#B89B74] dark:border-[#4A3D2E] shadow-[0_14px_30px_rgba(24,14,7,0.38)] py-1.5 text-xs text-[var(--ink)]">
+                                  <div
+                                    style={{
+                                      background: 'var(--vv-card-bg)',
+                                      borderColor: 'var(--vv-card-border)',
+                                    }}
+                                    className="absolute right-0 top-9 z-30 w-56 rounded-[8px] border shadow-[0_14px_30px_rgba(24,14,7,0.38)] py-1.5 text-xs text-[var(--ink)]"
+                                  >
                                     <button
                                       type="button"
                                       onClick={() => {
                                         handleCopyContent();
                                         setMoreMenuOpen(false);
                                       }}
-                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-black/5"
                                     >
                                       <Copy className="w-3.5 h-3.5" />
                                       <span>Copy exact text</span>
@@ -3906,7 +4251,7 @@ export function OpenLeatherJournalSpread() {
                                         );
                                         setMoreMenuOpen(false);
                                       }}
-                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-black/5"
                                     >
                                       <Download className="w-3.5 h-3.5" />
                                       <span>Export as Markdown (.md)</span>
@@ -3927,7 +4272,7 @@ export function OpenLeatherJournalSpread() {
                                         );
                                         setMoreMenuOpen(false);
                                       }}
-                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-black/5"
                                     >
                                       <Download className="w-3.5 h-3.5" />
                                       <span>Export as Plain Text (.txt)</span>
@@ -3935,7 +4280,7 @@ export function OpenLeatherJournalSpread() {
                                     <button
                                       type="button"
                                       onClick={handleDuplicateEntry}
-                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-black/5"
                                     >
                                       <Plus className="w-3.5 h-3.5" />
                                       <span>Duplicate page</span>
@@ -3947,7 +4292,7 @@ export function OpenLeatherJournalSpread() {
                                           restoreFromArchive(selectedEntry.id);
                                           setMoreMenuOpen(false);
                                         }}
-                                        className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                        className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-black/5"
                                       >
                                         <Archive className="w-3.5 h-3.5" />
                                         <span>Restore from Archive</span>
@@ -3959,13 +4304,16 @@ export function OpenLeatherJournalSpread() {
                                           archiveEntry(selectedEntry.id);
                                           setMoreMenuOpen(false);
                                         }}
-                                        className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                        className="w-full px-3.5 py-2 text-left flex items-center gap-2 hover:bg-black/5"
                                       >
                                         <Archive className="w-3.5 h-3.5" />
                                         <span>Archive entry</span>
                                       </button>
                                     )}
-                                    <div className="my-1 border-t border-[#D8C5AA]/70 dark:border-[#3A3127]" />
+                                    <div
+                                      style={{ borderColor: 'var(--vv-card-border)' }}
+                                      className="my-1 border-t"
+                                    />
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -3976,7 +4324,7 @@ export function OpenLeatherJournalSpread() {
                                         );
                                       }}
                                       aria-label="Move entry to trash"
-                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 text-[var(--danger)] hover:bg-[#E4D1B5]/70 dark:hover:bg-[#322920]"
+                                      className="w-full px-3.5 py-2 text-left flex items-center gap-2 text-[var(--danger)] hover:bg-black/5"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                       <span>Move to trash (ট্র্যাশে সরান)</span>
@@ -3989,7 +4337,11 @@ export function OpenLeatherJournalSpread() {
                               {styleBarOpen && (
                                 <div
                                   data-testid="writing-style-ink-bar"
-                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-3 rounded-[8px] bg-[#FAF1E0] dark:bg-[#231D16] border border-[#BEA37E] dark:border-[#4F4234] shadow-[0_14px_32px_rgba(20,10,4,0.34)] space-y-2.5 text-[11px]"
+                                  style={{
+                                    background: 'var(--vv-card-bg)',
+                                    borderColor: 'var(--vv-card-border)',
+                                  }}
+                                  className="absolute left-0 right-0 top-full mt-1.5 z-30 p-3 rounded-[8px] border shadow-[0_14px_32px_rgba(20,10,4,0.34)] space-y-2.5 text-[11px]"
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="font-bangla font-semibold text-[var(--ink)]">
@@ -4017,7 +4369,10 @@ export function OpenLeatherJournalSpread() {
                                     }
                                     compact
                                   />
-                                  <div className="pt-2 border-t border-dashed border-[#D5C0A1] dark:border-[#3A3025] flex flex-wrap items-center justify-between gap-2">
+                                  <div
+                                    style={{ borderColor: 'var(--vv-card-border)' }}
+                                    className="pt-2 border-t border-dashed flex flex-wrap items-center justify-between gap-2"
+                                  >
                                     <div className="flex flex-wrap items-center gap-1">
                                       <span className="font-bangla text-[var(--ink-soft)] mr-1">
                                         হাতের লেখা:
@@ -4028,11 +4383,19 @@ export function OpenLeatherJournalSpread() {
                                           type="button"
                                           data-testid={`writing-style-pill-${ws.id}`}
                                           onClick={() => handleChangeWritingStyle(ws.id)}
-                                          className={`px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer ${
+                                          style={
                                             activeWritingStyleId === ws.id
-                                              ? 'bg-[#5B3D28] text-[#FDF8F0] border-[#D8A668]'
-                                              : 'bg-[#FAF3E6] dark:bg-[#1E1913] text-[var(--ink)] border-[#CBB494] dark:border-[#3D3328]'
-                                          }`}
+                                              ? {
+                                                  background: 'var(--vv-primary-btn-bg)',
+                                                  borderColor: 'var(--vv-primary-btn-border)',
+                                                  color: 'var(--vv-primary-btn-text)',
+                                                }
+                                              : {
+                                                  background: 'var(--vv-secondary-btn-bg)',
+                                                  borderColor: 'var(--vv-card-border)',
+                                                }
+                                          }
+                                          className="px-2 py-0.5 rounded-[4px] font-bangla border cursor-pointer text-[var(--ink)]"
                                         >
                                           {ws.nameBn}
                                         </button>
@@ -4354,7 +4717,11 @@ export function OpenLeatherJournalSpread() {
            ======================================================================== */}
         <nav
           aria-label="Mobile Quick Navigation"
-          className="mt-2 rounded-[10px] lg:hidden bg-[#26180F]/95 border border-[#6E4E35] px-2 py-1.5 flex items-center justify-around text-[#CDB89E]"
+          style={{
+            background: activeDeskBg.flapBackgroundCss,
+            borderColor: activeDeskBg.flapBorderHex,
+          }}
+          className="mt-2 rounded-[10px] lg:hidden border px-2 py-1.5 flex items-center justify-around text-[#CDB89E] transition-all duration-500"
         >
           <button
             type="button"
@@ -4385,7 +4752,12 @@ export function OpenLeatherJournalSpread() {
           <button
             type="button"
             onClick={() => handleStartNewEntry()}
-            className="flex items-center justify-center w-10 h-10 -mt-3 rounded-full bg-gradient-to-b from-[#8B6343] to-[#5E4029] text-[#FFF8EE] shadow-lg border border-[#D8A668]/50"
+            style={{
+              background: 'var(--vv-primary-btn-bg)',
+              borderColor: 'var(--vv-primary-btn-border)',
+              color: 'var(--vv-primary-btn-text)',
+            }}
+            className="flex items-center justify-center w-10 h-10 -mt-3 rounded-full shadow-lg border"
             aria-label="Create new entry"
           >
             <Plus className="w-5 h-5" />

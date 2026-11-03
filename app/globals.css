@@ -33,6 +33,28 @@
   --reading-width: 720px;
   --reading-line-height: 1.85;
   --rule-gap: 2.25rem;
+
+  /* Dynamic Book Theme Tokens (Overridden by getBookThemeCssVars) */
+  --vv-cover-bg: radial-gradient(ellipse at 50% 18%, #3B2314 0%, #24140B 55%, #120904 100%);
+  --vv-cover-border: #8C5230;
+  --vv-flap-bg: linear-gradient(180deg, #2A170C 0%, #1E1007 50%, #120904 100%);
+  --vv-flap-border: #6E482B;
+  --vv-flap-active-bg: linear-gradient(90deg, rgba(94,62,40,0.92) 0%, rgba(68,44,28,0.88) 100%);
+  --vv-flap-active-border: #B8895A;
+  --vv-ribbon-bg: linear-gradient(180deg, #8E2219 0%, #B83227 50%, #7A1B14 100%);
+  --vv-ribbon-border: #DFB578;
+  --vv-edge-gilt: #BEA380;
+  --vv-stack-1: #D6BFA0;
+  --vv-stack-2: #E6D5BA;
+  --vv-card-bg: linear-gradient(180deg, #FAF3E6 0%, #EDE0C9 100%);
+  --vv-card-border: #C5AD8B;
+  --vv-card-selected-bg: linear-gradient(90deg, #E6D3B5 0%, #EFE0C8 50%, #E6D3B5 100%);
+  --vv-primary-btn-bg: linear-gradient(180deg, #6C4C35 0%, #563B28 55%, #422C1D 100%);
+  --vv-primary-btn-border: #9E7755;
+  --vv-primary-btn-text: #FDF8F0;
+  --vv-secondary-btn-bg: linear-gradient(180deg, #FBF5E9 0%, #EBDEC7 100%);
+  --vv-header-tint: linear-gradient(90deg, #EFE1CA 0%, #EFE1CA 34%, rgba(239,225,202,0.75) 56%, rgba(239,225,202,0) 85%);
+  --vv-accent: #8C5230;
 }
 
 /* Theme 01 — Heritage Parchment (Default) */

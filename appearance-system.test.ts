@@ -194,6 +194,7 @@ describe('VerseVault Book Themes, Templates & Customization System Tests', () =>
       WRITING_STYLE_PRESETS,
       INK_COLOR_PRESETS,
       getDeskBackground,
+      getBookThemeCssVars,
       getWritingStylePreset,
       getInkColorPreset,
       resolveEffectivePageVariation,
@@ -204,16 +205,36 @@ describe('VerseVault Book Themes, Templates & Customization System Tests', () =>
     assert.equal(WRITING_STYLE_PRESETS.length, 6);
     assert.equal(INK_COLOR_PRESETS.length, 6);
 
+    const uniqueCardSurfaces = new Set<string>();
+    const uniquePrimaryBtns = new Set<string>();
+    const uniqueConceptBadges = new Set<string>();
+
     for (const bg of DESK_BACKGROUNDS) {
       assert.ok(bg.pageSpreadLightCss.includes('linear-gradient'));
       assert.ok(bg.pageSpreadDarkCss.includes('linear-gradient'));
+      assert.ok(bg.conceptBadgeBn.length > 0, `Theme ${bg.id} must have a conceptBadgeBn`);
+      assert.ok(bg.conceptMotifSymbol.length > 0, `Theme ${bg.id} must have a conceptMotifSymbol`);
       assert.ok(bg.conceptSubtitleBn.length > 0, `Theme ${bg.id} must have a concept subtitle`);
       assert.ok(bg.conceptQuoteBn.length > 0, `Theme ${bg.id} must have a concept quote`);
       assert.ok(bg.flapBackgroundCss.length > 0, `Theme ${bg.id} must have a custom flap background`);
       assert.ok(bg.ribbonGradient.length > 0, `Theme ${bg.id} must have a silk ribbon gradient`);
       assert.ok(bg.ribbonBorder.length > 0, `Theme ${bg.id} must have a ribbon border`);
       assert.ok(bg.paperEdgeGiltHex.length > 0, `Theme ${bg.id} must have paperEdgeGiltHex`);
+
+      const lightVars = getBookThemeCssVars(bg, false);
+      const darkVars = getBookThemeCssVars(bg, true);
+      assert.equal(lightVars['--vv-card-bg'], bg.cardSurfaceLightCss);
+      assert.equal(darkVars['--vv-card-bg'], bg.cardSurfaceDarkCss);
+      assert.equal(lightVars['--vv-primary-btn-bg'], bg.primaryButtonCss);
+
+      uniqueCardSurfaces.add(bg.cardSurfaceLightCss);
+      uniquePrimaryBtns.add(bg.primaryButtonCss);
+      uniqueConceptBadges.add(bg.conceptBadgeBn);
     }
+
+    assert.equal(uniqueCardSurfaces.size, 8, 'Every book theme must have a unique card surface');
+    assert.equal(uniquePrimaryBtns.size, 8, 'Every book theme must have a unique primary button gradient');
+    assert.equal(uniqueConceptBadges.size, 8, 'Every book theme must have a unique literary concept badge');
 
     assert.equal(getDeskBackground('rainy-veranda').id, 'rainy-veranda');
     assert.equal(getDeskBackground(undefined).id, 'mahogany-study');

@@ -21,7 +21,13 @@ import {
   generateMarkdownZipBlob,
   triggerBlobDownload,
 } from '../../lib/export-utils';
-import type { EntryMood, EntryType, FontPreference } from '../../types/entry';
+import { DESK_BACKGROUNDS } from '../../lib/journal-templates';
+import type {
+  DeskBackgroundId,
+  EntryMood,
+  EntryType,
+  FontPreference,
+} from '../../types/entry';
 import {
   ArchivalSelect,
   BrassCornerOrnament,
@@ -33,7 +39,15 @@ import { AiSettingsSection } from '../ai/AiSettingsSection';
 import { AiConsentModal } from '../ai/AiConsentModal';
 import { saveStoredAiSettings } from '../../lib/ai-client';
 
-export function SettingsBackupView() {
+interface SettingsBackupViewProps {
+  deskBackground?: DeskBackgroundId;
+  onChangeDeskBackground?: (bg: DeskBackgroundId) => void;
+}
+
+export function SettingsBackupView({
+  deskBackground = 'mahogany-study',
+  onChangeDeskBackground,
+}: SettingsBackupViewProps = {}) {
   const {
     user,
     isAdmin,
@@ -95,24 +109,75 @@ export function SettingsBackupView() {
     }
   };
 
+  const sectionCardStyle: React.CSSProperties = {
+    background: 'var(--vv-card-bg)',
+    borderColor: 'var(--vv-card-border)',
+  };
+
   return (
     <div className="space-y-6 pb-16">
-      <header className="border-b-2 border-dashed border-[#C7AF8E] dark:border-[#3D3329] pb-5 space-y-1.5">
+      <header
+        style={{ borderColor: 'var(--vv-card-border)' }}
+        className="border-b-2 border-dashed pb-5 space-y-1.5"
+      >
         <h1 className="text-2xl sm:text-3xl font-literary font-normal text-[var(--ink)] tracking-tight">
           Settings &amp; Archival Backup
         </h1>
         <p className="text-sm font-bangla text-[var(--ink-soft)]">
-          আপনার ডায়েরির কাগজের ধরন, ধ্বনি (Sound FX), লেখার পছন্দসমূহ এবং ব্যক্তিগত আর্কাইভ ব্যাকআপ নিয়ন্ত্রণ করুন।
+          আপনার ডায়েরির কাগজের ধরন, বইয়ের আবহ (8 Book Themes), ধ্বনি (Sound FX), লেখার পছন্দসমূহ এবং ব্যক্তিগত আর্কাইভ ব্যাকআপ নিয়ন্ত্রণ করুন।
         </p>
       </header>
 
-      {/* 1. Appearance & Acoustic Reading Room */}
-      <section className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE2CC] dark:from-[#2A231C] dark:to-[#211B16] border-2 border-[#C4AC89] dark:border-[#463B30] rounded-[9px] p-6 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_4px_14px_rgba(40,24,10,0.08)]">
+      {/* 1. Appearance, Book Concept Theme & Acoustic Reading Room */}
+      <section
+        style={sectionCardStyle}
+        className="relative border-2 rounded-[9px] p-6 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_4px_14px_rgba(40,24,10,0.08)] transition-all duration-300"
+      >
         <BrassCornerOrnament position="tl" />
         <BrassCornerOrnament position="tr" />
         <h2 className="text-lg font-literary font-medium text-[var(--ink)]">
-          ✦ Appearance &amp; Acoustic Book Feel
+          ✦ Appearance, Book Atmosphere &amp; Acoustic Feel
         </h2>
+
+        {onChangeDeskBackground && (
+          <div className="space-y-2.5 pb-4 border-b border-dashed" style={{ borderColor: 'var(--vv-card-border)' }}>
+            <span className="block text-xs font-medium text-[var(--ink-soft)] font-bangla">
+              বইয়ের সার্বিক আবহ ও বাঁধাই (8 Book Atmospheres &amp; Literary Concepts)
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {DESK_BACKGROUNDS.map((bg) => {
+                const isActive = deskBackground === bg.id;
+                return (
+                  <button
+                    key={bg.id}
+                    type="button"
+                    onClick={() => onChangeDeskBackground(bg.id)}
+                    style={{
+                      background: isActive ? bg.primaryButtonCss : 'var(--vv-secondary-btn-bg)',
+                      borderColor: isActive ? bg.primaryButtonBorderHex : 'var(--vv-card-border)',
+                      color: isActive ? bg.primaryButtonTextHex : 'var(--ink)',
+                    }}
+                    className="p-2 rounded-[6px] border text-left transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="w-5 h-5 rounded-full border border-white/40 shrink-0"
+                      style={{ background: bg.swatchGradient }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold font-bangla truncate">
+                        {bg.conceptMotifSymbol} {bg.nameBn}
+                      </span>
+                      <span className={`block text-[10px] truncate ${isActive ? 'opacity-85' : 'text-[var(--ink-soft)]'}`}>
+                        {bg.shortLabel}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           {/* Theme */}
@@ -120,7 +185,10 @@ export function SettingsBackupView() {
             <span className="block text-xs font-medium text-[var(--ink-soft)] mb-2 font-bangla">
               কাগজের আবহ (Paper Theme)
             </span>
-            <div className="flex items-center gap-1 p-1 bg-[#E5D3B8]/70 dark:bg-[#1C1713] border border-[#BEA583] dark:border-[#42382D] rounded-[6px]">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="flex items-center gap-1 p-1 bg-black/5 dark:bg-white/5 border rounded-[6px]"
+            >
               {(['light', 'dark', 'system'] as const).map((t) => (
                 <ParchmentPlateButton
                   key={t}
@@ -140,7 +208,10 @@ export function SettingsBackupView() {
             <span className="block text-xs font-medium text-[var(--ink-soft)] mb-2 font-bangla">
               পাতার প্রস্থ (Reading Width)
             </span>
-            <div className="flex items-center gap-1 p-1 bg-[#E5D3B8]/70 dark:bg-[#1C1713] border border-[#BEA583] dark:border-[#42382D] rounded-[6px]">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="flex items-center gap-1 p-1 bg-black/5 dark:bg-white/5 border rounded-[6px]"
+            >
               {(['standard', 'wide'] as const).map((w) => (
                 <ParchmentPlateButton
                   key={w}
@@ -160,7 +231,10 @@ export function SettingsBackupView() {
             <span className="block text-xs font-medium text-[var(--ink-soft)] mb-2 font-bangla">
               সূচিপত্র ঘনত্ব (Index Density)
             </span>
-            <div className="flex items-center gap-1 p-1 bg-[#E5D3B8]/70 dark:bg-[#1C1713] border border-[#BEA583] dark:border-[#42382D] rounded-[6px]">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="flex items-center gap-1 p-1 bg-black/5 dark:bg-white/5 border rounded-[6px]"
+            >
               {(['comfortable', 'compact'] as const).map((d) => (
                 <ParchmentPlateButton
                   key={d}
@@ -203,7 +277,10 @@ export function SettingsBackupView() {
       </section>
 
       {/* 2. Writing Preferences */}
-      <section className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE2CC] dark:from-[#2A231C] dark:to-[#211B16] border-2 border-[#C4AC89] dark:border-[#463B30] rounded-[9px] p-6 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_4px_14px_rgba(40,24,10,0.08)]">
+      <section
+        style={sectionCardStyle}
+        className="relative border-2 rounded-[9px] p-6 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_4px_14px_rgba(40,24,10,0.08)] transition-all duration-300"
+      >
         <BrassCornerOrnament position="tl" />
         <BrassCornerOrnament position="tr" />
         <h2 className="text-lg font-literary font-medium text-[var(--ink)]">
@@ -265,13 +342,16 @@ export function SettingsBackupView() {
           </div>
         </div>
 
-        <div className="pt-3 border-t border-dashed border-[#CBB393] dark:border-[#3D342A] flex flex-wrap items-center gap-6">
+        <div
+          style={{ borderColor: 'var(--vv-card-border)' }}
+          className="pt-3 border-t border-dashed flex flex-wrap items-center gap-6"
+        >
           <label className="inline-flex items-center gap-2 text-xs text-[var(--ink)] cursor-pointer font-bangla">
             <input
               type="checkbox"
               checked={settings.showWordCount}
               onChange={(e) => updateSettings({ showWordCount: e.target.checked })}
-              className="rounded border-[var(--line)] accent-[#5D402B]"
+              className="rounded border-[var(--line)] accent-[var(--accent)]"
             />
             <span>পাতার নিচে শব্দ ও অক্ষর সংখ্যা দেখান (Show word &amp; character count)</span>
           </label>
@@ -281,7 +361,7 @@ export function SettingsBackupView() {
               type="checkbox"
               checked={settings.autosaveEnabled}
               onChange={(e) => updateSettings({ autosaveEnabled: e.target.checked })}
-              className="rounded border-[var(--line)] accent-[#5D402B]"
+              className="rounded border-[var(--line)] accent-[var(--accent)]"
             />
             <span>লেখার সময় স্বয়ংক্রিয় সংরক্ষণ চালু রাখুন (Automatic debounced saving)</span>
           </label>
@@ -292,7 +372,10 @@ export function SettingsBackupView() {
       <AiSettingsSection onOpenConsentModal={() => setAiConsentModalOpen(true)} />
 
       {/* 3. Export & Portable Archive Backup */}
-      <section className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE2CC] dark:from-[#2A231C] dark:to-[#211B16] border-2 border-[#C4AC89] dark:border-[#463B30] rounded-[9px] p-6 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_4px_14px_rgba(40,24,10,0.08)]">
+      <section
+        style={sectionCardStyle}
+        className="relative border-2 rounded-[9px] p-6 space-y-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_4px_14px_rgba(40,24,10,0.08)] transition-all duration-300"
+      >
         <BrassCornerOrnament position="tl" />
         <BrassCornerOrnament position="tr" />
         <div className="space-y-1">
@@ -304,7 +387,13 @@ export function SettingsBackupView() {
           </p>
         </div>
 
-        <div className="p-4 bg-[#EAD8BE]/70 dark:bg-[#332B22] border border-[#C2A987] dark:border-[#493E31] rounded-[6px] flex items-start gap-3">
+        <div
+          style={{
+            background: 'var(--vv-secondary-btn-bg)',
+            borderColor: 'var(--vv-card-border)',
+          }}
+          className="p-4 border rounded-[6px] flex items-start gap-3"
+        >
           <AlertTriangle className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
           <div className="text-xs text-[var(--ink)] space-y-1">
             <p className="font-medium">
@@ -345,7 +434,7 @@ export function SettingsBackupView() {
                 type="checkbox"
                 checked={includeTrashInExport}
                 onChange={(e) => setIncludeTrashInExport(e.target.checked)}
-                className="rounded border-[var(--line)] accent-[#5D402B]"
+                className="rounded border-[var(--line)] accent-[var(--accent)]"
               />
               <span>Include soft-deleted entries from Trash</span>
             </label>
@@ -384,7 +473,10 @@ export function SettingsBackupView() {
       </section>
 
       {/* 4. Owner-only access: Firestore rules are the boundary, not the UI */}
-      <section className="relative bg-gradient-to-b from-[#FAF3E6] to-[#EFE2CC] dark:from-[#2A231C] dark:to-[#211B16] border-2 border-[#C4AC89] dark:border-[#463B30] rounded-[9px] p-6 space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_4px_14px_rgba(40,24,10,0.08)]">
+      <section
+        style={sectionCardStyle}
+        className="relative border-2 rounded-[9px] p-6 space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_4px_14px_rgba(40,24,10,0.08)] transition-all duration-300"
+      >
         <BrassCornerOrnament position="tl" />
         <BrassCornerOrnament position="tr" />
         <div className="space-y-1">
@@ -397,7 +489,10 @@ export function SettingsBackupView() {
           </p>
         </div>
 
-        <div className="pt-3 flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-[#CBB393] dark:border-[#3D342A]">
+        <div
+          style={{ borderColor: 'var(--vv-card-border)' }}
+          className="pt-3 flex flex-wrap items-center justify-between gap-4 border-t border-dashed"
+        >
           <div className="text-xs text-[var(--ink)] font-bangla">
             {isAdmin ? (
               <span>

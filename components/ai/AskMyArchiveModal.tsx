@@ -104,7 +104,10 @@ export function AskMyArchiveModal({
       <div className="space-y-4">
         {/* Identity lockup: the frame header has no slot for the icon or the Bangla tagline. */}
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-[#8B6343]/15 border border-[#8B6343]/30 flex items-center justify-center text-[#8B6343] dark:text-[#DFB578]">
+          <div
+            style={{ borderColor: 'var(--vv-card-border)' }}
+            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 border flex items-center justify-center text-[var(--accent)]"
+          >
             <Search className="w-4 h-4" />
           </div>
           <p className="text-xs text-[var(--ink-soft)] font-bangla">
@@ -121,14 +124,20 @@ export function AskMyArchiveModal({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="e.g. Find poems mentioning distance, rain, or quiet nights..."
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#8B6343]/30 bg-[var(--paper)] text-[var(--ink)] placeholder:text-[var(--ink-soft)]/60 focus:outline-none focus:ring-2 focus:ring-[#8B6343]"
+                style={{ borderColor: 'var(--vv-card-border)' }}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-[var(--paper)] text-[var(--ink)] placeholder:text-[var(--ink-soft)]/60 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
               <Search className="w-4 h-4 text-[var(--ink-soft)] absolute left-3 top-2.5" />
             </div>
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="px-4 py-2 text-xs font-medium bg-[#8B6343] hover:bg-[#725035] disabled:opacity-50 text-white rounded-xl shadow-sm transition-all"
+              style={{
+                background: 'var(--vv-primary-btn-bg)',
+                borderColor: 'var(--vv-primary-btn-border)',
+                color: 'var(--vv-primary-btn-text)',
+              }}
+              className="px-4 py-2 text-xs font-medium border hover:brightness-110 disabled:opacity-50 rounded-xl shadow-sm transition-all cursor-pointer"
             >
               {loading ? 'Searching…' : 'Ask Archive'}
             </button>
@@ -141,7 +150,8 @@ export function AskMyArchiveModal({
               <select
                 value={selectedCollectionId}
                 onChange={(e) => setSelectedCollectionId(e.target.value)}
-                className="px-2.5 py-1 text-xs rounded-lg border border-[#8B6343]/30 bg-[var(--paper)] text-[var(--ink)] focus:outline-none"
+                style={{ borderColor: 'var(--vv-card-border)' }}
+                className="px-2.5 py-1 text-xs rounded-lg border bg-[var(--paper)] text-[var(--ink)] focus:outline-none"
               >
                 <option value="all">Entire Active Archive ({activeEntries.length} entries)</option>
                 {collections.map((col) => (
@@ -160,8 +170,11 @@ export function AskMyArchiveModal({
         {/* Results Area: the frame body already scrolls, so no local max-height/overflow here. */}
         <div className="space-y-4 pr-1 text-xs">
           {loading && (
-            <div className="p-8 text-center space-y-3 bg-[#EFE8D8]/50 dark:bg-[#251D17]/50 rounded-2xl border border-[#8B6343]/20 animate-pulse">
-              <div className="w-9 h-9 rounded-full bg-[#8B6343]/20 mx-auto flex items-center justify-center text-[#8B6343] animate-spin">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="p-8 text-center space-y-3 bg-black/5 dark:bg-white/5 rounded-2xl border animate-pulse"
+            >
+              <div className="w-9 h-9 rounded-full bg-black/10 dark:bg-white/10 mx-auto flex items-center justify-center text-[var(--accent)] animate-spin">
                 <RefreshCw className="w-4 h-4" />
               </div>
               <p className="font-literary text-sm text-[var(--ink)]">Consulting your archive…</p>
@@ -177,7 +190,10 @@ export function AskMyArchiveModal({
           )}
 
           {noMatch && (
-            <div className="p-5 text-center bg-[var(--paper)] border border-[#8B6343]/20 rounded-xl space-y-1">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="p-5 text-center bg-[var(--paper)] border rounded-xl space-y-1"
+            >
               <p className="font-literary font-medium text-[var(--ink)]">
                 No matching entries found in this scope.
               </p>
@@ -188,8 +204,11 @@ export function AskMyArchiveModal({
           )}
 
           {answer && (
-            <div className="p-4 rounded-xl bg-[var(--paper)] border border-[#8B6343]/30 space-y-3 shadow-sm">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8B6343] dark:text-[#DFB578]">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="p-4 rounded-xl bg-[var(--paper)] border space-y-3 shadow-sm"
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)]">
                 <Sparkles className="w-4 h-4" />
                 <span>Archive Synthesis</span>
               </div>
@@ -208,7 +227,8 @@ export function AskMyArchiveModal({
                 {sources.map((src, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-[var(--paper)] border border-[#8B6343]/20 hover:border-[#8B6343]/40 transition-all space-y-2"
+                    style={{ borderColor: 'var(--vv-card-border)' }}
+                    className="p-3 rounded-xl bg-[var(--paper)] border transition-all space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -230,14 +250,22 @@ export function AskMyArchiveModal({
                           onSelectEntry(src.id);
                           onClose();
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-[#8B6343] hover:bg-[#725035] text-white rounded-lg transition-colors shrink-0"
+                        style={{
+                          background: 'var(--vv-primary-btn-bg)',
+                          borderColor: 'var(--vv-primary-btn-border)',
+                          color: 'var(--vv-primary-btn-text)',
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border rounded-lg transition-colors shrink-0 cursor-pointer"
                       >
                         <span>Open</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>
 
-                    <p className="text-xs text-[var(--ink)] italic bg-[#8B6343]/5 p-2 rounded-lg border-l-2 border-[#8B6343]">
+                    <p
+                      style={{ borderColor: 'var(--vv-accent)' }}
+                      className="text-xs text-[var(--ink)] italic bg-black/5 dark:bg-white/5 p-2 rounded-lg border-l-2"
+                    >
                       &ldquo;{src.excerpt}&rdquo;
                     </p>
                     <p className="text-[11px] text-[var(--ink-soft)]">

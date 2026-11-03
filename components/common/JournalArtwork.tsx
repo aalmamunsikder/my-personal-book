@@ -8,7 +8,8 @@ import React from 'react';
 export function VintageTitleFlourish({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`flex items-center gap-2 text-[#6B5038] dark:text-[#B89F82] my-2 select-none ${className}`}
+      style={{ color: 'var(--vv-accent)' }}
+      className={`flex items-center gap-2 opacity-80 my-2 select-none ${className}`}
       aria-hidden="true"
     >
       <svg
@@ -113,29 +114,25 @@ export function PlumBlossomMoonCorner() {
 /**
  * Misty sunrise watercolor banner for the Greeting & Category Hub ("শুভ সন্ধ্যা 🌿").
  */
-export function MistySunriseHeaderArtwork() {
+export function MistySunriseHeaderArtwork({ tintCss }: { tintCss?: string }) {
   return (
     <div
-      className="w-full h-36 sm:h-40 relative overflow-hidden select-none pointer-events-none bg-[#EFE1CA]"
+      style={{ background: 'var(--vv-card-bg)' }}
+      className="w-full h-36 sm:h-40 relative overflow-hidden select-none pointer-events-none transition-all duration-500"
       aria-hidden="true"
     >
       <img
         src="/assets/illustrations/sunrise-mist-art.png"
         alt=""
-        className="absolute right-0 top-0 h-full w-3/4 object-cover object-right opacity-95"
+        className="absolute right-0 top-0 h-full w-3/4 object-cover object-right opacity-90 mix-blend-multiply dark:mix-blend-luminosity dark:opacity-55"
       />
       {/* Smooth gradient blend on the left for Bangla greeting typography */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 transition-all duration-500"
         style={{
           background:
-            'linear-gradient(90deg, #EFE1CA 0%, #EFE1CA 34%, rgba(239,225,202,0.75) 56%, rgba(239,225,202,0) 85%)',
-        }}
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 h-8"
-        style={{
-          background: 'linear-gradient(180deg, rgba(239,225,202,0) 0%, #EFE1CA 100%)',
+            tintCss ||
+            'var(--vv-header-tint, linear-gradient(90deg, #EFE1CA 0%, #EFE1CA 34%, rgba(239,225,202,0.75) 56%, rgba(239,225,202,0) 85%))',
         }}
       />
     </div>

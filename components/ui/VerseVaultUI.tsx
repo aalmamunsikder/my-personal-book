@@ -64,12 +64,22 @@ export function ArchivalSelect<T extends string = string>({
     };
   }, [open]);
 
-  const variantClasses =
+  const variantStyle: React.CSSProperties =
     variant === 'brass'
-      ? 'bg-gradient-to-b from-[#4B3321] to-[#362315] text-[#F5E8D3] border-[#8C6747] shadow-[inset_0_1px_0_rgba(255,235,205,0.22),0_2px_5px_rgba(25,14,7,0.25)]'
+      ? {
+          background: 'var(--vv-primary-btn-bg)',
+          borderColor: 'var(--vv-primary-btn-border)',
+          color: 'var(--vv-primary-btn-text)',
+        }
       : variant === 'minimal'
-      ? 'bg-[#EFE2CC]/75 dark:bg-[#2A231C]/85 text-[var(--ink)] border-[#C9B190] dark:border-[#463C30] hover:bg-[#E6D4B7] shadow-[inset_0_1px_0_rgba(255,252,245,0.65)]'
-      : 'bg-gradient-to-b from-[#FAF3E6] to-[#EDE0C9] dark:from-[#2E2720] dark:to-[#241E18] text-[var(--ink)] border-[#C4AC89] dark:border-[#4A3F33] hover:border-[#9E7B56] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_1px_3px_rgba(52,34,20,0.08)]';
+      ? {
+          background: 'var(--vv-secondary-btn-bg)',
+          borderColor: 'var(--vv-card-border)',
+        }
+      : {
+          background: 'var(--vv-card-bg)',
+          borderColor: 'var(--vv-card-border)',
+        };
 
   const effectiveSize = compact ? 'sm' : size;
   const sizeClasses =
@@ -90,14 +100,16 @@ export function ArchivalSelect<T extends string = string>({
           bookSound.playBrassClickSound();
           setOpen((prev) => !prev);
         }}
-        className={`group relative inline-flex items-center justify-between gap-2 border font-bangla transition-all select-none ${
+        style={variantStyle}
+        className={`group relative inline-flex items-center justify-between gap-2 border text-[var(--ink)] font-bangla transition-all select-none shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_1px_3px_rgba(20,12,6,0.08)] cursor-pointer ${
           isFullWidth ? 'w-full' : ''
-        } ${variantClasses} ${sizeClasses}`}
+        } ${sizeClasses}`}
       >
         {/* Subtle brass pin studs on corners */}
         <span
           aria-hidden="true"
-          className="w-1 h-1 rounded-full bg-[#9E7B56]/60 shrink-0 hidden sm:inline-block"
+          style={{ backgroundColor: 'var(--vv-accent)' }}
+          className="w-1 h-1 rounded-full opacity-70 shrink-0 hidden sm:inline-block"
         />
         <span className="truncate flex items-center gap-1.5">
           {prefixLabel && (
@@ -109,7 +121,7 @@ export function ArchivalSelect<T extends string = string>({
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 opacity-75 transition-transform duration-200 ${
-            open ? 'rotate-180 text-[#8C583A]' : ''
+            open ? 'rotate-180 text-[var(--accent)]' : ''
           }`}
         />
       </button>
@@ -123,12 +135,19 @@ export function ArchivalSelect<T extends string = string>({
             transition={{ duration: 0.15, ease: 'easeOut' }}
             role="listbox"
             aria-label={ariaLabel}
-            className={`absolute z-50 mt-1.5 min-w-[195px] max-h-64 overflow-y-auto rounded-[7px] bg-[#FAF2E4] dark:bg-[#26201A] border-2 border-[#B3946E] dark:border-[#524436] shadow-[0_14px_34px_rgba(28,16,8,0.32),inset_0_0_0_2px_rgba(255,248,236,0.55)] p-1 ${
+            style={{
+              background: 'var(--vv-card-bg)',
+              borderColor: 'var(--vv-card-border)',
+            }}
+            className={`absolute z-50 mt-1.5 min-w-[195px] max-h-64 overflow-y-auto rounded-[7px] border-2 shadow-[0_14px_34px_rgba(28,16,8,0.32),inset_0_0_0_2px_rgba(255,248,236,0.35)] p-1 ${
               align === 'right' ? 'right-0' : 'left-0'
             }`}
           >
             {/* Ornamental header rule inside dropdown */}
-            <div className="px-2.5 py-1 border-b border-[#DFCBB0] dark:border-[#3A3128] flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em] text-[#7D6249] dark:text-[#A9927A]">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="px-2.5 py-1 border-b flex items-center justify-between text-[9.5px] uppercase tracking-[0.16em] text-[var(--ink-soft)]"
+            >
               <span>✦ {ariaLabel}</span>
               <span>❦</span>
             </div>
@@ -146,10 +165,18 @@ export function ArchivalSelect<T extends string = string>({
                       onChange(opt.value);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-[4px] text-xs font-bangla flex items-center justify-between gap-2 transition-colors ${
+                    style={
                       isSelected
-                        ? 'bg-[#5A3E28] text-[#FAF2E4] font-semibold shadow-2xs'
-                        : 'text-[var(--ink)] hover:bg-[#EAD8BE]/80 dark:hover:bg-[#352D24]'
+                        ? {
+                            background: 'var(--vv-primary-btn-bg)',
+                            color: 'var(--vv-primary-btn-text)',
+                          }
+                        : undefined
+                    }
+                    className={`w-full text-left px-2.5 py-1.5 rounded-[4px] text-xs font-bangla flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'font-semibold shadow-2xs'
+                        : 'text-[var(--ink)] hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="truncate">
@@ -157,7 +184,7 @@ export function ArchivalSelect<T extends string = string>({
                       {opt.sublabel && (
                         <span
                           className={`block text-[10px] truncate ${
-                            isSelected ? 'text-[#E3CBB0]' : 'text-[var(--ink-faint)]'
+                            isSelected ? 'opacity-85' : 'text-[var(--ink-soft)]'
                           }`}
                         >
                           {opt.sublabel}
@@ -169,8 +196,8 @@ export function ArchivalSelect<T extends string = string>({
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded-[3px] ${
                             isSelected
-                              ? 'bg-[#3E291A] text-[#E8CFAF]'
-                              : 'bg-[#E6D4BA] dark:bg-[#342C23] text-[#664B34] dark:text-[#C5AE93]'
+                              ? 'bg-black/25 text-white'
+                              : 'bg-black/10 dark:bg-white/10 text-[var(--ink)]'
                           }`}
                         >
                           {opt.badge}
@@ -207,6 +234,7 @@ export function LeatherClaspButton({
   ariaLabel,
   className = '',
   onClick,
+  style,
   children,
   ...props
 }: LeatherClaspButtonProps) {
@@ -215,7 +243,17 @@ export function LeatherClaspButton({
       ? 'bg-gradient-to-b from-[#7C2D26] via-[#63201A] to-[#4A1612] text-[#FCEEE9] border-[#A85248] hover:from-[#8B342C] hover:to-[#571B16]'
       : variant === 'gold'
       ? 'bg-gradient-to-b from-[#C89B5E] via-[#A97B3E] to-[#8A6029] text-[#23150B] border-[#E5C18A] hover:from-[#D4A86A] hover:to-[#986B30]'
-      : 'bg-gradient-to-b from-[#6C4C35] via-[#563B28] to-[#422C1D] text-[#FBF3E6] border-[#967052] hover:from-[#78553C] hover:to-[#4D3423]';
+      : 'hover:brightness-110';
+
+  const dynamicWalnutStyle: React.CSSProperties | undefined =
+    variant === 'walnut'
+      ? {
+          background: 'var(--vv-primary-btn-bg)',
+          borderColor: 'var(--vv-primary-btn-border)',
+          color: 'var(--vv-primary-btn-text)',
+          ...style,
+        }
+      : style;
 
   const effectiveSize = compact ? 'sm' : size;
   const sizing =
@@ -233,6 +271,7 @@ export function LeatherClaspButton({
         bookSound.playBrassClickSound();
         onClick?.(e);
       }}
+      style={dynamicWalnutStyle}
       className={`group relative inline-flex items-center justify-center gap-2 border font-bangla font-medium shadow-[0_3px_8px_rgba(32,18,9,0.28),inset_0_1px_0_rgba(255,238,212,0.28)] active:translate-y-[1px] transition-all cursor-pointer select-none ${palette} ${sizing} ${className}`}
       {...props}
     >
@@ -273,6 +312,7 @@ export function ParchmentPlateButton({
   ariaLabel,
   className = '',
   onClick,
+  style,
   children,
   ...props
 }: ParchmentPlateButtonProps) {
@@ -284,6 +324,19 @@ export function ParchmentPlateButton({
       ? 'px-2.5 py-1 text-xs rounded-[5px]'
       : 'px-3.5 py-1.5 text-xs sm:text-sm rounded-[6px]';
 
+  const plateStyle: React.CSSProperties = active
+    ? {
+        background: 'var(--vv-primary-btn-bg)',
+        borderColor: 'var(--vv-primary-btn-border)',
+        color: 'var(--vv-primary-btn-text)',
+        ...style,
+      }
+    : {
+        background: 'var(--vv-secondary-btn-bg)',
+        borderColor: 'var(--vv-card-border)',
+        ...style,
+      };
+
   return (
     <button
       type="button"
@@ -292,10 +345,11 @@ export function ParchmentPlateButton({
         bookSound.playBrassClickSound();
         onClick?.(e);
       }}
+      style={plateStyle}
       className={`relative inline-flex items-center justify-center gap-1.5 border font-bangla transition-all cursor-pointer select-none ${
         active
-          ? 'bg-gradient-to-b from-[#5B3F2B] to-[#432D1E] text-[#FAF1E2] border-[#8C6747] shadow-[inset_0_1px_0_rgba(255,235,205,0.25),0_2px_4px_rgba(35,20,10,0.2)] font-medium'
-          : 'bg-gradient-to-b from-[#FBF5E9] to-[#EBDEC7] dark:from-[#2E2720] dark:to-[#241E18] text-[#4C3625] dark:text-[#D7C3AA] border-[#C6AE8C] dark:border-[#493E32] hover:bg-[#E7D5B8] dark:hover:bg-[#3A3226] hover:border-[#A4825C] dark:hover:border-[#6B5540] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_1px_2px_rgba(45,28,15,0.08)]'
+          ? 'shadow-[inset_0_1px_0_rgba(255,235,205,0.25),0_2px_4px_rgba(35,20,10,0.2)] font-medium'
+          : 'text-[var(--ink)] hover:brightness-97 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(45,28,15,0.08)]'
       } ${sizing} ${className}`}
       {...props}
     >

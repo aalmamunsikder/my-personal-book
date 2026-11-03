@@ -278,11 +278,17 @@ export function TemplatePickerModal({
 
         {/* Section 0: Book Interior & Binding Theme, Writing Style & Fountain Ink */}
         {(onChangeDeskBackground || onChangeWritingStyle || onChangeInkColor) && (
-          <div className="mt-4 p-3.5 rounded-[8px] bg-gradient-to-b from-[#F6EBD8] to-[#EAD8BD] dark:from-[#261F19] dark:to-[#1E1813] border border-[#C6AE8C] dark:border-[#463B2F] space-y-4">
+          <div
+            style={{
+              background: 'var(--vv-secondary-btn-bg)',
+              borderColor: 'var(--vv-card-border)',
+            }}
+            className="mt-4 p-3.5 rounded-[8px] border space-y-4 transition-all duration-300"
+          >
             {onChangeDeskBackground && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B]">
+                  <span className="text-xs font-bold font-bangla text-[var(--ink)]">
                     ✦ বইয়ের ভেতরের আবহ ও থিম (Book Interior &amp; Binding Theme — ৮টি আবহ)
                   </span>
                 </div>
@@ -297,10 +303,22 @@ export function TemplatePickerModal({
                           bookSound.playBrassClickSound();
                           onChangeDeskBackground(bg.id);
                         }}
+                        style={
+                          active
+                            ? {
+                                background: bg.primaryButtonCss,
+                                borderColor: bg.primaryButtonBorderHex,
+                                color: bg.primaryButtonTextHex,
+                              }
+                            : {
+                                background: 'var(--vv-card-bg)',
+                                borderColor: 'var(--vv-card-border)',
+                              }
+                        }
                         className={`p-2 rounded-[6px] border text-left transition-all flex items-center gap-2 cursor-pointer ${
                           active
-                            ? 'bg-[#5A3E28] text-[#FDF8F0] border-[#D8A668] ring-1 ring-[#D8A668]/50 shadow-xs'
-                            : 'bg-[#FBF5E9] dark:bg-[#2B231C] text-[#3A281B] dark:text-[#DFCBB0] border-[#C9B190] dark:border-[#4A3E32] hover:bg-[#EFE0C8]'
+                            ? 'ring-1 ring-[#D8A668]/50 shadow-xs'
+                            : 'text-[var(--ink)] hover:brightness-97'
                         }`}
                       >
                         <span
@@ -314,7 +332,7 @@ export function TemplatePickerModal({
                           </span>
                           <span
                             className={`block text-[9.5px] truncate ${
-                              active ? 'text-[#E8D2B5]' : 'text-[var(--ink-soft)]'
+                              active ? 'opacity-85' : 'text-[var(--ink-soft)]'
                             }`}
                           >
                             {bg.shortLabel}
@@ -327,10 +345,13 @@ export function TemplatePickerModal({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-dashed border-[#CBB494] dark:border-[#3E3328]">
+            <div
+              style={{ borderColor: 'var(--vv-card-border)' }}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-dashed"
+            >
               {onChangeWritingStyle && (
                 <div className="space-y-1.5">
-                  <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B] block">
+                  <span className="text-xs font-bold font-bangla text-[var(--ink)] block">
                     ✦ লেখার ছাঁদ ও বিন্যাস (Writing Style)
                   </span>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -345,10 +366,22 @@ export function TemplatePickerModal({
                             onChangeWritingStyle(ws.id);
                           }}
                           title={ws.description}
+                          style={
+                            active
+                              ? {
+                                  background: 'var(--vv-primary-btn-bg)',
+                                  borderColor: 'var(--vv-primary-btn-border)',
+                                  color: 'var(--vv-primary-btn-text)',
+                                }
+                              : {
+                                  background: 'var(--vv-card-bg)',
+                                  borderColor: 'var(--vv-card-border)',
+                                }
+                          }
                           className={`px-2.5 py-1.5 rounded-[5px] border text-left text-[11px] font-bangla transition-all cursor-pointer truncate ${
                             active
-                              ? 'bg-[#5A3E28] text-[#FDF8F0] border-[#D8A668] font-semibold'
-                              : 'bg-[#FBF5E9] dark:bg-[#2B231C] text-[#3A281B] dark:text-[#DFCBB0] border-[#C9B190] dark:border-[#4A3E32] hover:bg-[#EFE0C8]'
+                              ? 'font-semibold'
+                              : 'text-[var(--ink)] hover:brightness-97'
                           }`}
                         >
                           {ws.nameBn}
@@ -361,7 +394,7 @@ export function TemplatePickerModal({
 
               {onChangeInkColor && (
                 <div className="space-y-1.5">
-                  <span className="text-xs font-bold font-bangla text-[#4E3624] dark:text-[#E5C69B] block">
+                  <span className="text-xs font-bold font-bangla text-[var(--ink)] block">
                     ✦ ঝর্ণাকলমের কালি (Fountain Pen Ink)
                   </span>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -375,10 +408,22 @@ export function TemplatePickerModal({
                             bookSound.playInkStampSound();
                             onChangeInkColor(ink.id);
                           }}
+                          style={
+                            active
+                              ? {
+                                  background: 'var(--vv-primary-btn-bg)',
+                                  borderColor: 'var(--vv-primary-btn-border)',
+                                  color: 'var(--vv-primary-btn-text)',
+                                }
+                              : {
+                                  background: 'var(--vv-card-bg)',
+                                  borderColor: 'var(--vv-card-border)',
+                                }
+                          }
                           className={`px-2.5 py-1.5 rounded-[5px] border text-left text-[11px] font-bangla transition-all flex items-center gap-2 cursor-pointer truncate ${
                             active
-                              ? 'bg-[#5A3E28] text-[#FDF8F0] border-[#D8A668] font-semibold'
-                              : 'bg-[#FBF5E9] dark:bg-[#2B231C] text-[#3A281B] dark:text-[#DFCBB0] border-[#C9B190] dark:border-[#4A3E32] hover:bg-[#EFE0C8]'
+                              ? 'font-semibold'
+                              : 'text-[var(--ink)] hover:brightness-97'
                           }`}
                         >
                           <span
@@ -398,9 +443,15 @@ export function TemplatePickerModal({
         )}
 
         {/* Target Action Mode Bar: Create New Page vs Apply to Current Open Page */}
-        <div className="mt-4 px-3 py-2.5 rounded-[6px] bg-[#EADBC4] dark:bg-[#272019] border border-[#C8AF8C] dark:border-[#3E3328] flex flex-wrap items-center justify-between gap-2">
+        <div
+          style={{
+            background: 'var(--vv-secondary-btn-bg)',
+            borderColor: 'var(--vv-card-border)',
+          }}
+          className="mt-4 px-3 py-2.5 rounded-[6px] border flex flex-wrap items-center justify-between gap-2"
+        >
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bangla font-semibold text-[#4E3725] dark:text-[#D8C2A6] mr-1">
+            <span className="text-xs font-bangla font-semibold text-[var(--ink)] mr-1">
               প্রয়োগের মাধ্যম:
             </span>
             <button
@@ -409,10 +460,22 @@ export function TemplatePickerModal({
                 bookSound.playBrassClickSound();
                 setApplyMode('new');
               }}
+              style={
+                applyMode === 'new'
+                  ? {
+                      background: 'var(--vv-primary-btn-bg)',
+                      borderColor: 'var(--vv-primary-btn-border)',
+                      color: 'var(--vv-primary-btn-text)',
+                    }
+                  : {
+                      background: 'var(--vv-card-bg)',
+                      borderColor: 'var(--vv-card-border)',
+                    }
+              }
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[5px] text-xs font-bangla border transition-all cursor-pointer ${
                 applyMode === 'new'
-                  ? 'bg-[#5B3E29] text-[#FDF8F0] border-[#8E694A] font-semibold shadow-2xs'
-                  : 'bg-[#F8EFE0] dark:bg-[#1E1813] text-[#4E3725] dark:text-[#C8B297] border-[#C2A884] dark:border-[#463A2E]'
+                  ? 'font-semibold shadow-2xs'
+                  : 'text-[var(--ink)]'
               }`}
             >
               <FilePlus2 className="w-3.5 h-3.5" />
@@ -425,10 +488,22 @@ export function TemplatePickerModal({
                   bookSound.playBrassClickSound();
                   setApplyMode('current');
                 }}
+                style={
+                  applyMode === 'current'
+                    ? {
+                        background: 'var(--vv-primary-btn-bg)',
+                        borderColor: 'var(--vv-primary-btn-border)',
+                        color: 'var(--vv-primary-btn-text)',
+                      }
+                    : {
+                        background: 'var(--vv-card-bg)',
+                        borderColor: 'var(--vv-card-border)',
+                      }
+                }
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[5px] text-xs font-bangla border transition-all cursor-pointer ${
                   applyMode === 'current'
-                    ? 'bg-[#5B3E29] text-[#FDF8F0] border-[#8E694A] font-semibold shadow-2xs'
-                    : 'bg-[#F8EFE0] dark:bg-[#1E1813] text-[#4E3725] dark:text-[#C8B297] border-[#C2A884] dark:border-[#463A2E]'
+                    ? 'font-semibold shadow-2xs'
+                    : 'text-[var(--ink)]'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -441,9 +516,13 @@ export function TemplatePickerModal({
             <button
               type="button"
               onClick={handleSaveCurrentAsTemplate}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-xs font-bangla bg-[#FBF4E7] dark:bg-[#312820] hover:bg-[#EFE0C6] dark:hover:bg-[#3A3226] text-[#5A3E28] dark:text-[#E5C8A3] border border-[#BEA37E] dark:border-[#524334] cursor-pointer transition-colors"
+              style={{
+                background: 'var(--vv-card-bg)',
+                borderColor: 'var(--vv-card-border)',
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-xs font-bangla hover:brightness-97 text-[var(--ink)] border cursor-pointer transition-colors"
             >
-              <BookmarkPlus className="w-3.5 h-3.5 text-[#8C5E35]" />
+              <BookmarkPlus className="w-3.5 h-3.5 text-[var(--accent)]" />
               <span>বর্তমান পাতাটি টেমপ্লেট হিসেবে সংরক্ষণ করুন</span>
             </button>
           )}
@@ -461,10 +540,13 @@ export function TemplatePickerModal({
           {/* Section 1: 10 Blank Paper & Page Variations with Visual Swatches */}
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5F422D] dark:text-[#D8B485] font-bangla">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--accent)] font-bangla">
                 ✦ ১. কাগজের ধরন ও পৃষ্ঠার নকশা (10 Manuscript Paper Styles)
               </span>
-              <span className="flex-1 h-[1px] bg-gradient-to-r from-[#C8B192] dark:from-[#4A3D2F] to-transparent" />
+              <span
+                style={{ backgroundColor: 'var(--vv-card-border)' }}
+                className="flex-1 h-[1px]"
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {PAGE_VARIATIONS.map((pv) => {
@@ -479,23 +561,32 @@ export function TemplatePickerModal({
                       onSelectBlankVariation(pv.id, applyMode);
                       onClose();
                     }}
-                    className={`relative text-left p-3 rounded-[8px] bg-gradient-to-b from-[#FDF8F0] to-[#F1E4CE] dark:from-[#2A231C] dark:to-[#211B15] hover:from-[#F6E9D4] hover:to-[#E6D3B5] dark:hover:from-[#332A21] dark:hover:to-[#28211A] border transition-all group flex items-start gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_4px_rgba(20,12,5,0.12)] cursor-pointer ${
-                      isCurrentActive
-                        ? 'border-[#8C5E35] dark:border-[#D8A668] ring-1 ring-[#8C5E35]/40'
-                        : 'border-[#C6AE8C] dark:border-[#463B2F]'
+                    style={{
+                      background: isCurrentActive
+                        ? 'var(--vv-card-selected-bg)'
+                        : 'var(--vv-card-bg)',
+                      borderColor: isCurrentActive
+                        ? 'var(--vv-accent)'
+                        : 'var(--vv-card-border)',
+                    }}
+                    className={`relative text-left p-3 rounded-[8px] hover:brightness-97 border transition-all group flex items-start gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(20,12,5,0.1)] cursor-pointer ${
+                      isCurrentActive ? 'ring-1 ring-[var(--accent)]/40' : ''
                     }`}
                   >
                     <PaperStyleSwatch kind={pv.previewKind} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1.5">
-                        <span className="text-sm font-bold font-bangla text-[#2B1E16] dark:text-[#F3E6D2] group-hover:text-[#7A4E2D] dark:group-hover:text-[#E5B879] truncate">
+                        <span className="text-sm font-bold font-bangla text-[var(--ink)] group-hover:text-[var(--accent)] truncate">
                           {pv.nameBn}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] border border-[#C5AD8B] dark:border-[#524435] bg-[#E8D7BE] dark:bg-[#382F25] text-[#5A402C] dark:text-[#DFC7A7] shrink-0">
+                        <span
+                          style={{ borderColor: 'var(--vv-card-border)' }}
+                          className="text-[10px] px-1.5 py-0.5 rounded-[3px] border bg-black/5 dark:bg-white/5 text-[var(--ink-soft)] shrink-0"
+                        >
                           {pv.shortLabel}
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#665544] dark:text-[#B5A189] mt-1 line-clamp-2 leading-snug">
+                      <p className="text-[11px] text-[var(--ink-soft)] mt-1 line-clamp-2 leading-snug">
                         {pv.description}
                       </p>
                     </div>
@@ -508,7 +599,7 @@ export function TemplatePickerModal({
           {/* Section 2: Guided Literary & Diary Templates with Category Filter */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5F422D] dark:text-[#D8B485] font-bangla">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--accent)] font-bangla">
                 ✦ ২. সাহিত্য ও ডায়েরি টেমপ্লেট ({filteredTemplates.length}টি প্রস্তুত কাঠামো)
               </span>
 
@@ -531,10 +622,22 @@ export function TemplatePickerModal({
                       bookSound.playBrassClickSound();
                       setCategoryFilter(tab.id);
                     }}
+                    style={
+                      categoryFilter === tab.id
+                        ? {
+                            background: 'var(--vv-primary-btn-bg)',
+                            borderColor: 'var(--vv-primary-btn-border)',
+                            color: 'var(--vv-primary-btn-text)',
+                          }
+                        : {
+                            background: 'var(--vv-secondary-btn-bg)',
+                            borderColor: 'var(--vv-card-border)',
+                          }
+                    }
                     className={`px-2.5 py-0.5 rounded-[4px] text-[11px] font-bangla border transition-all cursor-pointer ${
                       categoryFilter === tab.id
-                        ? 'bg-[#5A3E28] text-[#FAF2E4] border-[#8C6747] font-medium'
-                        : 'bg-[#EFE1CA] dark:bg-[#2A231C] text-[#5A422E] dark:text-[#C9B398] border-[#C6AE8C] dark:border-[#453A2E] hover:bg-[#E4D1B3]'
+                        ? 'font-medium'
+                        : 'text-[var(--ink)] hover:brightness-97'
                     }`}
                   >
                     {tab.label}
@@ -562,15 +665,22 @@ export function TemplatePickerModal({
                       onClose();
                     }
                   }}
-                  className="relative text-left p-4 rounded-[8px] bg-gradient-to-b from-[#FDF8F0] to-[#F2E5CF] dark:from-[#2A231C] dark:to-[#211B15] hover:from-[#F6E9D4] hover:to-[#E6D3B5] dark:hover:from-[#332A21] dark:hover:to-[#28211A] border border-[#C6AE8C] dark:border-[#463B2F] transition-all group flex flex-col justify-between gap-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_5px_rgba(20,12,5,0.12)] cursor-pointer"
+                  style={{
+                    background: 'var(--vv-card-bg)',
+                    borderColor: 'var(--vv-card-border)',
+                  }}
+                  className="relative text-left p-4 rounded-[8px] hover:brightness-97 border transition-all group flex flex-col justify-between gap-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_5px_rgba(20,12,5,0.1)] cursor-pointer"
                 >
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-bold font-bangla text-[#2B1E16] dark:text-[#F4E7D3] group-hover:text-[#7A4E2D] dark:group-hover:text-[#E5B879]">
+                      <h4 className="text-sm font-bold font-bangla text-[var(--ink)] group-hover:text-[var(--accent)]">
                         {tpl.nameBn}
                       </h4>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[3px] border border-[#C5AD8B] dark:border-[#524435] bg-[#E5D3B8] dark:bg-[#382F25] text-[#5C412C] dark:text-[#DFC7A7]">
+                        <span
+                          style={{ borderColor: 'var(--vv-card-border)' }}
+                          className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[3px] border bg-black/5 dark:bg-white/5 text-[var(--ink-soft)]"
+                        >
                           {tpl.type}
                         </span>
                         {tpl.isCustom && (
@@ -585,16 +695,25 @@ export function TemplatePickerModal({
                         )}
                       </div>
                     </div>
-                    <p className="text-xs font-bangla text-[#63513F] dark:text-[#B8A48C]">
+                    <p className="text-xs font-bangla text-[var(--ink-soft)]">
                       {tpl.descriptionBn}
                     </p>
                     {/* Snippet of actual template text */}
-                    <div className="p-2 rounded-[5px] bg-[#EFE2CC]/60 dark:bg-[#191410]/80 border border-[#D5C0A1]/70 dark:border-[#3A3025] text-[11px] font-bangla text-[#4A3728] dark:text-[#D5C0A5] line-clamp-2 whitespace-pre-line">
+                    <div
+                      style={{
+                        background: 'var(--vv-secondary-btn-bg)',
+                        borderColor: 'var(--vv-card-border)',
+                      }}
+                      className="p-2 rounded-[5px] border text-[11px] font-bangla text-[var(--ink)] line-clamp-2 whitespace-pre-line"
+                    >
                       {tpl.defaultContent}
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-dashed border-[#D3BE9E] dark:border-[#3A3127] flex items-center justify-between text-[11px] text-[#6E4F3A] dark:text-[#D8B485] font-bangla">
+                  <div
+                    style={{ borderColor: 'var(--vv-card-border)' }}
+                    className="pt-2 border-t border-dashed flex items-center justify-between text-[11px] text-[var(--accent)] font-bangla"
+                  >
                     <span className="truncate">শিরোনাম: “{tpl.defaultTitle}”</span>
                     <span className="font-semibold group-hover:underline shrink-0 ml-2">
                       {applyMode === 'current'

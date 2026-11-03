@@ -17,10 +17,15 @@ interface ClosedLeatherBookCoverProps {
   onResumeBookmark?: () => void;
   readingBookmark?: ReadingBookmark | null;
   bookThemeNameBn?: string;
+  conceptBadgeBn?: string;
+  conceptSubtitleBn?: string;
+  conceptQuoteBn?: string;
+  conceptMotifSymbol?: string;
   coverBackgroundCss?: string;
   coverBorderHex?: string;
   ribbonGradient?: string;
   ribbonBorder?: string;
+  paperEdgeGiltHex?: string;
   totalEntries: number;
   poemsCount: number;
   collectionsCount: number;
@@ -34,10 +39,15 @@ export function ClosedLeatherBookCover({
   onResumeBookmark,
   readingBookmark,
   bookThemeNameBn,
+  conceptBadgeBn,
+  conceptSubtitleBn,
+  conceptQuoteBn,
+  conceptMotifSymbol,
   coverBackgroundCss,
   coverBorderHex,
   ribbonGradient,
   ribbonBorder,
+  paperEdgeGiltHex,
   totalEntries,
   poemsCount,
   collectionsCount,
@@ -63,11 +73,13 @@ export function ClosedLeatherBookCover({
         {/* Stacked Gilt Parchment Page Block Edges on Right & Bottom */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute top-3 -right-3.5 bottom-2 w-5 rounded-r-[8px] bg-[repeating-linear-gradient(90deg,#E8D7BE_0px,#E8D7BE_1.5px,#B99D78_1.5px,#B99D78_3px)] border-y border-r border-[#8A6B48] shadow-[14px_24px_45px_rgba(0,0,0,0.65)]"
+          style={{ borderColor: paperEdgeGiltHex || '#8A6B48' }}
+          className="pointer-events-none absolute top-3 -right-3.5 bottom-2 w-5 rounded-r-[8px] bg-[repeating-linear-gradient(90deg,#E8D7BE_0px,#E8D7BE_1.5px,#B99D78_1.5px,#B99D78_3px)] border-y border-r shadow-[14px_24px_45px_rgba(0,0,0,0.65)]"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-3 left-5 right-0 h-4 rounded-b-[8px] bg-[repeating-linear-gradient(0deg,#DFCBB0_0px,#DFCBB0_1.5px,#AD906B_1.5px,#AD906B_3px)] border-x border-b border-[#8A6B48]"
+          style={{ borderColor: paperEdgeGiltHex || '#8A6B48' }}
+          className="pointer-events-none absolute -bottom-3 left-5 right-0 h-4 rounded-b-[8px] bg-[repeating-linear-gradient(0deg,#DFCBB0_0px,#DFCBB0_1.5px,#AD906B_1.5px,#AD906B_3px)] border-x border-b"
         />
 
         {/* Custom Silk Ribbon Tail Peeking Out From Bottom */}
@@ -133,8 +145,14 @@ export function ClosedLeatherBookCover({
           </div>
 
           {/* Inner Gold-Foil Tooled Frame */}
-          <div className="ml-5 sm:ml-6 rounded-[10px] border border-[#9E774F]/55 p-1.5 shadow-[inset_0_0_24px_rgba(0,0,0,0.65)]">
-            <div className="relative rounded-[8px] border border-dashed border-[#C89D66]/40 px-4 py-6 sm:px-7 sm:py-7 flex flex-col items-center text-center space-y-4">
+          <div
+            style={{ borderColor: `${ribbonBorder || '#9E774F'}80` }}
+            className="ml-5 sm:ml-6 rounded-[10px] border p-1.5 shadow-[inset_0_0_24px_rgba(0,0,0,0.65)]"
+          >
+            <div
+              style={{ borderColor: `${ribbonBorder || '#C89D66'}60` }}
+              className="relative rounded-[8px] border border-dashed px-4 py-6 sm:px-7 sm:py-7 flex flex-col items-center text-center space-y-3.5"
+            >
               {/* Top-Right In-Cover Sound Toggle Button */}
               <button
                 type="button"
@@ -144,7 +162,7 @@ export function ClosedLeatherBookCover({
                 }}
                 aria-label={soundEnabled ? 'Mute book sounds' : 'Enable book sounds'}
                 title={soundEnabled ? 'ধ্বনি চালু (Sound On)' : 'নীরব (Muted)'}
-                className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-1 rounded-[5px] bg-[#1E120A]/80 hover:bg-[#2F1D11] border border-[#8A6443]/60 text-[#E6CFAF] text-[10px] font-bangla cursor-pointer transition-colors"
+                className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-1 rounded-[5px] bg-black/45 hover:bg-black/65 border border-white/20 text-[#E6CFAF] text-[10px] font-bangla cursor-pointer transition-colors"
               >
                 {soundEnabled ? (
                   <Volume2 className="w-3 h-3 text-[#DFB274]" />
@@ -164,7 +182,7 @@ export function ClosedLeatherBookCover({
                 </span>
               </div>
 
-              {/* Embossed Gold Foil Title Plate */}
+              {/* Embossed Gold Foil Title Plate & Active Concept Edition Badge */}
               <div className="space-y-1">
                 <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#FAE5C3] via-[#DFB578] to-[#A8793E] drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]">
                   VerseVault
@@ -172,9 +190,15 @@ export function ClosedLeatherBookCover({
                 <p className="text-xs sm:text-sm font-bangla text-[#DFC4A2] tracking-wide">
                   আমার একান্ত ডায়েরি ও সাহিত্য সংকলন
                 </p>
-                {bookThemeNameBn && (
-                  <p className="text-[10.5px] font-bangla text-[#C89D66]/80">
-                    আবহ: {bookThemeNameBn}
+                {(conceptBadgeBn || bookThemeNameBn) && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/35 border border-white/15 text-[10.5px] font-bangla text-[#F3DEC3]">
+                    {conceptMotifSymbol && <span aria-hidden="true">{conceptMotifSymbol}</span>}
+                    <span>{conceptBadgeBn || `আবহ: ${bookThemeNameBn}`}</span>
+                  </div>
+                )}
+                {conceptSubtitleBn && (
+                  <p className="text-[11px] font-bangla text-[#D5BE9E]/85 max-w-[320px] mx-auto leading-snug pt-0.5">
+                    {conceptSubtitleBn}
                   </p>
                 )}
                 <div className="pt-0.5 flex justify-center">
@@ -183,9 +207,15 @@ export function ClosedLeatherBookCover({
               </div>
 
               {/* Center Hand-Tooled Mountain & Crescent Moon Artwork */}
-              <div className="w-full max-w-[240px] rounded-[8px] overflow-hidden border border-[#6E4F35]/60 bg-[#1B1009]/70 p-2 shadow-inner opacity-95">
+              <div className="w-full max-w-[230px] rounded-[8px] overflow-hidden border border-white/15 bg-black/35 p-2 shadow-inner opacity-95">
                 <LeatherMountainMoonArtwork />
               </div>
+
+              {conceptQuoteBn && (
+                <p className="text-[11px] font-bangla italic text-[#E8D5BC]/90 max-w-[340px] leading-relaxed">
+                  {conceptQuoteBn}
+                </p>
+              )}
 
               {/* Quiet Editorial Archival Summary Line (Unboxed) */}
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-bangla text-[#DFC4A2]/90 pt-0.5">
